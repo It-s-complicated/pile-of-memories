@@ -3,7 +3,8 @@
     "target": "ES2022",
     "useDefineForClassFields": true,
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
-    "allowJs": false,
+    "allowJs": true,
+    "checkJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -11,12 +12,13 @@
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "types": ["node", "vite/client"],
+    "types": ["node", "svelte", "vite-plus/client"],
     "resolveJsonModule": true,
+    "allowArbitraryExtensions": true,
     "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx"
+    "moduleDetection": "force",
+    "noEmit": true
   },
-  "include": ["src"],
+  "include": ["src/**/*.ts", "src/**/*.svelte", "vite.config.ts"],
   "references": []
 }

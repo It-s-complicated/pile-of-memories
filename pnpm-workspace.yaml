@@ -2,12 +2,11 @@ packages:
   - .
 
 overrides:
-  "@radix-ui/react-tabs": 1.1.15
   vite: "catalog:"
   vitest: "catalog:"
 catalog:
   vite: npm:@voidzero-dev/vite-plus-core@^0.2.4
-  vitest: 4.1.9
+  vitest: 4.1.10
   vite-plus: ^0.2.4
 peerDependencyRules:
   allowAny:
@@ -16,3 +15,5 @@ peerDependencyRules:
   allowedVersions:
     vite: "*"
     vitest: "*"
+allowBuilds:
+  agent-browser: true

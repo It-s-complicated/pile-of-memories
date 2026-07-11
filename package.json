@@ -5,25 +5,21 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
-    "build": "vp build && tsc",
+    "build": "vp build",
     "preview": "vp preview",
+    "svelte-check": "svelte-check --tsconfig ./tsconfig.json",
     "prepare": "vp config"
   },
   "dependencies": {
-    "@excalidraw/excalidraw": "^0.18.1",
-    "@libsql/client": "^0.17.4",
-    "@tanstack/react-router": "^1.170.17",
-    "@tanstack/react-start": "^1.168.27",
-    "drizzle-orm": "^0.45.2",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "@xyflow/svelte": "^1.6.2",
+    "agent-browser": "^0.31.1",
+    "svelte": "^5.56.4"
   },
   "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.2.0",
     "@types/node": "^26.1.1",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.3",
-    "typescript": "7.0.2",
+    "svelte-check": "^4.7.2",
+    "typescript": "6.0.3",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   },
@@ -38,5 +34,9 @@
         "name": "npm"
       }
     ]
+  },
+  "allowScripts": {
+    "file:../../lightningcss@1.32.0/node_modules/lightningcss": true,
+    "file:../../browser-fs-access@0.29.1/node_modules/browser-fs-access": true
   }
 }

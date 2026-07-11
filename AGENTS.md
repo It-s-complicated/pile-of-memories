@@ -13,17 +13,16 @@ The first product loop is intentionally small:
 
 ## Tech
 
-- Vite + React
-- Excalidraw for the canvas
+- Vite + Svelte 5
+- Svelte Flow for the canvas
 - pnpm for package management
 
-Memory cards are Excalidraw rectangles with bound text and `customData.type === "memory-card"`.
+Memory cards are Svelte Flow nodes with `type === "memory"`.
 
 ## Constraints
 
 - Keep changes small and app-shaped.
-- Prefer Excalidraw APIs over custom canvas code.
-- Keep the React 19 Radix override in `pnpm-workspace.yaml` unless `pnpm peers check` stays clean without it.
+- Prefer Svelte Flow APIs over custom canvas code.
 
 <!--VITE PLUS START-->
 

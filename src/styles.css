@@ -1,6 +1,6 @@
 html,
 body,
-#root {
+#app {
   height: 100%;
   margin: 0;
 }
@@ -77,4 +77,34 @@ select {
 .canvas {
   position: relative;
   min-height: 0;
+}
+
+.svelte-flow {
+  background: #f5f1ea;
+}
+
+.svelte-flow__edge-path {
+  stroke: #7c7167;
+  stroke-width: 2;
+}
+
+.svelte-flow__controls {
+  border: 1px solid #ded6ca;
+  box-shadow: 0 2px 8px rgb(63 52 43 / 12%);
+}
+
+.svelte-flow__controls-button {
+  border-bottom-color: #ded6ca;
+  color: #3f342b;
+  background: #fffaf2;
+}
+
+@media (max-width: 520px) {
+  .topbar {
+    padding: 0.65rem 0.75rem;
+  }
+
+  .topbar h1 {
+    max-width: 13rem;
+  }
 }
