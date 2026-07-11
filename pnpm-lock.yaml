@@ -220,9 +220,6 @@ importers:
       '@xyflow/svelte':
         specifier: ^1.6.2
         version: 1.6.2(svelte@5.56.4)
-      agent-browser:
-        specifier: ^0.31.1
-        version: 0.31.1
       svelte:
         specifier: ^5.56.4
         version: 5.56.4
@@ -233,6 +230,9 @@ importers:
       '@types/node':
         specifier: ^26.1.1
         version: 26.1.1
+      agent-browser:
+        specifier: ^0.31.1
+        version: 0.31.1
       svelte-check:
         specifier: ^4.7.2
         version: 4.7.2(picomatch@4.0.5)(svelte@5.56.4)(typescript@6.0.3)
