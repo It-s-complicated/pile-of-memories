@@ -60,13 +60,27 @@ select {
   font-weight: 700;
 }
 
-.card-button {
+.topbar-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.card-button,
+.demo-button {
   border: 1px solid #3f342b;
   border-radius: 0.5rem;
   padding: 0.55rem 0.8rem;
+  cursor: pointer;
+}
+
+.card-button {
   color: #fffaf2;
   background: #3f342b;
-  cursor: pointer;
+}
+
+.demo-button {
+  color: #3f342b;
+  background: transparent;
 }
 
 .card-button:disabled {

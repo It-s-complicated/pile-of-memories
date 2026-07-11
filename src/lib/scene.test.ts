@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vite-plus/test";
-import { createStarterScene, readScene, serializeScene } from "./scene";
+import {
+  createDemoScene,
+  createStarterScene,
+  getMemoryBackground,
+  getPrimaryTagAccent,
+  getTopicBorder,
+  getTopicTagColor,
+  readScene,
+  serializeScene,
+} from "./scene";
 
 describe("scene snapshots", () => {
   it("round-trips valid scenes and falls back for invalid data", () => {
@@ -7,5 +16,66 @@ describe("scene snapshots", () => {
 
     expect(readScene(serializeScene(scene))).toEqual(scene);
     expect(readScene('{"nodes":"invalid","edges":[]}')).toEqual(scene);
+  });
+
+  it("adds empty tag lists to older saved memories", () => {
+    const scene = readScene(
+      JSON.stringify({
+        nodes: [
+          {
+            id: "legacy",
+            type: "memory",
+            position: { x: 0, y: 0 },
+            data: { title: "Older memory", body: "Saved before tags existed." },
+          },
+        ],
+        edges: [],
+      }),
+    );
+
+    expect(scene.nodes[0]?.data).toEqual({
+      title: "Older memory",
+      body: "Saved before tags existed.",
+      tags: [],
+      topics: [],
+    });
+  });
+
+  it("colors cards from their primary tags", () => {
+    expect(getMemoryBackground([])).toBe("#fff3bf");
+    expect(getMemoryBackground(["web development"])).toBe("#d9e9ff");
+    expect(getMemoryBackground(["job", "web development"])).toBe(
+      "linear-gradient(135deg, #dff2d8, #d9e9ff)",
+    );
+    expect(getMemoryBackground(["unknown"])).toBe("#fff3bf");
+    expect(getPrimaryTagAccent("web development")).toBe("#356fbd");
+    expect(getPrimaryTagAccent("unknown")).toBe("#5f4b32");
+  });
+
+  it("colors card borders from their topic tags", () => {
+    expect(getTopicBorder([])).toBe("#5f4b32");
+    expect(getTopicBorder(["CSS"])).toBe("#b83280");
+    expect(getTopicBorder(["Vue", "React"])).toBe("linear-gradient(135deg, #2f855a, #1677a8)");
+    expect(getTopicBorder(["unknown"])).toBe("#5f4b32");
+    expect(getTopicTagColor("finance")).toBe("#a66f00");
+    expect(getTopicTagColor("unknown")).toBe("#8a765e");
+  });
+
+  it("provides an edge-free demo with diverse primary tag combinations", () => {
+    const demo = createDemoScene();
+
+    expect(demo.edges).toEqual([]);
+    expect(demo.nodes).toHaveLength(9);
+    expect(demo.nodes.map((node) => node.data.tags)).toEqual(
+      expect.arrayContaining([
+        ["job"],
+        ["personal development"],
+        ["web development"],
+        ["job", "web development"],
+        ["job", "personal development"],
+        ["web development", "personal development"],
+        ["job", "web development", "personal development"],
+      ]),
+    );
   });
 });

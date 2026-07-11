@@ -13,9 +13,11 @@
   import {
     DEFAULT_MEMORY_BODY,
     SCENE_STORAGE_KEY,
+    createDemoScene,
     readScene,
     serializeScene,
     type MemoryNode,
+    type SceneSnapshot,
   } from "./lib/scene";
 
   const scene = readScene(localStorage.getItem(SCENE_STORAGE_KEY));
@@ -30,6 +32,10 @@
   let viewport = $state<Viewport>({ x: 32, y: 32, zoom: 1 });
   let canvasWidth = $state(0);
   let canvasHeight = $state(0);
+  let demoMode = $state(false);
+  let boardScene: SceneSnapshot = scene;
+  let boardViewport: Viewport = { x: 32, y: 32, zoom: 1 };
+  let serializedScene = $derived(serializeScene({ nodes, edges }));
 
   function addCard() {
     const id = crypto.randomUUID();
@@ -44,14 +50,33 @@
         id,
         type: "memory",
         position,
-        data: { title: "Memory card", body: DEFAULT_MEMORY_BODY },
+        data: { title: "Memory card", body: DEFAULT_MEMORY_BODY, tags: [], topics: [] },
         focusable: true,
       },
     ];
   }
 
+  function toggleDemo() {
+    if (demoMode) {
+      nodes = boardScene.nodes;
+      edges = boardScene.edges;
+      viewport = boardViewport;
+      demoMode = false;
+      return;
+    }
+
+    boardScene = { nodes, edges };
+    boardViewport = { ...viewport };
+
+    const demo = createDemoScene();
+    demoMode = true;
+    nodes = demo.nodes;
+    edges = demo.edges;
+    viewport = { x: 24, y: 24, zoom: 0.65 };
+  }
+
   $effect(() => {
-    localStorage.setItem(SCENE_STORAGE_KEY, serializeScene({ nodes, edges }));
+    if (!demoMode) localStorage[SCENE_STORAGE_KEY] = serializedScene;
   });
 </script>
 
@@ -59,11 +84,21 @@
   <header class="topbar">
     <div>
       <p>Pile of Memories II</p>
-      <h1>Arrange what is worth keeping.</h1>
+      <h1>{demoMode ? "Demo canvas" : "Arrange your memories."}</h1>
     </div>
-    <button type="button" class="card-button" onclick={addCard}>New card</button>
+    <div class="topbar-actions">
+      <button type="button" class="demo-button" onclick={toggleDemo}>
+        {demoMode ? "Back to board" : "Show demo"}
+      </button>
+      <button type="button" class="card-button" onclick={addCard} disabled={demoMode}>New card</button>
+    </div>
   </header>
-  <main class="canvas" aria-label="Memory garden" bind:clientWidth={canvasWidth} bind:clientHeight={canvasHeight}>
+  <main
+    class="canvas"
+    aria-label={demoMode ? "Demo memory garden" : "Memory garden"}
+    bind:clientWidth={canvasWidth}
+    bind:clientHeight={canvasHeight}
+  >
     <SvelteFlow
       bind:nodes
       bind:edges
