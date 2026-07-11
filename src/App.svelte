@@ -1,6 +1,7 @@
 <script lang="ts">
   import {
     Controls,
+    MiniMap,
     SvelteFlow,
     type DefaultEdgeOptions,
     type Edge,
@@ -73,6 +74,7 @@
       maxZoom={1.5}
     >
       <Controls showLock={false} fitViewOptions={{ maxZoom: 1 }} />
+      <MiniMap />
     </SvelteFlow>
   </main>
 </div>
