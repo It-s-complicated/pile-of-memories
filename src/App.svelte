@@ -12,12 +12,16 @@
   import MemoryNodeComponent from "./components/MemoryNode.svelte";
   import {
     DEFAULT_MEMORY_BODY,
+    PRIMARY_TAGS,
     SCENE_STORAGE_KEY,
+    TOPIC_TAGS,
     createDemoScene,
+    findOpenMemoryPosition,
     getMemoryBackground,
     getTopicBorder,
     readScene,
     serializeScene,
+    suggestMemoryPlacement,
     type MemoryNode,
   } from "./lib/scene";
 
@@ -29,7 +33,16 @@
   let viewport = $state<Viewport>({ x: 32, y: 32, zoom: 1 });
   let canvasWidth = $state(0);
   let canvasHeight = $state(0);
+  let newMemoryOpen = $state(false);
+  let memoryTitle = $state("");
+  let memoryBody = $state("");
+  let memoryTags = $state<string[]>([]);
+  let memoryTopics = $state<string[]>([]);
+  let placementChoice = $state("open");
   let serializedScene = $derived(serializeScene({ nodes }));
+  let placement = $derived(
+    suggestMemoryPlacement(nodes, { tags: memoryTags, topics: memoryTopics }),
+  );
 
   function getInitialScene() {
     return demo ? createDemoScene() : readScene(localStorage.getItem(SCENE_STORAGE_KEY));
@@ -43,12 +56,32 @@
     return getTopicBorder((node as MemoryNode).data.topics.slice(0, 1));
   }
 
-  function addCard() {
+  function openNewMemoryDialog() {
+    memoryTitle = "";
+    memoryBody = "";
+    memoryTags = [];
+    memoryTopics = [];
+    placementChoice = "open";
+    newMemoryOpen = true;
+  }
+
+  function showModal(dialog: HTMLDialogElement) {
+    dialog.showModal();
+    return () => dialog.close();
+  }
+
+  function addMemory() {
     const id = crypto.randomUUID();
-    const position = {
+    const openSpace = {
       x: (canvasWidth / 2 - viewport.x) / viewport.zoom - 160,
       y: (canvasHeight / 2 - viewport.y) / viewport.zoom - 90,
     };
+    const anchorId = placement.automatic ?? placementChoice;
+    const anchor = nodes.find((node) => node.id === anchorId);
+    const origin = anchor
+      ? { x: anchor.position.x + 360, y: anchor.position.y }
+      : openSpace;
+    const position = findOpenMemoryPosition(nodes, origin);
 
     nodes = [
       ...nodes,
@@ -56,7 +89,12 @@
         id,
         type: "memory",
         position,
-        data: { title: "Memory card", body: DEFAULT_MEMORY_BODY, tags: [], topics: [] },
+        data: {
+          title: memoryTitle.trim(),
+          body: memoryBody.trim() || DEFAULT_MEMORY_BODY,
+          tags: memoryTags,
+          topics: memoryTopics,
+        },
         focusable: true,
       },
     ];
@@ -77,7 +115,9 @@
       <a class="demo-button" href={resolve(demo ? "/" : "/demo")}>
         {demo ? "Back to board" : "Show demo"}
       </a>
-      <button type="button" class="card-button" onclick={addCard} disabled={demo}>New card</button>
+      <button type="button" class="card-button" onclick={openNewMemoryDialog} disabled={demo}>
+        New Memory
+      </button>
     </div>
   </header>
   <main
@@ -99,3 +139,76 @@
     </SvelteFlow>
   </main>
 </div>
+
+{#if newMemoryOpen}
+  <dialog
+    class="memory-dialog"
+    aria-labelledby="new-memory-title"
+    onclose={() => (newMemoryOpen = false)}
+    {@attach showModal}
+  >
+    <form method="dialog" onsubmit={addMemory}>
+    <header>
+      <p>Capture and place</p>
+      <h2 id="new-memory-title">New Memory</h2>
+    </header>
+
+    <label class="memory-field">
+      <span>Title</span>
+      <input bind:value={memoryTitle} required />
+    </label>
+    <label class="memory-field">
+      <span>Memory</span>
+      <textarea bind:value={memoryBody} rows="4" placeholder={DEFAULT_MEMORY_BODY}></textarea>
+    </label>
+
+    <fieldset>
+      <legend>Areas</legend>
+      <div class="memory-options">
+        {#each PRIMARY_TAGS as tag (tag)}
+          <label><input type="checkbox" bind:group={memoryTags} value={tag} /> {tag}</label>
+        {/each}
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Topics</legend>
+      <div class="memory-options">
+        {#each TOPIC_TAGS as topic (topic)}
+          <label><input type="checkbox" bind:group={memoryTopics} value={topic} /> {topic}</label>
+        {/each}
+      </div>
+    </fieldset>
+
+    {#if placement.automatic}
+      <p class="placement-note">
+        Strong match: this memory will be placed near
+        {placement.choices.find((choice) => choice.id === placement.automatic)?.title}.
+      </p>
+    {:else}
+      <fieldset>
+        <legend>Placement</legend>
+        <div class="placement-options">
+          {#each placement.choices as choice (choice.id)}
+            <label>
+              <input type="radio" bind:group={placementChoice} value={choice.id} />
+              Near “{choice.title}”
+            </label>
+          {/each}
+          <label>
+            <input type="radio" bind:group={placementChoice} value="open" />
+            In open space
+          </label>
+        </div>
+      </fieldset>
+    {/if}
+
+      <footer>
+        <button type="button" class="demo-button" onclick={() => (newMemoryOpen = false)}>
+          Cancel
+        </button>
+        <button type="submit" class="card-button">Create Memory</button>
+      </footer>
+    </form>
+  </dialog>
+{/if}

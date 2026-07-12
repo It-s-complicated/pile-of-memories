@@ -89,6 +89,109 @@ select {
   opacity: 0.5;
 }
 
+.memory-dialog {
+  box-sizing: border-box;
+  width: min(34rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  border: 1px solid #b9aa98;
+  border-radius: 0.75rem;
+  padding: 0;
+  color: #3f342b;
+  background: #fffaf2;
+  box-shadow: 0 18px 60px rgb(63 52 43 / 24%);
+}
+
+.memory-dialog::backdrop {
+  background: rgb(32 31 29 / 45%);
+}
+
+.memory-dialog form {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.memory-dialog header p,
+.memory-dialog header h2 {
+  margin: 0;
+}
+
+.memory-dialog header p {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6d6258;
+}
+
+.memory-dialog header h2 {
+  margin-top: 0.2rem;
+}
+
+.memory-field {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 700;
+}
+
+.memory-field input,
+.memory-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid #b9aa98;
+  border-radius: 0.4rem;
+  padding: 0.65rem;
+  color: #3f342b;
+  background: #fff;
+}
+
+.memory-field textarea {
+  resize: vertical;
+}
+
+.memory-dialog fieldset {
+  min-width: 0;
+  margin: 0;
+  border: 1px solid #ded6ca;
+  border-radius: 0.5rem;
+  padding: 0.7rem;
+}
+
+.memory-dialog legend {
+  padding: 0 0.35rem;
+  font-weight: 700;
+}
+
+.memory-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.placement-options {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.memory-options label,
+.placement-options label {
+  cursor: pointer;
+}
+
+.placement-note {
+  margin: 0;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  background: #eee8df;
+}
+
+.memory-dialog footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .canvas {
   position: relative;
   min-height: 0;
@@ -116,5 +219,9 @@ select {
 
   .topbar h1 {
     max-width: 13rem;
+  }
+
+  .memory-dialog form {
+    padding: 1rem;
   }
 }

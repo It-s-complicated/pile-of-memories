@@ -19,6 +19,7 @@
 </script>
 
 <div class="memory-card" style:background={borderBackground}>
+  <div class="drag-handle" aria-hidden="true"></div>
   <article aria-label={`Memory: ${data.title || "Untitled memory"}`} style:background>
     <label>
       <span>Title</span>
@@ -61,6 +62,42 @@
     border-radius: 0.75rem;
     background: #5f4b32;
     box-shadow: 0 4px 14px rgb(63 52 43 / 14%);
+  }
+
+  .drag-handle {
+    position: absolute;
+    z-index: 1;
+    top: -1rem;
+    right: -1rem;
+    display: grid;
+    width: 2.25rem;
+    height: 2.75rem;
+    place-items: center;
+    border: 1px solid #b9aa98;
+    border-radius: 0.6rem;
+    color: #6d6258;
+    background: #fffaf2;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .drag-handle::before {
+    width: 0.25rem;
+    height: 0.25rem;
+    border-radius: 50%;
+    background: currentcolor;
+    box-shadow:
+      0.45rem 0,
+      0 0.45rem,
+      0.45rem 0.45rem,
+      0 0.9rem,
+      0.45rem 0.9rem;
+    content: "";
+    transform: translate(-0.225rem, -0.45rem);
+  }
+
+  .drag-handle:active {
+    cursor: grabbing;
   }
 
   article {

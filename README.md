@@ -9,7 +9,9 @@ Core idea from the first pass:
 - rearrange, cluster, and connect items as their meaning changes
 - keep search, auth, sync, AI, and rich note editing out until the canvas loop works or the user explicitly wants to implement those features
 
-This version uses Svelte Flow as the main workspace. Memory cards are editable, connectable Svelte Flow nodes, and one temporary scene snapshot is stored in the browser.
+This version uses Svelte Flow as the main workspace. Memory cards are editable Svelte Flow nodes, and one temporary scene snapshot is stored in the browser.
+
+The guided creation and placement idea is captured in [GUIDED_MEMORY_PLACEMENT.md](GUIDED_MEMORY_PLACEMENT.md).
 
 ## Development
 

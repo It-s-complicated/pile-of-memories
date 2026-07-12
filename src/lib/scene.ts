@@ -23,6 +23,10 @@ export const TOPIC_TAG_COLORS = {
 export type MemoryData = { title: string; body: string; tags: string[]; topics: string[] };
 export type MemoryNode = Node<MemoryData, "memory">;
 export type SceneSnapshot = { nodes: MemoryNode[] };
+export type PlacementSuggestion = {
+  automatic: string | null;
+  choices: { id: string; title: string }[];
+};
 type StoredMemoryNode = Node<
   Omit<MemoryData, "tags" | "topics"> & { tags?: string[]; topics?: string[] },
   "memory"
@@ -154,6 +158,54 @@ export function createStarterScene(): SceneSnapshot {
 
 export function createDemoScene(): SceneSnapshot {
   return structuredClone(demoScene);
+}
+
+export function suggestMemoryPlacement(
+  nodes: MemoryNode[],
+  data: Pick<MemoryData, "tags" | "topics">,
+): PlacementSuggestion {
+  const selected = new Set([...data.tags, ...data.topics].map((value) => value.toLowerCase()));
+  const matches = nodes
+    .map((node) => ({
+      id: node.id,
+      title: node.data.title || "Untitled memory",
+      score: [...node.data.tags, ...node.data.topics].filter((value) =>
+        selected.has(value.toLowerCase()),
+      ).length,
+    }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score);
+  const best = matches[0];
+  const automatic =
+    best && best.score >= 2 && best.score > (matches[1]?.score ?? 0) ? best.id : null;
+
+  return {
+    automatic,
+    choices: matches.slice(0, 3).map(({ id, title }) => ({ id, title })),
+  };
+}
+
+export function findOpenMemoryPosition(
+  nodes: MemoryNode[],
+  origin: { x: number; y: number },
+): { x: number; y: number } {
+  let attempt = 0;
+
+  // ponytail: a small grid scan suits local boards; use spatial indexing if large boards become slow.
+  while (true) {
+    const position = {
+      x: origin.x + (attempt % 3) * 360,
+      y: origin.y + Math.floor(attempt / 3) * 220,
+    };
+    const occupied = nodes.some(
+      (node) =>
+        Math.abs(node.position.x - position.x) < 360 &&
+        Math.abs(node.position.y - position.y) < 220,
+    );
+
+    if (!occupied) return position;
+    attempt += 1;
+  }
 }
 
 function getPrimaryTagColor(tag: string) {

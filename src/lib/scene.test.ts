@@ -2,12 +2,14 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   createDemoScene,
   createStarterScene,
+  findOpenMemoryPosition,
   getMemoryBackground,
   getPrimaryTagAccent,
   getTopicBorder,
   getTopicTagColor,
   readScene,
   serializeScene,
+  suggestMemoryPlacement,
 } from "./scene";
 
 describe("scene snapshots", () => {
@@ -76,5 +78,19 @@ describe("scene snapshots", () => {
         ["job", "web development", "personal development"],
       ]),
     );
+  });
+
+  it("suggests related memories and avoids occupied positions", () => {
+    const nodes = createDemoScene().nodes;
+    const strong = suggestMemoryPlacement(nodes, {
+      tags: ["Job"],
+      topics: ["Vue", "React"],
+    });
+    const tied = suggestMemoryPlacement(nodes, { tags: ["Job"], topics: [] });
+
+    expect(strong.automatic).toBe("demo-6");
+    expect(tied.automatic).toBeNull();
+    expect(tied.choices).toHaveLength(3);
+    expect(findOpenMemoryPosition(nodes, { x: 0, y: 0 })).toEqual({ x: 720, y: 220 });
   });
 });
