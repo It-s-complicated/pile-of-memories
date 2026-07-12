@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Handle, Position, type NodeProps, useSvelteFlow } from "@xyflow/svelte";
+  import { type NodeProps, useSvelteFlow } from "@xyflow/svelte";
   import {
     getMemoryBackground,
     getPrimaryTagAccent,
@@ -8,7 +8,7 @@
     type MemoryNode,
   } from "../lib/scene";
 
-  let { id, data, isConnectable }: NodeProps<MemoryNode> = $props();
+  let { id, data }: NodeProps<MemoryNode> = $props();
   const { updateNodeData } = useSvelteFlow<MemoryNode>();
   let background = $derived(getMemoryBackground(data.tags));
   let borderBackground = $derived(getTopicBorder(data.topics));
@@ -20,13 +20,6 @@
 
 <div class="memory-card" style:background={borderBackground}>
   <article aria-label={`Memory: ${data.title || "Untitled memory"}`} style:background>
-    <Handle
-      class="memory-handle"
-      type="target"
-      position={Position.Left}
-      {isConnectable}
-      aria-label={`Connect into ${data.title || "this memory"}`}
-    />
     <label>
       <span>Title</span>
       <input
@@ -55,13 +48,6 @@
         {/each}
       </ul>
     {/if}
-    <Handle
-      class="memory-handle"
-      type="source"
-      position={Position.Right}
-      {isConnectable}
-      aria-label={`Connect from ${data.title || "this memory"}`}
-    />
   </article>
 </div>
 
@@ -153,12 +139,5 @@
   textarea:focus {
     border-color: #5f4b32;
     outline: 2px solid #fffaf2;
-  }
-
-  :global(.memory-handle) {
-    width: 10px;
-    height: 10px;
-    border-color: #fffaf2;
-    background: #5f4b32;
   }
 </style>

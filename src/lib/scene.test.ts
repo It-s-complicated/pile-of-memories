@@ -15,10 +15,10 @@ describe("scene snapshots", () => {
     const scene = createStarterScene();
 
     expect(readScene(serializeScene(scene))).toEqual(scene);
-    expect(readScene('{"nodes":"invalid","edges":[]}')).toEqual(scene);
+    expect(readScene('{"nodes":"invalid"}')).toEqual(scene);
   });
 
-  it("adds empty tag lists to older saved memories", () => {
+  it("loads older saved memories without their connections", () => {
     const scene = readScene(
       JSON.stringify({
         nodes: [
@@ -29,7 +29,7 @@ describe("scene snapshots", () => {
             data: { title: "Older memory", body: "Saved before tags existed." },
           },
         ],
-        edges: [],
+        edges: [{ id: "legacy-edge", source: "legacy", target: "legacy" }],
       }),
     );
 
@@ -61,10 +61,9 @@ describe("scene snapshots", () => {
     expect(getTopicTagColor("unknown")).toBe("#8a765e");
   });
 
-  it("provides an edge-free demo with diverse primary tag combinations", () => {
+  it("provides a demo with diverse primary tag combinations", () => {
     const demo = createDemoScene();
 
-    expect(demo.edges).toEqual([]);
     expect(demo.nodes).toHaveLength(9);
     expect(demo.nodes.map((node) => node.data.tags)).toEqual(
       expect.arrayContaining([

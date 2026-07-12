@@ -3,8 +3,6 @@
     Controls,
     MiniMap,
     SvelteFlow,
-    type DefaultEdgeOptions,
-    type Edge,
     type Node,
     type NodeTypes,
     type Viewport,
@@ -26,17 +24,12 @@
   let { demo = false }: { demo?: boolean } = $props();
   const scene = getInitialScene();
   const nodeTypes = { memory: MemoryNodeComponent } satisfies NodeTypes;
-  const defaultEdgeOptions = {
-    type: "default",
-    style: "stroke: #7c7167; stroke-width: 2",
-  } satisfies DefaultEdgeOptions;
 
   let nodes = $state.raw<MemoryNode[]>(scene.nodes);
-  let edges = $state.raw<Edge[]>(scene.edges);
   let viewport = $state<Viewport>({ x: 32, y: 32, zoom: 1 });
   let canvasWidth = $state(0);
   let canvasHeight = $state(0);
-  let serializedScene = $derived(serializeScene({ nodes, edges }));
+  let serializedScene = $derived(serializeScene({ nodes }));
 
   function getInitialScene() {
     return demo ? createDemoScene() : readScene(localStorage.getItem(SCENE_STORAGE_KEY));
@@ -95,10 +88,8 @@
   >
     <SvelteFlow
       bind:nodes
-      bind:edges
       bind:viewport
       {nodeTypes}
-      {defaultEdgeOptions}
       minZoom={0.5}
       maxZoom={1.5}
       fitView={demo}

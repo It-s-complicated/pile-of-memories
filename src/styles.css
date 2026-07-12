@@ -98,11 +98,6 @@ select {
   background: #f5f1ea;
 }
 
-.svelte-flow__edge-path {
-  stroke: #7c7167;
-  stroke-width: 2;
-}
-
 .svelte-flow__controls {
   border: 1px solid #ded6ca;
   box-shadow: 0 2px 8px rgb(63 52 43 / 12%);

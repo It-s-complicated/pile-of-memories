@@ -1,4 +1,4 @@
-import type { Edge, Node } from "@xyflow/svelte";
+import type { Node } from "@xyflow/svelte";
 
 export const SCENE_STORAGE_KEY = "pile-of-memories-scene";
 export const DEFAULT_MEMORY_BODY = "Write the memory, then move it where it belongs.";
@@ -22,12 +22,12 @@ export const TOPIC_TAG_COLORS = {
 
 export type MemoryData = { title: string; body: string; tags: string[]; topics: string[] };
 export type MemoryNode = Node<MemoryData, "memory">;
-export type SceneSnapshot = { nodes: MemoryNode[]; edges: Edge[] };
+export type SceneSnapshot = { nodes: MemoryNode[] };
 type StoredMemoryNode = Node<
   Omit<MemoryData, "tags" | "topics"> & { tags?: string[]; topics?: string[] },
   "memory"
 >;
-type StoredSceneSnapshot = { nodes: StoredMemoryNode[]; edges: Edge[] };
+type StoredSceneSnapshot = { nodes: StoredMemoryNode[] };
 
 const starterTitles = ["Capture", "Arrange", "Connect", "Review"];
 const starterScene: SceneSnapshot = {
@@ -38,7 +38,6 @@ const starterScene: SceneSnapshot = {
     data: { title, body: DEFAULT_MEMORY_BODY, tags: [], topics: [] },
     focusable: true,
   })),
-  edges: [],
 };
 
 const demoCards = [
@@ -98,15 +97,26 @@ const demoCards = [
   },
 ] satisfies MemoryData[];
 
+const demoPositions = [
+  { x: 0, y: 0 },
+  { x: 360, y: 20 },
+  { x: 960, y: 0 },
+  { x: 180, y: 250 },
+  { x: 500, y: 700 },
+  { x: 1320, y: 30 },
+  { x: 1140, y: 280 },
+  { x: 860, y: 720 },
+  { x: 680, y: 970 },
+];
+
 const demoScene: SceneSnapshot = {
   nodes: demoCards.map((data, index) => ({
     id: `demo-${index}`,
     type: "memory",
-    position: { x: (index % 3) * 360, y: Math.floor(index / 3) * 250 },
+    position: demoPositions[index],
     data,
     focusable: true,
   })),
-  edges: [],
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -135,19 +145,7 @@ function isMemoryNode(value: unknown): value is StoredMemoryNode {
 }
 
 function isSceneSnapshot(value: unknown): value is StoredSceneSnapshot {
-  if (!isRecord(value) || !Array.isArray(value.nodes) || !Array.isArray(value.edges)) return false;
-  if (!value.nodes.every(isMemoryNode)) return false;
-
-  const nodeIds = new Set(value.nodes.map((node) => node.id));
-  return value.edges.every(
-    (edge) =>
-      isRecord(edge) &&
-      typeof edge.id === "string" &&
-      typeof edge.source === "string" &&
-      typeof edge.target === "string" &&
-      nodeIds.has(edge.source) &&
-      nodeIds.has(edge.target),
-  );
+  return isRecord(value) && Array.isArray(value.nodes) && value.nodes.every(isMemoryNode);
 }
 
 export function createStarterScene(): SceneSnapshot {
@@ -204,7 +202,6 @@ export function readScene(raw: string | null): SceneSnapshot {
         ...node,
         data: { ...node.data, tags: node.data.tags ?? [], topics: node.data.topics ?? [] },
       })),
-      edges: scene.edges,
     };
   } catch {
     return createStarterScene();
@@ -219,13 +216,6 @@ export function serializeScene(scene: SceneSnapshot) {
       position,
       data,
       focusable,
-    })),
-    edges: scene.edges.map(({ id, source, target, sourceHandle, targetHandle }) => ({
-      id,
-      source,
-      target,
-      sourceHandle,
-      targetHandle,
     })),
   });
 }
