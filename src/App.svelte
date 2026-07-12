@@ -5,6 +5,7 @@
     SvelteFlow,
     type DefaultEdgeOptions,
     type Edge,
+    type Node,
     type NodeTypes,
     type Viewport,
   } from "@xyflow/svelte";
@@ -15,6 +16,8 @@
     DEFAULT_MEMORY_BODY,
     SCENE_STORAGE_KEY,
     createDemoScene,
+    getMemoryBackground,
+    getTopicBorder,
     readScene,
     serializeScene,
     type MemoryNode,
@@ -37,6 +40,14 @@
 
   function getInitialScene() {
     return demo ? createDemoScene() : readScene(localStorage.getItem(SCENE_STORAGE_KEY));
+  }
+
+  function getMiniMapFill(node: Node): string {
+    return getMemoryBackground((node as MemoryNode).data.tags.slice(0, 1));
+  }
+
+  function getMiniMapStroke(node: Node): string {
+    return getTopicBorder((node as MemoryNode).data.topics.slice(0, 1));
   }
 
   function addCard() {
@@ -93,7 +104,7 @@
       fitView={demo}
     >
       <Controls showLock={false} fitViewOptions={{ maxZoom: 1 }} />
-      <MiniMap />
+      <MiniMap nodeColor={getMiniMapFill} nodeStrokeColor={getMiniMapStroke} />
     </SvelteFlow>
   </main>
 </div>
