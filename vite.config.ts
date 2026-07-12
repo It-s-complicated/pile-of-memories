@@ -1,5 +1,4 @@
 import { defineConfig, lazyPlugins } from "vite-plus";
-import { svelte } from "@sveltejs/vite-plugin-svelte";
 
 export default defineConfig({
   staged: {
@@ -10,5 +9,8 @@ export default defineConfig({
     rules: { "vite-plus/prefer-vite-plus-imports": "error" },
     options: { typeAware: true, typeCheck: true },
   },
-  plugins: lazyPlugins(() => [svelte()]),
+  plugins: lazyPlugins(async () => {
+    const { sveltekit } = await import("@sveltejs/kit/vite");
+    return sveltekit();
+  }),
 });

@@ -8,6 +8,7 @@
     type NodeTypes,
     type Viewport,
   } from "@xyflow/svelte";
+  import { resolve } from "$app/paths";
   import "@xyflow/svelte/dist/style.css";
   import MemoryNodeComponent from "./components/MemoryNode.svelte";
   import {
@@ -17,10 +18,10 @@
     readScene,
     serializeScene,
     type MemoryNode,
-    type SceneSnapshot,
   } from "./lib/scene";
 
-  const scene = readScene(localStorage.getItem(SCENE_STORAGE_KEY));
+  let { demo = false }: { demo?: boolean } = $props();
+  const scene = getInitialScene();
   const nodeTypes = { memory: MemoryNodeComponent } satisfies NodeTypes;
   const defaultEdgeOptions = {
     type: "default",
@@ -32,10 +33,11 @@
   let viewport = $state<Viewport>({ x: 32, y: 32, zoom: 1 });
   let canvasWidth = $state(0);
   let canvasHeight = $state(0);
-  let demoMode = $state(false);
-  let boardScene: SceneSnapshot = scene;
-  let boardViewport: Viewport = { x: 32, y: 32, zoom: 1 };
   let serializedScene = $derived(serializeScene({ nodes, edges }));
+
+  function getInitialScene() {
+    return demo ? createDemoScene() : readScene(localStorage.getItem(SCENE_STORAGE_KEY));
+  }
 
   function addCard() {
     const id = crypto.randomUUID();
@@ -56,27 +58,8 @@
     ];
   }
 
-  function toggleDemo() {
-    if (demoMode) {
-      nodes = boardScene.nodes;
-      edges = boardScene.edges;
-      viewport = boardViewport;
-      demoMode = false;
-      return;
-    }
-
-    boardScene = { nodes, edges };
-    boardViewport = { ...viewport };
-
-    const demo = createDemoScene();
-    demoMode = true;
-    nodes = demo.nodes;
-    edges = demo.edges;
-    viewport = { x: 24, y: 24, zoom: 0.65 };
-  }
-
   $effect(() => {
-    if (!demoMode) localStorage[SCENE_STORAGE_KEY] = serializedScene;
+    if (!demo) localStorage[SCENE_STORAGE_KEY] = serializedScene;
   });
 </script>
 
@@ -84,18 +67,18 @@
   <header class="topbar">
     <div>
       <p>Pile of Memories II</p>
-      <h1>{demoMode ? "Demo canvas" : "Arrange your memories."}</h1>
+      <h1>{demo ? "Demo canvas" : "Arrange your memories."}</h1>
     </div>
     <div class="topbar-actions">
-      <button type="button" class="demo-button" onclick={toggleDemo}>
-        {demoMode ? "Back to board" : "Show demo"}
-      </button>
-      <button type="button" class="card-button" onclick={addCard} disabled={demoMode}>New card</button>
+      <a class="demo-button" href={resolve(demo ? "/" : "/demo")}>
+        {demo ? "Back to board" : "Show demo"}
+      </a>
+      <button type="button" class="card-button" onclick={addCard} disabled={demo}>New card</button>
     </div>
   </header>
   <main
     class="canvas"
-    aria-label={demoMode ? "Demo memory garden" : "Memory garden"}
+    aria-label={demo ? "Demo memory garden" : "Memory garden"}
     bind:clientWidth={canvasWidth}
     bind:clientHeight={canvasHeight}
   >
@@ -107,6 +90,7 @@
       {defaultEdgeOptions}
       minZoom={0.5}
       maxZoom={1.5}
+      fitView={demo}
     >
       <Controls showLock={false} fitViewOptions={{ maxZoom: 1 }} />
       <MiniMap />

@@ -4,19 +4,21 @@ export const SCENE_STORAGE_KEY = "pile-of-memories-scene";
 export const DEFAULT_MEMORY_BODY = "Write the memory, then move it where it belongs.";
 export const PRIMARY_TAGS = ["Web development", "Job", "Personal development"] as const;
 export const TOPIC_TAGS = ["Local-first", "CSS", "Hosting", "Vue", "React", "Finance"] as const;
+type PrimaryTagKey = Lowercase<(typeof PRIMARY_TAGS)[number]>;
+type TopicTagKey = Lowercase<(typeof TOPIC_TAGS)[number]>;
 export const PRIMARY_TAG_COLORS = {
-  "Web development": { background: "#d9e9ff", accent: "#356fbd" },
-  Job: { background: "#dff2d8", accent: "#3f7f36" },
-  "Personal development": { background: "#f2dff5", accent: "#8f4aa0" },
-} satisfies Record<(typeof PRIMARY_TAGS)[number], { background: string; accent: string }>;
+  "web development": { background: "#d9e9ff", accent: "#356fbd" },
+  job: { background: "#dff2d8", accent: "#3f7f36" },
+  "personal development": { background: "#f2dff5", accent: "#8f4aa0" },
+} satisfies Record<PrimaryTagKey, { background: string; accent: string }>;
 export const TOPIC_TAG_COLORS = {
-  "Local-first": "#c65f15",
-  CSS: "#b83280",
-  Hosting: "#5b5fc7",
-  Vue: "#2f855a",
-  React: "#1677a8",
-  Finance: "#6a994e",
-} satisfies Record<(typeof TOPIC_TAGS)[number], string>;
+  "local-first": "#c65f15",
+  css: "#b83280",
+  hosting: "#5b5fc7",
+  vue: "#2f855a",
+  react: "#1677a8",
+  finance: "#a66f00",
+} satisfies Record<TopicTagKey, string>;
 
 export type MemoryData = { title: string; body: string; tags: string[]; topics: string[] };
 export type MemoryNode = Node<MemoryData, "memory">;
@@ -156,36 +158,40 @@ export function createDemoScene(): SceneSnapshot {
   return structuredClone(demoScene);
 }
 
+function getPrimaryTagColor(tag: string) {
+  return PRIMARY_TAG_COLORS[tag.toLowerCase() as PrimaryTagKey];
+}
+
+function getTopicColor(topic: string) {
+  return TOPIC_TAG_COLORS[topic.toLowerCase() as TopicTagKey];
+}
+
 export function getMemoryBackground(tags: string[]): string {
-  const colors = tags.flatMap((tag) =>
-    tag in PRIMARY_TAG_COLORS
-      ? [PRIMARY_TAG_COLORS[tag as keyof typeof PRIMARY_TAG_COLORS].background]
-      : [],
-  );
+  const colors = tags.flatMap((tag) => {
+    const color = getPrimaryTagColor(tag);
+    return color ? [color.background] : [];
+  });
 
   if (colors.length === 0) return "#fff3bf";
   return colors.length === 1 ? colors[0] : `linear-gradient(135deg, ${colors.join(", ")})`;
 }
 
 export function getPrimaryTagAccent(tag: string): string {
-  return tag in PRIMARY_TAG_COLORS
-    ? PRIMARY_TAG_COLORS[tag as keyof typeof PRIMARY_TAG_COLORS].accent
-    : "#5f4b32";
+  return getPrimaryTagColor(tag)?.accent ?? "#5f4b32";
 }
 
 export function getTopicBorder(topics: string[]): string {
-  const colors = topics.flatMap((topic) =>
-    topic in TOPIC_TAG_COLORS ? [TOPIC_TAG_COLORS[topic as keyof typeof TOPIC_TAG_COLORS]] : [],
-  );
+  const colors = topics.flatMap((topic) => {
+    const color = getTopicColor(topic);
+    return color ? [color] : [];
+  });
 
   if (colors.length === 0) return "#5f4b32";
   return colors.length === 1 ? colors[0] : `linear-gradient(135deg, ${colors.join(", ")})`;
 }
 
 export function getTopicTagColor(topic: string): string {
-  return topic in TOPIC_TAG_COLORS
-    ? TOPIC_TAG_COLORS[topic as keyof typeof TOPIC_TAG_COLORS]
-    : "#8a765e";
+  return getTopicColor(topic) ?? "#8a765e";
 }
 
 export function readScene(raw: string | null): SceneSnapshot {

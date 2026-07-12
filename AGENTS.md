@@ -13,7 +13,7 @@ The first product loop is intentionally small:
 
 ## Tech
 
-- Vite + Svelte 5
+- Vite+ + SvelteKit 2 / Svelte 5
 - Svelte Flow for the canvas
 - pnpm for package management
 

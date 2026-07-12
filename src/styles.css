@@ -1,6 +1,5 @@
 html,
-body,
-#app {
+body {
   height: 100%;
   margin: 0;
 }
@@ -67,10 +66,12 @@ select {
 
 .card-button,
 .demo-button {
+  box-sizing: border-box;
   border: 1px solid #3f342b;
   border-radius: 0.5rem;
   padding: 0.55rem 0.8rem;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .card-button {
