@@ -17,6 +17,14 @@ body {
   background: #f5f1ea;
 }
 
+.theme {
+  height: 100%;
+  --primary-color: #3f342b;
+  --theme-ink: color-mix(in srgb, #202124 70%, var(--primary-color));
+  --theme-muted: color-mix(in srgb, #666b70 82%, var(--primary-color));
+  --theme-border: color-mix(in srgb, #d7d7d7 82%, var(--primary-color));
+}
+
 button,
 input,
 textarea,
@@ -36,7 +44,7 @@ select {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.8rem 1rem;
-  border-bottom: 1px solid #ded6ca;
+  border-bottom: 1px solid var(--theme-border);
   background: #fffaf2;
 }
 
@@ -50,7 +58,7 @@ select {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #6d6258;
+  color: var(--theme-muted);
 }
 
 .topbar h1 {
@@ -64,24 +72,26 @@ select {
   gap: 0.5rem;
 }
 
+.theme-select,
 .card-button,
 .demo-button {
   box-sizing: border-box;
-  border: 1px solid #3f342b;
+  border: 1px solid var(--primary-color);
   border-radius: 0.5rem;
   padding: 0.55rem 0.8rem;
   cursor: pointer;
   text-decoration: none;
 }
 
-.card-button {
-  color: #fffaf2;
-  background: #3f342b;
+.theme-select,
+.demo-button {
+  color: var(--primary-color);
+  background: transparent;
 }
 
-.demo-button {
-  color: #3f342b;
-  background: transparent;
+.card-button {
+  color: #fffaf2;
+  background: var(--primary-color);
 }
 
 .card-button:disabled {
@@ -94,12 +104,12 @@ select {
   width: min(34rem, calc(100vw - 2rem));
   max-height: calc(100vh - 2rem);
   overflow: auto;
-  border: 1px solid #b9aa98;
+  border: 1px solid var(--theme-border);
   border-radius: 0.75rem;
   padding: 0;
-  color: #3f342b;
+  color: var(--primary-color);
   background: #fffaf2;
-  box-shadow: 0 18px 60px rgb(63 52 43 / 24%);
+  box-shadow: 0 18px 60px color-mix(in srgb, var(--theme-ink) 24%, transparent);
 }
 
 .memory-dialog::backdrop {
@@ -122,7 +132,7 @@ select {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #6d6258;
+  color: var(--theme-muted);
 }
 
 .memory-dialog header h2 {
@@ -139,10 +149,10 @@ select {
 .memory-field textarea {
   box-sizing: border-box;
   width: 100%;
-  border: 1px solid #b9aa98;
+  border: 1px solid var(--theme-border);
   border-radius: 0.4rem;
   padding: 0.65rem;
-  color: #3f342b;
+  color: var(--theme-ink);
   background: #fff;
 }
 
@@ -153,7 +163,7 @@ select {
 .memory-dialog fieldset {
   min-width: 0;
   margin: 0;
-  border: 1px solid #ded6ca;
+  border: 1px solid var(--theme-border);
   border-radius: 0.5rem;
   padding: 0.7rem;
 }
@@ -202,13 +212,13 @@ select {
 }
 
 .svelte-flow__controls {
-  border: 1px solid #ded6ca;
-  box-shadow: 0 2px 8px rgb(63 52 43 / 12%);
+  border: 1px solid var(--theme-border);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--theme-ink) 12%, transparent);
 }
 
 .svelte-flow__controls-button {
-  border-bottom-color: #ded6ca;
-  color: #3f342b;
+  border-bottom-color: var(--theme-border);
+  color: var(--primary-color);
   background: #fffaf2;
 }
 

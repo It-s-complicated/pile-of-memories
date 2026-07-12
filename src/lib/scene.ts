@@ -227,7 +227,7 @@ export function getMemoryBackground(tags: string[]): string {
 }
 
 export function getPrimaryTagAccent(tag: string): string {
-  return getPrimaryTagColor(tag)?.accent ?? "#5f4b32";
+  return getPrimaryTagColor(tag)?.accent ?? "var(--primary-color)";
 }
 
 export function getTopicBorder(topics: string[]): string {
@@ -236,12 +236,12 @@ export function getTopicBorder(topics: string[]): string {
     return color ? [color] : [];
   });
 
-  if (colors.length === 0) return "#5f4b32";
+  if (colors.length === 0) return "var(--primary-color)";
   return colors.length === 1 ? colors[0] : `linear-gradient(135deg, ${colors.join(", ")})`;
 }
 
 export function getTopicTagColor(topic: string): string {
-  return getTopicColor(topic) ?? "#8a765e";
+  return getTopicColor(topic) ?? "var(--theme-muted)";
 }
 
 export function readScene(raw: string | null): SceneSnapshot {

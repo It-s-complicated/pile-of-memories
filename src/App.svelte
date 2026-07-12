@@ -25,10 +25,21 @@
     type MemoryNode,
   } from "./lib/scene";
 
+  const THEME_STORAGE_KEY = "pile-of-memories-primary-color";
+  const THEMES = [
+    { label: "Brown", color: "#3f342b" },
+    { label: "Teal", color: "#0f766e" },
+    { label: "Indigo", color: "#4f46e5" },
+    { label: "Berry", color: "#b4235a" },
+    { label: "Blue", color: "#2563eb" },
+    { label: "Forest", color: "#2f6b4f" },
+  ] as const;
+
   let { demo = false }: { demo?: boolean } = $props();
   const scene = getInitialScene();
   const nodeTypes = { memory: MemoryNodeComponent } satisfies NodeTypes;
 
+  let primaryColor = $state<string>(getInitialPrimaryColor());
   let nodes = $state.raw<MemoryNode[]>(scene.nodes);
   let viewport = $state<Viewport>({ x: 32, y: 32, zoom: 1 });
   let canvasWidth = $state(0);
@@ -46,6 +57,16 @@
 
   function getInitialScene() {
     return demo ? createDemoScene() : readScene(localStorage.getItem(SCENE_STORAGE_KEY));
+  }
+
+  function getInitialPrimaryColor(): string {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    return THEMES.find(({ color }) => color === stored)?.color ?? THEMES[0].color;
+  }
+
+  function selectTheme(event: Event & { currentTarget: HTMLSelectElement }): void {
+    primaryColor = event.currentTarget.value;
+    localStorage.setItem(THEME_STORAGE_KEY, primaryColor);
   }
 
   function getMiniMapFill(node: Node): string {
@@ -105,6 +126,7 @@
   });
 </script>
 
+<div class="theme" style:--primary-color={primaryColor}>
 <div class="app">
   <header class="topbar">
     <div>
@@ -112,6 +134,11 @@
       <h1>{demo ? "Demo canvas" : "Arrange your memories."}</h1>
     </div>
     <div class="topbar-actions">
+      <select class="theme-select" aria-label="Color theme" value={primaryColor} onchange={selectTheme}>
+        {#each THEMES as theme (theme.color)}
+          <option value={theme.color}>{theme.label}</option>
+        {/each}
+      </select>
       <a class="demo-button" href={resolve(demo ? "/" : "/demo")}>
         {demo ? "Back to board" : "Show demo"}
       </a>
@@ -212,3 +239,4 @@
     </form>
   </dialog>
 {/if}
+</div>

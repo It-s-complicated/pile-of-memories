@@ -60,8 +60,8 @@
     min-height: 180px;
     padding: 2px;
     border-radius: 0.75rem;
-    background: #5f4b32;
-    box-shadow: 0 4px 14px rgb(63 52 43 / 14%);
+    background: var(--primary-color);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--theme-ink) 14%, transparent);
   }
 
   .drag-handle {
@@ -73,10 +73,10 @@
     width: 2.25rem;
     height: 2.75rem;
     place-items: center;
-    border: 1px solid #b9aa98;
+    border: 1px solid var(--theme-ink);
     border-radius: 0.6rem;
-    color: #6d6258;
-    background: #fffaf2;
+    color: var(--theme-ink);
+    background: color-mix(in srgb, #fffaf2 92%, var(--primary-color));
     cursor: grab;
     touch-action: none;
   }
@@ -128,7 +128,7 @@
     width: 100%;
     border: 1px solid transparent;
     border-radius: 0.35rem;
-    color: #3f342b;
+    color: var(--theme-ink);
     background: transparent;
     resize: none;
   }
@@ -166,15 +166,14 @@
   }
 
   .tags .topic {
-    border: 1px solid #8a765e;
-    border-color: var(--topic-color);
+    border: 1px solid var(--topic-color);
     color: var(--topic-color);
     background: #fffaf2;
   }
 
   input:focus,
   textarea:focus {
-    border-color: #5f4b32;
+    border-color: var(--primary-color);
     outline: 2px solid #fffaf2;
   }
 </style>

@@ -51,16 +51,16 @@ describe("scene snapshots", () => {
     );
     expect(getMemoryBackground(["unknown"])).toBe("#fff3bf");
     expect(getPrimaryTagAccent("web development")).toBe("#356fbd");
-    expect(getPrimaryTagAccent("unknown")).toBe("#5f4b32");
+    expect(getPrimaryTagAccent("unknown")).toBe("var(--primary-color)");
   });
 
   it("colors card borders from their topic tags", () => {
-    expect(getTopicBorder([])).toBe("#5f4b32");
+    expect(getTopicBorder([])).toBe("var(--primary-color)");
     expect(getTopicBorder(["CSS"])).toBe("#b83280");
     expect(getTopicBorder(["Vue", "React"])).toBe("linear-gradient(135deg, #2f855a, #1677a8)");
-    expect(getTopicBorder(["unknown"])).toBe("#5f4b32");
+    expect(getTopicBorder(["unknown"])).toBe("var(--primary-color)");
     expect(getTopicTagColor("finance")).toBe("#a66f00");
-    expect(getTopicTagColor("unknown")).toBe("#8a765e");
+    expect(getTopicTagColor("unknown")).toBe("var(--theme-muted)");
   });
 
   it("provides a demo with diverse primary tag combinations", () => {
