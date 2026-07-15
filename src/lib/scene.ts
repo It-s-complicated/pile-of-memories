@@ -1,6 +1,6 @@
 import type { Node } from "@xyflow/svelte";
+import type { Card, CardInput } from "./card";
 
-export const SCENE_STORAGE_KEY = "pile-of-memories-scene";
 export const DEFAULT_MEMORY_BODY = "Write the memory, then move it where it belongs.";
 export const PRIMARY_TAGS = ["Web development", "Job", "Personal development"] as const;
 export const TOPIC_TAGS = ["Local-first", "CSS", "Hosting", "Vue", "React", "Finance"] as const;
@@ -20,34 +20,23 @@ export const TOPIC_TAG_COLORS = {
   finance: "#a66f00",
 } satisfies Record<TopicTagKey, string>;
 
-export type MemoryData = { title: string; body: string; tags: string[]; topics: string[] };
+export type MemoryData = {
+  title: string;
+  body: string;
+  tags: string[];
+  topics: string[];
+  links: string[];
+};
 export type MemoryNode = Node<MemoryData, "memory">;
-export type SceneSnapshot = { nodes: MemoryNode[] };
+export type BoardSnapshot = { nodes: MemoryNode[] };
 export type PlacementSuggestion = {
   automatic: string | null;
   choices: { id: string; title: string }[];
 };
-type StoredMemoryNode = Node<
-  Omit<MemoryData, "tags" | "topics"> & { tags?: string[]; topics?: string[] },
-  "memory"
->;
-type StoredSceneSnapshot = { nodes: StoredMemoryNode[] };
-
-const starterTitles = ["Capture", "Arrange", "Connect", "Review"];
-const starterScene: SceneSnapshot = {
-  nodes: starterTitles.map((title, index) => ({
-    id: `starter-${title.toLowerCase()}`,
-    type: "memory",
-    position: { x: (index % 2) * 380, y: Math.floor(index / 2) * 240 },
-    data: { title, body: DEFAULT_MEMORY_BODY, tags: [], topics: [] },
-    focusable: true,
-  })),
-};
-
 const demoCards = [
   {
     title: "Keep memories local-first",
-    body: "Store the board in the browser now and add sync only when it is useful.",
+    body: "Store each card in PostgreSQL and add sync only when it is useful.",
     tags: ["web development"],
     topics: ["local-first"],
   },
@@ -65,7 +54,7 @@ const demoCards = [
   },
   {
     title: "Compare component patterns",
-    body: "Save useful ideas from Vue and React without turning the garden into framework notes.",
+    body: "Save useful ideas from Vue and React without turning the board into framework notes.",
     tags: ["web development"],
     topics: ["Vue", "React"],
   },
@@ -95,11 +84,11 @@ const demoCards = [
   },
   {
     title: "Publish the side project",
-    body: "Use the memory garden to learn, show the work, and test a simple deployment path.",
+    body: "Use the memory board to learn, show the work, and test a simple deployment path.",
     tags: ["job", "web development", "personal development"],
     topics: ["local-first", "hosting", "Vue"],
   },
-] satisfies MemoryData[];
+] satisfies Omit<MemoryData, "links">[];
 
 const demoPositions = [
   { x: 0, y: 0 },
@@ -113,51 +102,18 @@ const demoPositions = [
   { x: 680, y: 970 },
 ];
 
-const demoScene: SceneSnapshot = {
+const demoBoard: BoardSnapshot = {
   nodes: demoCards.map((data, index) => ({
     id: `demo-${index}`,
     type: "memory",
     position: demoPositions[index],
-    data,
+    data: { ...data, links: [] },
     focusable: true,
   })),
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === "object";
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
-}
-
-function isMemoryNode(value: unknown): value is StoredMemoryNode {
-  if (!isRecord(value) || !isRecord(value.position) || !isRecord(value.data)) return false;
-
-  return (
-    typeof value.id === "string" &&
-    value.type === "memory" &&
-    typeof value.position.x === "number" &&
-    Number.isFinite(value.position.x) &&
-    typeof value.position.y === "number" &&
-    Number.isFinite(value.position.y) &&
-    typeof value.data.title === "string" &&
-    typeof value.data.body === "string" &&
-    (value.data.tags === undefined || isStringArray(value.data.tags)) &&
-    (value.data.topics === undefined || isStringArray(value.data.topics))
-  );
-}
-
-function isSceneSnapshot(value: unknown): value is StoredSceneSnapshot {
-  return isRecord(value) && Array.isArray(value.nodes) && value.nodes.every(isMemoryNode);
-}
-
-export function createStarterScene(): SceneSnapshot {
-  return structuredClone(starterScene);
-}
-
-export function createDemoScene(): SceneSnapshot {
-  return structuredClone(demoScene);
+export function createDemoBoard(): BoardSnapshot {
+  return structuredClone(demoBoard);
 }
 
 export function suggestMemoryPlacement(
@@ -244,30 +200,30 @@ export function getTopicTagColor(topic: string): string {
   return getTopicColor(topic) ?? "var(--theme-muted)";
 }
 
-export function readScene(raw: string | null): SceneSnapshot {
-  try {
-    const scene: unknown = JSON.parse(raw ?? "");
-    if (!isSceneSnapshot(scene)) return createStarterScene();
-
-    return {
-      nodes: scene.nodes.map((node) => ({
-        ...node,
-        data: { ...node.data, tags: node.data.tags ?? [], topics: node.data.topics ?? [] },
-      })),
-    };
-  } catch {
-    return createStarterScene();
-  }
+export function cardToMemoryNode(card: Card): MemoryNode {
+  return {
+    id: card.id,
+    type: "memory",
+    position: { ...card.position },
+    data: {
+      title: card.title,
+      body: card.body,
+      tags: card.tags,
+      topics: card.topics,
+      links: card.links,
+    },
+    focusable: true,
+  };
 }
 
-export function serializeScene(scene: SceneSnapshot) {
-  return JSON.stringify({
-    nodes: scene.nodes.map(({ id, type, position, data, focusable }) => ({
-      id,
-      type,
-      position,
-      data,
-      focusable,
-    })),
-  });
+export function memoryNodeToCard(node: MemoryNode): CardInput {
+  return {
+    id: node.id,
+    title: node.data.title.trim() || "Untitled memory",
+    body: node.data.body,
+    position: node.position,
+    tags: node.data.tags,
+    topics: node.data.topics,
+    links: node.data.links,
+  };
 }

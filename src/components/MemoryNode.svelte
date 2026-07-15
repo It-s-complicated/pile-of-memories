@@ -7,14 +7,31 @@
     getTopicTagColor,
     type MemoryNode,
   } from "../lib/scene";
+  import { getCardPersistence } from "../lib/card-persistence";
 
   let { id, data }: NodeProps<MemoryNode> = $props();
   const { updateNodeData } = useSvelteFlow<MemoryNode>();
+  const persistCard = getCardPersistence();
   let background = $derived(getMemoryBackground(data.tags));
   let borderBackground = $derived(getTopicBorder(data.topics));
+  let saveError = $state("");
 
   function update(field: "title" | "body", value: string) {
     updateNodeData(id, { ...data, [field]: value });
+  }
+
+  async function save(field: "title" | "body", value: string) {
+    if (!persistCard) return;
+
+    const normalized = field === "title" ? value.trim() || "Untitled memory" : value;
+    update(field, normalized);
+    saveError = "";
+
+    try {
+      await persistCard(id, { [field]: normalized });
+    } catch {
+      saveError = "Changes not saved.";
+    }
   }
 </script>
 
@@ -27,6 +44,7 @@
         class="nodrag"
         value={data.title}
         oninput={(event) => update("title", event.currentTarget.value)}
+        onchange={(event) => save("title", event.currentTarget.value)}
       />
     </label>
     <label>
@@ -35,6 +53,7 @@
         class="nodrag nowheel"
         value={data.body}
         oninput={(event) => update("body", event.currentTarget.value)}
+        onchange={(event) => save("body", event.currentTarget.value)}
       ></textarea>
     </label>
     {#if data.tags.length || data.topics.length}
@@ -49,6 +68,7 @@
         {/each}
       </ul>
     {/if}
+    {#if saveError}<p class="save-error" role="alert">{saveError}</p>{/if}
   </article>
 </div>
 
@@ -169,6 +189,12 @@
     border: 1px solid var(--topic-color);
     color: var(--topic-color);
     background: #fffaf2;
+  }
+
+  .save-error {
+    margin: 0.45rem 0 0;
+    color: #9f1239;
+    font-size: 0.72rem;
   }
 
   input:focus,

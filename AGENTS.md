@@ -2,19 +2,20 @@
 
 ## Project Direction
 
-Pile of Memories II is a personal spatial memory garden.
+Pile of Memories II is a personal spatial memory board.
 
 The first product loop is intentionally small:
 
 - create memory cards
 - move cards around a canvas
-- connect and cluster ideas visually
-- persist locally while the interaction model proves itself
+- cluster ideas visually
+- persist cards in PostgreSQL while the interaction model proves itself
 
 ## Tech
 
 - Vite+ + SvelteKit 2 / Svelte 5
 - Svelte Flow for the canvas
+- PostgreSQL on Supabase
 - pnpm for package management
 
 Memory cards are Svelte Flow nodes with `type === "memory"`.

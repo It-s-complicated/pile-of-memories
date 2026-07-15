@@ -11,14 +11,19 @@
     "prepare": "svelte-kit sync"
   },
   "dependencies": {
+    "@tanstack/db": "^0.6.14",
+    "@tanstack/query-core": "^5.101.2",
+    "@tanstack/query-db-collection": "^1.0.47",
+    "@tanstack/svelte-db": "^0.1.91",
     "@xyflow/svelte": "^1.6.2",
-    "svelte": "^5.56.4"
+    "postgres": "^3.4.9",
+    "svelte": "^5.56.5"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^7.0.1",
-    "@sveltejs/kit": "^2.69.2",
+    "@sveltejs/kit": "^2.69.3",
     "@types/node": "^26.1.1",
-    "agent-browser": "^0.31.1",
+    "agent-browser": "^0.31.2",
     "svelte-check": "^4.7.2",
     "typescript": "6.0.3",
     "vite": "catalog:",

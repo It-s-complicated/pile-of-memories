@@ -7,20 +7,23 @@
     type NodeTypes,
     type Viewport,
   } from "@xyflow/svelte";
+  import { useLiveQuery } from "@tanstack/svelte-db";
   import { resolve } from "$app/paths";
+  import { untrack } from "svelte";
   import "@xyflow/svelte/dist/style.css";
   import MemoryNodeComponent from "./components/MemoryNode.svelte";
+  import { setCardPersistence } from "./lib/card-persistence";
+  import { cardsCollection, insertCard, updateCard } from "./lib/cards-collection";
   import {
     DEFAULT_MEMORY_BODY,
     PRIMARY_TAGS,
-    SCENE_STORAGE_KEY,
     TOPIC_TAGS,
-    createDemoScene,
+    cardToMemoryNode,
+    createDemoBoard,
     findOpenMemoryPosition,
     getMemoryBackground,
     getTopicBorder,
-    readScene,
-    serializeScene,
+    memoryNodeToCard,
     suggestMemoryPlacement,
     type MemoryNode,
   } from "./lib/scene";
@@ -36,11 +39,18 @@
   ] as const;
 
   let { demo = false }: { demo?: boolean } = $props();
-  const scene = getInitialScene();
+  const isDemo = untrack(() => demo);
+  const board = isDemo ? createDemoBoard() : { nodes: [] };
   const nodeTypes = { memory: MemoryNodeComponent } satisfies NodeTypes;
+  const cardsQuery = useLiveQuery((query) =>
+    isDemo ? null : query.from({ card: cardsCollection }),
+  );
+  setCardPersistence(isDemo ? null : updateCard);
 
   let primaryColor = $state<string>(getInitialPrimaryColor());
-  let nodes = $state.raw<MemoryNode[]>(scene.nodes);
+  let nodes = $derived<MemoryNode[]>(
+    isDemo ? board.nodes : (cardsQuery.data ?? []).map(cardToMemoryNode),
+  );
   let viewport = $state<Viewport>({ x: 32, y: 32, zoom: 1 });
   let canvasWidth = $state(0);
   let canvasHeight = $state(0);
@@ -50,13 +60,15 @@
   let memoryTags = $state<string[]>([]);
   let memoryTopics = $state<string[]>([]);
   let placementChoice = $state("open");
-  let serializedScene = $derived(serializeScene({ nodes }));
+  let boardReady = $derived(isDemo || cardsQuery.isReady);
+  let savingMemory = $state(false);
+  let persistenceError = $state("");
   let placement = $derived(
     suggestMemoryPlacement(nodes, { tags: memoryTags, topics: memoryTopics }),
   );
 
-  function getInitialScene() {
-    return demo ? createDemoScene() : readScene(localStorage.getItem(SCENE_STORAGE_KEY));
+  function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : "The board could not be saved.";
   }
 
   function getInitialPrimaryColor(): string {
@@ -91,7 +103,8 @@
     return () => dialog.close();
   }
 
-  function addMemory() {
+  async function addMemory(event: SubmitEvent) {
+    event.preventDefault();
     const id = crypto.randomUUID();
     const openSpace = {
       x: (canvasWidth / 2 - viewport.x) / viewport.zoom - 160,
@@ -104,9 +117,7 @@
       : openSpace;
     const position = findOpenMemoryPosition(nodes, origin);
 
-    nodes = [
-      ...nodes,
-      {
+    const node: MemoryNode = {
         id,
         type: "memory",
         position,
@@ -115,15 +126,36 @@
           body: memoryBody.trim() || DEFAULT_MEMORY_BODY,
           tags: memoryTags,
           topics: memoryTopics,
+          links: [],
         },
         focusable: true,
-      },
-    ];
+      };
+
+    savingMemory = true;
+    persistenceError = "";
+    try {
+      await insertCard(memoryNodeToCard(node));
+      newMemoryOpen = false;
+    } catch (error) {
+      persistenceError = getErrorMessage(error);
+    } finally {
+      savingMemory = false;
+    }
   }
 
-  $effect(() => {
-    if (!demo) localStorage[SCENE_STORAGE_KEY] = serializedScene;
-  });
+  async function saveMovedCards({ nodes: movedNodes }: { nodes: MemoryNode[] }) {
+    if (isDemo) return;
+
+    persistenceError = "";
+    try {
+      await Promise.all(
+        movedNodes.map((node) => updateCard(node.id, { position: node.position })),
+      );
+    } catch (error) {
+      persistenceError = getErrorMessage(error);
+    }
+  }
+
 </script>
 
 <div class="theme" style:--primary-color={primaryColor}>
@@ -131,7 +163,7 @@
   <header class="topbar">
     <div>
       <p>Pile of Memories II</p>
-      <h1>{demo ? "Demo canvas" : "Arrange your memories."}</h1>
+      <h1>{isDemo ? "Demo canvas" : "Arrange your memories."}</h1>
     </div>
     <div class="topbar-actions">
       <select class="theme-select" aria-label="Color theme" value={primaryColor} onchange={selectTheme}>
@@ -139,17 +171,29 @@
           <option value={theme.color}>{theme.label}</option>
         {/each}
       </select>
-      <a class="demo-button" href={resolve(demo ? "/" : "/demo")}>
-        {demo ? "Back to board" : "Show demo"}
+      <a class="demo-button" href={resolve(isDemo ? "/" : "/demo")}>
+        {isDemo ? "Back to board" : "Show demo"}
       </a>
-      <button type="button" class="card-button" onclick={openNewMemoryDialog} disabled={demo}>
+      <button
+        type="button"
+        class="card-button"
+        onclick={openNewMemoryDialog}
+        disabled={isDemo || !boardReady}
+      >
         New Memory
       </button>
     </div>
+    {#if persistenceError}
+      <p role="alert">{persistenceError}</p>
+    {:else if cardsQuery.isError}
+      <p role="alert">Database unavailable</p>
+    {:else if !boardReady}
+      <p role="status">Loading board…</p>
+    {/if}
   </header>
   <main
     class="canvas"
-    aria-label={demo ? "Demo memory garden" : "Memory garden"}
+    aria-label={isDemo ? "Demo memory board" : "Memory board"}
     bind:clientWidth={canvasWidth}
     bind:clientHeight={canvasHeight}
   >
@@ -159,7 +203,10 @@
       {nodeTypes}
       minZoom={0.5}
       maxZoom={1.5}
-      fitView={demo}
+      fitView={isDemo}
+      nodesDraggable={isDemo || boardReady}
+      deleteKey={[]}
+      onnodedragstop={saveMovedCards}
     >
       <Controls showLock={false} fitViewOptions={{ maxZoom: 1 }} />
       <MiniMap nodeColor={getMiniMapFill} nodeStrokeColor={getMiniMapStroke} />
@@ -234,7 +281,7 @@
         <button type="button" class="demo-button" onclick={() => (newMemoryOpen = false)}>
           Cancel
         </button>
-        <button type="submit" class="card-button">Create Memory</button>
+        <button type="submit" class="card-button" disabled={savingMemory}>Create Memory</button>
       </footer>
     </form>
   </dialog>

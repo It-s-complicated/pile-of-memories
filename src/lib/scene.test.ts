@@ -1,48 +1,16 @@
 import { describe, expect, it } from "vite-plus/test";
+import { parseCardChanges, parseCardInput } from "./card";
 import {
-  createDemoScene,
-  createStarterScene,
+  createDemoBoard,
   findOpenMemoryPosition,
   getMemoryBackground,
   getPrimaryTagAccent,
   getTopicBorder,
   getTopicTagColor,
-  readScene,
-  serializeScene,
   suggestMemoryPlacement,
 } from "./scene";
 
-describe("scene snapshots", () => {
-  it("round-trips valid scenes and falls back for invalid data", () => {
-    const scene = createStarterScene();
-
-    expect(readScene(serializeScene(scene))).toEqual(scene);
-    expect(readScene('{"nodes":"invalid"}')).toEqual(scene);
-  });
-
-  it("loads older saved memories without their connections", () => {
-    const scene = readScene(
-      JSON.stringify({
-        nodes: [
-          {
-            id: "legacy",
-            type: "memory",
-            position: { x: 0, y: 0 },
-            data: { title: "Older memory", body: "Saved before tags existed." },
-          },
-        ],
-        edges: [{ id: "legacy-edge", source: "legacy", target: "legacy" }],
-      }),
-    );
-
-    expect(scene.nodes[0]?.data).toEqual({
-      title: "Older memory",
-      body: "Saved before tags existed.",
-      tags: [],
-      topics: [],
-    });
-  });
-
+describe("board", () => {
   it("colors cards from their primary tags", () => {
     expect(getMemoryBackground([])).toBe("#fff3bf");
     expect(getMemoryBackground(["web development"])).toBe("#d9e9ff");
@@ -64,7 +32,7 @@ describe("scene snapshots", () => {
   });
 
   it("provides a demo with diverse primary tag combinations", () => {
-    const demo = createDemoScene();
+    const demo = createDemoBoard();
 
     expect(demo.nodes).toHaveLength(9);
     expect(demo.nodes.map((node) => node.data.tags)).toEqual(
@@ -81,7 +49,7 @@ describe("scene snapshots", () => {
   });
 
   it("suggests related memories and avoids occupied positions", () => {
-    const nodes = createDemoScene().nodes;
+    const nodes = createDemoBoard().nodes;
     const strong = suggestMemoryPlacement(nodes, {
       tags: ["Job"],
       topics: ["Vue", "React"],
@@ -92,5 +60,25 @@ describe("scene snapshots", () => {
     expect(tied.automatic).toBeNull();
     expect(tied.choices).toHaveLength(3);
     expect(findOpenMemoryPosition(nodes, { x: 0, y: 0 })).toEqual({ x: 720, y: 220 });
+  });
+});
+
+describe("card writes", () => {
+  const card = {
+    id: "00000000-0000-4000-8000-000000000001",
+    title: "  Capture  ",
+    body: "Remember this",
+    position: { x: 10, y: 20 },
+    tags: ["Personal development"],
+    topics: [],
+    links: ["https://example.com"],
+  };
+
+  it("validates and normalizes database writes", () => {
+    expect(parseCardInput(card)).toEqual({ ...card, title: "Capture" });
+    expect(parseCardInput({ ...card, id: "starter-capture" })).toBeNull();
+    expect(parseCardInput({ ...card, links: ["javascript:alert(1)"] })).toBeNull();
+    expect(parseCardChanges({ position: { x: Number.NaN, y: 0 } })).toBeNull();
+    expect(parseCardChanges({ title: " Updated " })).toEqual({ title: "Updated" });
   });
 });
