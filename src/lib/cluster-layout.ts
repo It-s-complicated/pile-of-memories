@@ -197,14 +197,3 @@ export function reflowClusters<T extends ClusterNode>(nodes: T[]): T[] {
 
   return nodes.map((node) => ({ ...node, position: positions.get(node.id) ?? node.position }));
 }
-
-export function snapshotPositions(nodes: ClusterNode[]): Record<string, { x: number; y: number }> {
-  return Object.fromEntries(nodes.map((node) => [node.id, { ...node.position }]));
-}
-
-export function restorePositions<T extends ClusterNode>(
-  nodes: T[],
-  snapshot: Record<string, { x: number; y: number }>,
-): T[] {
-  return nodes.map((node) => ({ ...node, position: snapshot[node.id] ?? node.position }));
-}

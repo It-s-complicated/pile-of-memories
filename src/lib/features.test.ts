@@ -5,8 +5,6 @@ import {
   getClusterKey,
   jaccardSimilarity,
   reflowClusters,
-  restorePositions,
-  snapshotPositions,
 } from "./cluster-layout";
 import { enrichmentInputSchema, enrichmentOutputSchema, fallbackTitle } from "./enrichment";
 import { canonicalizeLabels, partitionLabels } from "./labels";
@@ -85,7 +83,7 @@ describe("cluster placement", () => {
     ).toEqual({ x: 360, y: 1040 });
   });
 
-  it("reflows deterministically into three-column clusters and restores previews", () => {
+  it("reflows deterministically into three-column clusters", () => {
     const nodes = [
       node("d", ["A"], [], { x: 9, y: 9 }),
       node("b", ["A"]),
@@ -93,7 +91,6 @@ describe("cluster placement", () => {
       node("c", ["A"]),
       node("e", ["B"]),
     ];
-    const snapshot = snapshotPositions(nodes);
     const reflowed = reflowClusters(nodes);
     const positions = Object.fromEntries(reflowed.map(({ id, position }) => [id, position]));
 
@@ -104,9 +101,6 @@ describe("cluster placement", () => {
       d: { x: 0, y: 260 },
       e: { x: 1680, y: 0 },
     });
-    expect(restorePositions(reflowed, snapshot).map(({ position }) => position)).toEqual(
-      nodes.map(({ position }) => position),
-    );
   });
 });
 

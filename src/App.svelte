@@ -14,11 +14,7 @@
   import TagEditor from "./components/TagEditor.svelte";
   import { setCardPersistence } from "./lib/card-persistence";
   import { cardsCollection, deleteCard, insertCard, updateCard } from "./lib/cards-collection";
-  import {
-    findClusterPosition,
-    reflowClusters,
-    snapshotPositions,
-  } from "./lib/cluster-layout";
+  import { findClusterPosition, reflowClusters } from "./lib/cluster-layout";
   import { fallbackTitle, requestEnrichment } from "./lib/enrichment";
   import { canonicalizeLabels, partitionLabels, PRIMARY_TAGS, TOPIC_TAGS } from "./lib/labels";
   import { parseMarkdown } from "./lib/markdown";
@@ -41,7 +37,6 @@
   ] as const;
 
   type CachedEnrichment = { title: string; tags: string[]; warning: string };
-  type Positions = Record<string, { x: number; y: number }>;
 
   const nodeTypes = { memory: MemoryNodeComponent } satisfies NodeTypes;
   const cardsQuery = useLiveQuery((query) => query.from({ card: cardsCollection }));
@@ -73,13 +68,11 @@
       ...(cardsQuery.data ?? []).flatMap((card) => [...card.tags, ...card.topics]),
     ]),
   );
-  let databaseNodes = $derived(
+  let nodes = $derived<MemoryNode[]>(
     (cardsQuery.data ?? [])
       .filter((card) => !card.archived)
       .map((card) => cardToMemoryNode(card, tagVocabulary)),
   );
-  let reflowPreview = $state.raw<{ nodes: MemoryNode[]; snapshot: Positions } | null>(null);
-  let nodes = $derived(reflowPreview?.nodes ?? databaseNodes);
   let archivedCards = $derived((cardsQuery.data ?? []).filter((card) => card.archived));
   let viewport = $state<Viewport>({ x: 32, y: 32, zoom: 1 });
   let canvasWidth = $state(0);
@@ -239,8 +232,6 @@
   }
 
   async function saveMovedCards({ nodes: movedNodes }: { nodes: MemoryNode[] }) {
-    if (reflowPreview) return;
-
     persistenceError = "";
     try {
       await Promise.all(
@@ -251,34 +242,13 @@
     }
   }
 
-  function previewReflow(): void {
-    reflowPreview = {
-      nodes: reflowClusters(nodes),
-      snapshot: snapshotPositions(nodes),
-    };
-  }
-
-  function restoreReflow(): void {
-    reflowPreview = null;
-  }
-
-  async function applyReflow(): Promise<void> {
-    const preview = reflowPreview;
-    if (!preview) return;
-    const changed = preview.nodes.filter((node) => {
-      const original = preview.snapshot[node.id];
-      return original && (original.x !== node.position.x || original.y !== node.position.y);
-    });
-
+  async function reorganizeClusters(): Promise<void> {
     persistenceError = "";
     try {
-      await Promise.all(changed.map((node) => updateCard(node.id, { position: node.position })));
-      reflowPreview = null;
-    } catch (error) {
-      await Promise.allSettled(
-        changed.map((node) => updateCard(node.id, { position: preview.snapshot[node.id] })),
+      await Promise.all(
+        reflowClusters(nodes).map(({ id, position }) => updateCard(id, { position })),
       );
-      reflowPreview = null;
+    } catch (error) {
       persistenceError = getErrorMessage(error);
     }
   }
@@ -300,27 +270,22 @@
         <button type="button" class="secondary-button" onclick={openArchive} disabled={!boardReady}>
           Archived ({archivedCards.length})
         </button>
-        {#if reflowPreview}
-          <button type="button" class="secondary-button" onclick={restoreReflow}>Cancel reflow</button>
-          <button type="button" class="card-button" onclick={applyReflow}>Apply reflow</button>
-        {:else}
-          <button
-            type="button"
-            class="secondary-button"
-            onclick={previewReflow}
-            disabled={!boardReady || nodes.length === 0}
-          >
-            Reorganize clusters
-          </button>
-          <button
-            type="button"
-            class="card-button"
-            onclick={openNewMemoryDialog}
-            disabled={!boardReady}
-          >
-            New Memory
-          </button>
-        {/if}
+        <button
+          type="button"
+          class="secondary-button"
+          onclick={reorganizeClusters}
+          disabled={!boardReady || nodes.length === 0}
+        >
+          Reorganize clusters
+        </button>
+        <button
+          type="button"
+          class="card-button"
+          onclick={openNewMemoryDialog}
+          disabled={!boardReady}
+        >
+          New Memory
+        </button>
       </div>
       {#if persistenceError}
         <p role="alert">{persistenceError}</p>
@@ -342,7 +307,7 @@
         {nodeTypes}
         minZoom={0.5}
         maxZoom={1.5}
-        nodesDraggable={boardReady && !reflowPreview}
+        nodesDraggable={boardReady}
         deleteKey={[]}
         onnodedragstop={saveMovedCards}
       >
