@@ -1,12 +1,8 @@
-import { dev } from "$app/environment";
 import { error, json } from "@sveltejs/kit";
 import { isCardId, parseCardChanges } from "$lib/card";
 import { removeCard, updateCard } from "$lib/server/database";
+import { requirePrivateBoard } from "$lib/server/private-board";
 import type { RequestHandler } from "./$types";
-
-function requirePrivateBoard(): void {
-  if (!dev) error(503, "Authentication is required before production use");
-}
 
 export const PATCH: RequestHandler = async ({ params, request }) => {
   requirePrivateBoard();

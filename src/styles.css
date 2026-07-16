@@ -69,12 +69,14 @@ select {
 
 .topbar-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 
 .theme-select,
 .card-button,
-.demo-button {
+.demo-button,
+.danger-button {
   box-sizing: border-box;
   border: 1px solid var(--primary-color);
   border-radius: 0.5rem;
@@ -94,7 +96,15 @@ select {
   background: var(--primary-color);
 }
 
-.card-button:disabled {
+.danger-button {
+  border-color: #9f1239;
+  color: #9f1239;
+  background: transparent;
+}
+
+.card-button:disabled,
+.demo-button:disabled,
+.danger-button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
@@ -198,8 +208,34 @@ select {
 
 .memory-dialog footer {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.5rem;
+}
+
+.archive-list {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.archive-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid var(--theme-border);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+
+.archive-list li div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
 }
 
 .canvas {

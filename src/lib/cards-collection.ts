@@ -62,3 +62,7 @@ export async function insertCard(card: CardInput): Promise<void> {
 export async function updateCard(id: string, changes: CardChanges): Promise<void> {
   await cardsCollection.update(id, (card) => Object.assign(card, changes)).isPersisted.promise;
 }
+
+export async function deleteCard(id: string): Promise<void> {
+  await cardsCollection.delete(id).isPersisted.promise;
+}

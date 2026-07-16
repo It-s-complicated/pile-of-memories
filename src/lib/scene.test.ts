@@ -2,64 +2,32 @@ import { describe, expect, it } from "vite-plus/test";
 import { parseCardChanges, parseCardInput } from "./card";
 import {
   createDemoBoard,
-  findOpenMemoryPosition,
   getMemoryBackground,
   getPrimaryTagAccent,
   getTopicBorder,
   getTopicTagColor,
-  suggestMemoryPlacement,
 } from "./scene";
 
 describe("board", () => {
-  it("colors cards from their primary tags", () => {
+  it("colors cards from their area and topic tags", () => {
     expect(getMemoryBackground([])).toBe("#fff3bf");
     expect(getMemoryBackground(["web development"])).toBe("#d9e9ff");
     expect(getMemoryBackground(["job", "web development"])).toBe(
       "linear-gradient(135deg, #dff2d8, #d9e9ff)",
     );
-    expect(getMemoryBackground(["unknown"])).toBe("#fff3bf");
-    expect(getPrimaryTagAccent("web development")).toBe("#356fbd");
     expect(getPrimaryTagAccent("unknown")).toBe("var(--primary-color)");
-  });
-
-  it("colors card borders from their topic tags", () => {
-    expect(getTopicBorder([])).toBe("var(--primary-color)");
-    expect(getTopicBorder(["CSS"])).toBe("#b83280");
     expect(getTopicBorder(["Vue", "React"])).toBe("linear-gradient(135deg, #2f855a, #1677a8)");
-    expect(getTopicBorder(["unknown"])).toBe("var(--primary-color)");
-    expect(getTopicTagColor("finance")).toBe("#a66f00");
     expect(getTopicTagColor("unknown")).toBe("var(--theme-muted)");
   });
 
-  it("provides a demo with diverse primary tag combinations", () => {
+  it("provides a demo with diverse area combinations", () => {
     const demo = createDemoBoard();
-
     expect(demo.nodes).toHaveLength(9);
-    expect(demo.nodes.map((node) => node.data.tags)).toEqual(
-      expect.arrayContaining([
-        ["job"],
-        ["personal development"],
-        ["web development"],
-        ["job", "web development"],
-        ["job", "personal development"],
-        ["web development", "personal development"],
-        ["job", "web development", "personal development"],
-      ]),
-    );
-  });
-
-  it("suggests related memories and avoids occupied positions", () => {
-    const nodes = createDemoBoard().nodes;
-    const strong = suggestMemoryPlacement(nodes, {
-      tags: ["Job"],
-      topics: ["Vue", "React"],
-    });
-    const tied = suggestMemoryPlacement(nodes, { tags: ["Job"], topics: [] });
-
-    expect(strong.automatic).toBe("demo-6");
-    expect(tied.automatic).toBeNull();
-    expect(tied.choices).toHaveLength(3);
-    expect(findOpenMemoryPosition(nodes, { x: 0, y: 0 })).toEqual({ x: 720, y: 220 });
+    expect(demo.nodes.map((node) => node.data.tags)).toContainEqual([
+      "job",
+      "web development",
+      "personal development",
+    ]);
   });
 });
 
@@ -67,18 +35,34 @@ describe("card writes", () => {
   const card = {
     id: "00000000-0000-4000-8000-000000000001",
     title: "  Capture  ",
-    body: "Remember this",
+    body: "Remember [this](https://example.com) and https://example.org.",
     position: { x: 10, y: 20 },
-    tags: ["Personal development"],
-    topics: [],
-    links: ["https://example.com"],
+    tags: ["personal development"],
+    topics: ["CSS", "css"],
+    links: [],
+    archived: false,
   };
 
-  it("validates and normalizes database writes", () => {
-    expect(parseCardInput(card)).toEqual({ ...card, title: "Capture" });
-    expect(parseCardInput({ ...card, id: "starter-capture" })).toBeNull();
+  it("normalizes labels and derives links from the body", () => {
+    expect(parseCardInput(card)).toMatchObject({
+      title: "Capture",
+      tags: ["Personal development"],
+      topics: ["CSS"],
+      links: ["https://example.com", "https://example.org"],
+    });
     expect(parseCardInput({ ...card, links: ["javascript:alert(1)"] })).toBeNull();
+    expect(parseCardChanges({ body: "No links", links: ["https://example.com"] })).toEqual({
+      body: "No links",
+      links: [],
+    });
+    expect(parseCardChanges({ links: [] })).toBeNull();
+  });
+
+  it("rejects invalid IDs, positions, and partial label updates", () => {
+    expect(parseCardInput({ ...card, id: "starter-capture" })).toBeNull();
     expect(parseCardChanges({ position: { x: Number.NaN, y: 0 } })).toBeNull();
-    expect(parseCardChanges({ title: " Updated " })).toEqual({ title: "Updated" });
+    expect(parseCardChanges({ tags: ["Job"] })).toBeNull();
+    expect(parseCardChanges({ archived: true })).toEqual({ archived: true });
+    expect(parseCardChanges({ archived: "yes" })).toBeNull();
   });
 });

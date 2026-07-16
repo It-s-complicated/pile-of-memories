@@ -1,6 +1,7 @@
 import { env } from "$env/dynamic/private";
 import postgres from "postgres";
 import type { Card, CardChanges, CardInput } from "../card";
+import { parseMarkdown } from "../markdown";
 
 if (!env.DATABASE_CONNECTION_STRING) throw new Error("DATABASE_CONNECTION_STRING is not set");
 
@@ -16,26 +17,30 @@ type CardRow = {
   tags: string[];
   topics: string[];
   links: string[];
+  archived: boolean;
   created_at: Date;
   updated_at: Date;
 };
 
 function ensureSchema(): Promise<unknown> {
-  // ponytail: bootstrap one table here; add migrations before the second schema change.
-  return (schemaReady ??= Promise.resolve(sql`
-    CREATE TABLE IF NOT EXISTS cards (
-      id uuid PRIMARY KEY,
-      title text NOT NULL CHECK (btrim(title) <> ''),
-      body text NOT NULL,
-      x double precision NOT NULL,
-      y double precision NOT NULL,
-      tags text[] NOT NULL DEFAULT ARRAY[]::text[],
-      topics text[] NOT NULL DEFAULT ARRAY[]::text[],
-      links text[] NOT NULL DEFAULT ARRAY[]::text[],
-      created_at timestamptz NOT NULL DEFAULT now(),
-      updated_at timestamptz NOT NULL DEFAULT now()
-    )
-  `));
+  return (schemaReady ??= (async () => {
+    await sql`
+      CREATE TABLE IF NOT EXISTS cards (
+        id uuid PRIMARY KEY,
+        title text NOT NULL CHECK (btrim(title) <> ''),
+        body text NOT NULL,
+        x double precision NOT NULL,
+        y double precision NOT NULL,
+        tags text[] NOT NULL DEFAULT ARRAY[]::text[],
+        topics text[] NOT NULL DEFAULT ARRAY[]::text[],
+        links text[] NOT NULL DEFAULT ARRAY[]::text[],
+        archived boolean NOT NULL DEFAULT false,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`ALTER TABLE cards ADD COLUMN IF NOT EXISTS archived boolean NOT NULL DEFAULT false`;
+  })());
 }
 
 function toCard(row: CardRow): Card {
@@ -46,7 +51,8 @@ function toCard(row: CardRow): Card {
     position: { x: row.x, y: row.y },
     tags: row.tags,
     topics: row.topics,
-    links: row.links,
+    links: parseMarkdown(row.body).links,
+    archived: row.archived,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };
@@ -66,10 +72,10 @@ export async function listCards(): Promise<Card[]> {
 export async function insertCard(card: CardInput): Promise<Card> {
   await ensureSchema();
   const [row] = await sql<CardRow[]>`
-    INSERT INTO cards (id, title, body, x, y, tags, topics, links)
+    INSERT INTO cards (id, title, body, x, y, tags, topics, links, archived)
     VALUES (
       ${card.id}, ${card.title}, ${card.body}, ${card.position.x}, ${card.position.y},
-      ${card.tags}, ${card.topics}, ${card.links}
+      ${card.tags}, ${card.topics}, ${card.links}, ${card.archived}
     )
     ON CONFLICT (id) DO NOTHING
     RETURNING *
@@ -82,7 +88,9 @@ export async function insertCard(card: CardInput): Promise<Card> {
 
 export async function updateCard(id: string, changes: CardChanges): Promise<Card | null> {
   await ensureSchema();
-  const values: Record<string, string | number | string[] | Date> = { updated_at: new Date() };
+  const values: Record<string, string | number | boolean | string[] | Date> = {
+    updated_at: new Date(),
+  };
 
   if (changes.title !== undefined) values.title = changes.title;
   if (changes.body !== undefined) values.body = changes.body;
@@ -93,6 +101,7 @@ export async function updateCard(id: string, changes: CardChanges): Promise<Card
   if (changes.tags !== undefined) values.tags = changes.tags;
   if (changes.topics !== undefined) values.topics = changes.topics;
   if (changes.links !== undefined) values.links = changes.links;
+  if (changes.archived !== undefined) values.archived = changes.archived;
 
   const [row] = await sql<CardRow[]>`
     UPDATE cards SET ${sql(values)} WHERE id = ${id} RETURNING *

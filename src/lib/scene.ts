@@ -1,9 +1,8 @@
 import type { Node } from "@xyflow/svelte";
 import type { Card, CardInput } from "./card";
+import { PRIMARY_TAGS, TOPIC_TAGS } from "./labels";
 
-export const DEFAULT_MEMORY_BODY = "Write the memory, then move it where it belongs.";
-export const PRIMARY_TAGS = ["Web development", "Job", "Personal development"] as const;
-export const TOPIC_TAGS = ["Local-first", "CSS", "Hosting", "Vue", "React", "Finance"] as const;
+export { PRIMARY_TAGS, TOPIC_TAGS } from "./labels";
 type PrimaryTagKey = Lowercase<(typeof PRIMARY_TAGS)[number]>;
 type TopicTagKey = Lowercase<(typeof TOPIC_TAGS)[number]>;
 export const PRIMARY_TAG_COLORS = {
@@ -26,13 +25,10 @@ export type MemoryData = {
   tags: string[];
   topics: string[];
   links: string[];
+  tagVocabulary: string[];
 };
 export type MemoryNode = Node<MemoryData, "memory">;
 export type BoardSnapshot = { nodes: MemoryNode[] };
-export type PlacementSuggestion = {
-  automatic: string | null;
-  choices: { id: string; title: string }[];
-};
 const demoCards = [
   {
     title: "Keep memories local-first",
@@ -88,7 +84,7 @@ const demoCards = [
     tags: ["job", "web development", "personal development"],
     topics: ["local-first", "hosting", "Vue"],
   },
-] satisfies Omit<MemoryData, "links">[];
+] satisfies Omit<MemoryData, "links" | "tagVocabulary">[];
 
 const demoPositions = [
   { x: 0, y: 0 },
@@ -107,61 +103,13 @@ const demoBoard: BoardSnapshot = {
     id: `demo-${index}`,
     type: "memory",
     position: demoPositions[index],
-    data: { ...data, links: [] },
+    data: { ...data, links: [], tagVocabulary: [...PRIMARY_TAGS, ...TOPIC_TAGS] },
     focusable: true,
   })),
 };
 
 export function createDemoBoard(): BoardSnapshot {
   return structuredClone(demoBoard);
-}
-
-export function suggestMemoryPlacement(
-  nodes: MemoryNode[],
-  data: Pick<MemoryData, "tags" | "topics">,
-): PlacementSuggestion {
-  const selected = new Set([...data.tags, ...data.topics].map((value) => value.toLowerCase()));
-  const matches = nodes
-    .map((node) => ({
-      id: node.id,
-      title: node.data.title || "Untitled memory",
-      score: [...node.data.tags, ...node.data.topics].filter((value) =>
-        selected.has(value.toLowerCase()),
-      ).length,
-    }))
-    .filter(({ score }) => score > 0)
-    .sort((a, b) => b.score - a.score);
-  const best = matches[0];
-  const automatic =
-    best && best.score >= 2 && best.score > (matches[1]?.score ?? 0) ? best.id : null;
-
-  return {
-    automatic,
-    choices: matches.slice(0, 3).map(({ id, title }) => ({ id, title })),
-  };
-}
-
-export function findOpenMemoryPosition(
-  nodes: MemoryNode[],
-  origin: { x: number; y: number },
-): { x: number; y: number } {
-  let attempt = 0;
-
-  // ponytail: a small grid scan suits local boards; use spatial indexing if large boards become slow.
-  while (true) {
-    const position = {
-      x: origin.x + (attempt % 3) * 360,
-      y: origin.y + Math.floor(attempt / 3) * 220,
-    };
-    const occupied = nodes.some(
-      (node) =>
-        Math.abs(node.position.x - position.x) < 360 &&
-        Math.abs(node.position.y - position.y) < 220,
-    );
-
-    if (!occupied) return position;
-    attempt += 1;
-  }
 }
 
 function getPrimaryTagColor(tag: string) {
@@ -200,7 +148,7 @@ export function getTopicTagColor(topic: string): string {
   return getTopicColor(topic) ?? "var(--theme-muted)";
 }
 
-export function cardToMemoryNode(card: Card): MemoryNode {
+export function cardToMemoryNode(card: Card, tagVocabulary: string[] = []): MemoryNode {
   return {
     id: card.id,
     type: "memory",
@@ -211,6 +159,7 @@ export function cardToMemoryNode(card: Card): MemoryNode {
       tags: card.tags,
       topics: card.topics,
       links: card.links,
+      tagVocabulary,
     },
     focusable: true,
   };
@@ -225,5 +174,6 @@ export function memoryNodeToCard(node: MemoryNode): CardInput {
     tags: node.data.tags,
     topics: node.data.topics,
     links: node.data.links,
+    archived: false,
   };
 }
