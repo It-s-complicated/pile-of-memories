@@ -25,4 +25,4 @@ vp dev
 
 Set `DATABASE_CONNECTION_STRING` in `.env` to a PostgreSQL session-pooler URL. Database endpoints
 are development-only until authentication is implemented. Set `OPENCODE_GO_API_KEY` to enable
-GLM-5.2 title and tag suggestions through OpenCode Go.
+DeepSeek V4 Flash title and tag suggestions through OpenCode Go.
