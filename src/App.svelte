@@ -8,23 +8,21 @@
     type Viewport,
   } from "@xyflow/svelte";
   import { useLiveQuery } from "@tanstack/svelte-db";
-  import { resolve } from "$app/paths";
-  import { untrack } from "svelte";
+  import { SvelteMap } from "svelte/reactivity";
   import "@xyflow/svelte/dist/style.css";
   import MemoryNodeComponent from "./components/MemoryNode.svelte";
+  import TagEditor from "./components/TagEditor.svelte";
   import { setCardPersistence } from "./lib/card-persistence";
-  import { cardsCollection, insertCard, updateCard } from "./lib/cards-collection";
+  import { cardsCollection, deleteCard, insertCard, updateCard } from "./lib/cards-collection";
+  import { findClusterPosition, reflowClusters } from "./lib/cluster-layout";
+  import { fallbackTitle, requestEnrichment } from "./lib/enrichment";
+  import { canonicalizeLabels, partitionLabels, PRIMARY_TAGS, TOPIC_TAGS } from "./lib/labels";
+  import { parseMarkdown } from "./lib/markdown";
   import {
-    DEFAULT_MEMORY_BODY,
-    PRIMARY_TAGS,
-    TOPIC_TAGS,
     cardToMemoryNode,
-    createDemoBoard,
-    findOpenMemoryPosition,
     getMemoryBackground,
     getTopicBorder,
     memoryNodeToCard,
-    suggestMemoryPlacement,
     type MemoryNode,
   } from "./lib/scene";
 
@@ -38,34 +36,60 @@
     { label: "Forest", color: "#2f6b4f" },
   ] as const;
 
-  let { demo = false }: { demo?: boolean } = $props();
-  const isDemo = untrack(() => demo);
-  const board = isDemo ? createDemoBoard() : { nodes: [] };
+  type CachedEnrichment = { title: string; tags: string[]; warning: string };
+
   const nodeTypes = { memory: MemoryNodeComponent } satisfies NodeTypes;
-  const cardsQuery = useLiveQuery((query) =>
-    isDemo ? null : query.from({ card: cardsCollection }),
-  );
-  setCardPersistence(isDemo ? null : updateCard);
+  const cardsQuery = useLiveQuery((query) => query.from({ card: cardsCollection }));
+  const enrichmentCache = new SvelteMap<string, CachedEnrichment>();
+  setCardPersistence({
+    async update(id, changes) {
+      try {
+        await updateCard(id, changes);
+      } catch (error) {
+        persistenceError = getErrorMessage(error);
+        throw error;
+      }
+    },
+    async delete(id) {
+      try {
+        await deleteCard(id);
+      } catch (error) {
+        persistenceError = getErrorMessage(error);
+        throw error;
+      }
+    },
+  });
 
   let primaryColor = $state<string>(getInitialPrimaryColor());
-  let nodes = $derived<MemoryNode[]>(
-    isDemo ? board.nodes : (cardsQuery.data ?? []).map(cardToMemoryNode),
+  let tagVocabulary = $derived(
+    canonicalizeLabels([
+      ...PRIMARY_TAGS,
+      ...TOPIC_TAGS,
+      ...(cardsQuery.data ?? []).flatMap((card) => [...card.tags, ...card.topics]),
+    ]),
   );
+  let nodes = $derived<MemoryNode[]>(
+    (cardsQuery.data ?? [])
+      .filter((card) => !card.archived)
+      .map((card) => cardToMemoryNode(card, tagVocabulary)),
+  );
+  let archivedCards = $derived((cardsQuery.data ?? []).filter((card) => card.archived));
   let viewport = $state<Viewport>({ x: 32, y: 32, zoom: 1 });
   let canvasWidth = $state(0);
   let canvasHeight = $state(0);
   let newMemoryOpen = $state(false);
+  let newMemoryStep = $state<"capture" | "review">("capture");
   let memoryTitle = $state("");
   let memoryBody = $state("");
-  let memoryTags = $state<string[]>([]);
-  let memoryTopics = $state<string[]>([]);
-  let placementChoice = $state("open");
-  let boardReady = $derived(isDemo || cardsQuery.isReady);
+  let memoryLabels = $state<string[]>([]);
+  let enrichmentWarning = $state("");
+  let enrichingMemory = $state(false);
+  let boardReady = $derived(cardsQuery.isReady);
   let savingMemory = $state(false);
   let persistenceError = $state("");
-  let placement = $derived(
-    suggestMemoryPlacement(nodes, { tags: memoryTags, topics: memoryTopics }),
-  );
+  let archiveOpen = $state(false);
+  let archiveError = $state("");
+  let archiveBusyId = $state("");
 
   function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : "The board could not be saved.";
@@ -89,13 +113,45 @@
     return getTopicBorder((node as MemoryNode).data.topics.slice(0, 1));
   }
 
-  function openNewMemoryDialog() {
+  function openNewMemoryDialog(): void {
     memoryTitle = "";
     memoryBody = "";
-    memoryTags = [];
-    memoryTopics = [];
-    placementChoice = "open";
+    memoryLabels = [];
+    enrichmentWarning = "";
+    persistenceError = "";
+    newMemoryStep = "capture";
     newMemoryOpen = true;
+  }
+
+  function openArchive(): void {
+    archiveError = "";
+    archiveOpen = true;
+  }
+
+  async function restoreArchived(id: string): Promise<void> {
+    archiveBusyId = id;
+    archiveError = "";
+    try {
+      await updateCard(id, { archived: false });
+    } catch (error) {
+      archiveError = getErrorMessage(error);
+    } finally {
+      archiveBusyId = "";
+    }
+  }
+
+  async function deleteArchived(id: string, title: string): Promise<void> {
+    if (!confirm(`Permanently delete “${title}”? This cannot be undone.`)) return;
+
+    archiveBusyId = id;
+    archiveError = "";
+    try {
+      await deleteCard(id);
+    } catch (error) {
+      archiveError = getErrorMessage(error);
+    } finally {
+      archiveBusyId = "";
+    }
   }
 
   function showModal(dialog: HTMLDialogElement) {
@@ -103,33 +159,65 @@
     return () => dialog.close();
   }
 
-  async function addMemory(event: SubmitEvent) {
+  function focusCapture(textarea: HTMLTextAreaElement): void {
+    queueMicrotask(() => textarea.focus());
+  }
+
+  async function continueMemory(event: SubmitEvent): Promise<void> {
     event.preventDefault();
-    const id = crypto.randomUUID();
+    const description = memoryBody.trim();
+    if (!description) return;
+
+    enrichingMemory = true;
+    enrichmentWarning = "";
+    try {
+      let enrichment = enrichmentCache.get(description);
+      if (!enrichment) {
+        try {
+          const result = await requestEnrichment({ description, existingTags: tagVocabulary });
+          enrichment = { ...result, warning: "" };
+          enrichmentCache.set(description, enrichment);
+        } catch {
+          enrichment = {
+            title: fallbackTitle(memoryBody),
+            tags: [],
+            warning: "AI suggestions were unavailable. You can finish this memory manually.",
+          };
+        }
+      }
+
+      memoryTitle = enrichment.title;
+      memoryLabels = enrichment.tags;
+      enrichmentWarning = enrichment.warning;
+      newMemoryStep = "review";
+    } finally {
+      enrichingMemory = false;
+    }
+  }
+
+  async function addMemory(event: SubmitEvent): Promise<void> {
+    event.preventDefault();
+    const { tags, topics } = partitionLabels(memoryLabels);
     const openSpace = {
       x: (canvasWidth / 2 - viewport.x) / viewport.zoom - 160,
-      y: (canvasHeight / 2 - viewport.y) / viewport.zoom - 90,
+      y: (canvasHeight / 2 - viewport.y) / viewport.zoom - 110,
     };
-    const anchorId = placement.automatic ?? placementChoice;
-    const anchor = nodes.find((node) => node.id === anchorId);
-    const origin = anchor
-      ? { x: anchor.position.x + 360, y: anchor.position.y }
-      : openSpace;
-    const position = findOpenMemoryPosition(nodes, origin);
-
+    const position = findClusterPosition(nodes, { tags, topics }, openSpace);
+    const links = parseMarkdown(memoryBody).links;
     const node: MemoryNode = {
-        id,
-        type: "memory",
-        position,
-        data: {
-          title: memoryTitle.trim(),
-          body: memoryBody.trim() || DEFAULT_MEMORY_BODY,
-          tags: memoryTags,
-          topics: memoryTopics,
-          links: [],
-        },
-        focusable: true,
-      };
+      id: crypto.randomUUID(),
+      type: "memory",
+      position,
+      data: {
+        title: memoryTitle.trim() || fallbackTitle(memoryBody),
+        body: memoryBody,
+        tags,
+        topics,
+        links,
+        tagVocabulary,
+      },
+      focusable: true,
+    };
 
     savingMemory = true;
     persistenceError = "";
@@ -144,8 +232,6 @@
   }
 
   async function saveMovedCards({ nodes: movedNodes }: { nodes: MemoryNode[] }) {
-    if (isDemo) return;
-
     persistenceError = "";
     try {
       await Promise.all(
@@ -156,134 +242,184 @@
     }
   }
 
+  async function reorganizeClusters(): Promise<void> {
+    persistenceError = "";
+    try {
+      await Promise.all(
+        reflowClusters(nodes).map(({ id, position }) => updateCard(id, { position })),
+      );
+    } catch (error) {
+      persistenceError = getErrorMessage(error);
+    }
+  }
 </script>
 
 <div class="theme" style:--primary-color={primaryColor}>
-<div class="app">
-  <header class="topbar">
-    <div>
-      <p>Pile of Memories II</p>
-      <h1>{isDemo ? "Demo canvas" : "Arrange your memories."}</h1>
-    </div>
-    <div class="topbar-actions">
-      <select class="theme-select" aria-label="Color theme" value={primaryColor} onchange={selectTheme}>
-        {#each THEMES as theme (theme.color)}
-          <option value={theme.color}>{theme.label}</option>
-        {/each}
-      </select>
-      <a class="demo-button" href={resolve(isDemo ? "/" : "/demo")}>
-        {isDemo ? "Back to board" : "Show demo"}
-      </a>
-      <button
-        type="button"
-        class="card-button"
-        onclick={openNewMemoryDialog}
-        disabled={isDemo || !boardReady}
-      >
-        New Memory
-      </button>
-    </div>
-    {#if persistenceError}
-      <p role="alert">{persistenceError}</p>
-    {:else if cardsQuery.isError}
-      <p role="alert">Database unavailable</p>
-    {:else if !boardReady}
-      <p role="status">Loading board…</p>
-    {/if}
-  </header>
-  <main
-    class="canvas"
-    aria-label={isDemo ? "Demo memory board" : "Memory board"}
-    bind:clientWidth={canvasWidth}
-    bind:clientHeight={canvasHeight}
-  >
-    <SvelteFlow
-      bind:nodes
-      bind:viewport
-      {nodeTypes}
-      minZoom={0.5}
-      maxZoom={1.5}
-      fitView={isDemo}
-      nodesDraggable={isDemo || boardReady}
-      deleteKey={[]}
-      onnodedragstop={saveMovedCards}
-    >
-      <Controls showLock={false} fitViewOptions={{ maxZoom: 1 }} />
-      <MiniMap nodeColor={getMiniMapFill} nodeStrokeColor={getMiniMapStroke} />
-    </SvelteFlow>
-  </main>
-</div>
-
-{#if newMemoryOpen}
-  <dialog
-    class="memory-dialog"
-    aria-labelledby="new-memory-title"
-    onclose={() => (newMemoryOpen = false)}
-    {@attach showModal}
-  >
-    <form method="dialog" onsubmit={addMemory}>
-    <header>
-      <p>Capture and place</p>
-      <h2 id="new-memory-title">New Memory</h2>
-    </header>
-
-    <label class="memory-field">
-      <span>Title</span>
-      <input bind:value={memoryTitle} required />
-    </label>
-    <label class="memory-field">
-      <span>Memory</span>
-      <textarea bind:value={memoryBody} rows="4" placeholder={DEFAULT_MEMORY_BODY}></textarea>
-    </label>
-
-    <fieldset>
-      <legend>Areas</legend>
-      <div class="memory-options">
-        {#each PRIMARY_TAGS as tag (tag)}
-          <label><input type="checkbox" bind:group={memoryTags} value={tag} /> {tag}</label>
-        {/each}
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <p>Pile of Memories II</p>
+        <h1>Arrange your memories.</h1>
       </div>
-    </fieldset>
-
-    <fieldset>
-      <legend>Topics</legend>
-      <div class="memory-options">
-        {#each TOPIC_TAGS as topic (topic)}
-          <label><input type="checkbox" bind:group={memoryTopics} value={topic} /> {topic}</label>
-        {/each}
-      </div>
-    </fieldset>
-
-    {#if placement.automatic}
-      <p class="placement-note">
-        Strong match: this memory will be placed near
-        {placement.choices.find((choice) => choice.id === placement.automatic)?.title}.
-      </p>
-    {:else}
-      <fieldset>
-        <legend>Placement</legend>
-        <div class="placement-options">
-          {#each placement.choices as choice (choice.id)}
-            <label>
-              <input type="radio" bind:group={placementChoice} value={choice.id} />
-              Near “{choice.title}”
-            </label>
+      <div class="topbar-actions">
+        <select class="theme-select" aria-label="Color theme" value={primaryColor} onchange={selectTheme}>
+          {#each THEMES as theme (theme.color)}
+            <option value={theme.color}>{theme.label}</option>
           {/each}
-          <label>
-            <input type="radio" bind:group={placementChoice} value="open" />
-            In open space
-          </label>
-        </div>
-      </fieldset>
-    {/if}
-
-      <footer>
-        <button type="button" class="demo-button" onclick={() => (newMemoryOpen = false)}>
-          Cancel
+        </select>
+        <button type="button" class="secondary-button" onclick={openArchive} disabled={!boardReady}>
+          Archived ({archivedCards.length})
         </button>
-        <button type="submit" class="card-button" disabled={savingMemory}>Create Memory</button>
-      </footer>
-    </form>
-  </dialog>
-{/if}
+        <button
+          type="button"
+          class="secondary-button"
+          onclick={reorganizeClusters}
+          disabled={!boardReady || nodes.length === 0}
+        >
+          Reorganize clusters
+        </button>
+        <button
+          type="button"
+          class="card-button"
+          onclick={openNewMemoryDialog}
+          disabled={!boardReady}
+        >
+          New Memory
+        </button>
+      </div>
+      {#if persistenceError}
+        <p role="alert">{persistenceError}</p>
+      {:else if cardsQuery.isError}
+        <p role="alert">Database unavailable</p>
+      {:else if !boardReady}
+        <p role="status">Loading board…</p>
+      {/if}
+    </header>
+    <main
+      class="canvas"
+      aria-label="Memory board"
+      bind:clientWidth={canvasWidth}
+      bind:clientHeight={canvasHeight}
+    >
+      <SvelteFlow
+        bind:nodes
+        bind:viewport
+        {nodeTypes}
+        minZoom={0.5}
+        maxZoom={1.5}
+        nodesDraggable={boardReady}
+        deleteKey={[]}
+        onnodedragstop={saveMovedCards}
+      >
+        <Controls showLock={false} fitViewOptions={{ maxZoom: 1 }} />
+        <MiniMap nodeColor={getMiniMapFill} nodeStrokeColor={getMiniMapStroke} />
+      </SvelteFlow>
+    </main>
+  </div>
+
+  {#if newMemoryOpen}
+    <dialog
+      class="memory-dialog"
+      aria-labelledby="new-memory-title"
+      onclose={() => (newMemoryOpen = false)}
+      {@attach showModal}
+    >
+      {#if newMemoryStep === "capture"}
+        <form method="dialog" onsubmit={continueMemory}>
+          <header>
+            <p>Capture</p>
+            <h2 id="new-memory-title">New Memory</h2>
+          </header>
+          <label class="memory-field">
+            <span>What do you want to remember?</span>
+            <textarea
+              bind:value={memoryBody}
+              rows="12"
+              maxlength="8000"
+              required
+              {@attach focusCapture}
+            ></textarea>
+          </label>
+          <footer>
+            <button type="button" class="secondary-button" onclick={() => (newMemoryOpen = false)}>
+              Cancel
+            </button>
+            <button type="submit" class="card-button" disabled={enrichingMemory}>
+              {enrichingMemory ? "Thinking…" : "Continue"}
+            </button>
+          </footer>
+        </form>
+      {:else}
+        <form method="dialog" onsubmit={addMemory}>
+          <header>
+            <p>Review</p>
+            <h2 id="new-memory-title">New Memory</h2>
+          </header>
+          {#if enrichmentWarning}<p class="placement-note" role="status">{enrichmentWarning}</p>{/if}
+          <label class="memory-field">
+            <span>Title</span>
+            <input bind:value={memoryTitle} maxlength="80" required />
+          </label>
+          <TagEditor id="new-memory-tags" bind:value={memoryLabels} suggestions={tagVocabulary} />
+          <label class="memory-field">
+            <span>Memory</span>
+            <textarea bind:value={memoryBody} rows="10" maxlength="8000" required></textarea>
+          </label>
+          {#if persistenceError}<p role="alert">{persistenceError}</p>{/if}
+          <footer>
+            <button type="button" class="secondary-button" onclick={() => (newMemoryStep = "capture")}>
+              Back
+            </button>
+            <button type="submit" class="card-button" disabled={savingMemory}>Create Memory</button>
+          </footer>
+        </form>
+      {/if}
+    </dialog>
+  {/if}
+
+  {#if archiveOpen}
+    <dialog
+      class="memory-dialog archive-dialog"
+      aria-labelledby="archive-title"
+      onclose={() => (archiveOpen = false)}
+      {@attach showModal}
+    >
+      <form method="dialog">
+        <header>
+          <p>Archive</p>
+          <h2 id="archive-title">Archived memories</h2>
+        </header>
+
+        {#if archivedCards.length}
+          <ul class="archive-list">
+            {#each archivedCards as card (card.id)}
+              <li>
+                <strong>{card.title}</strong>
+                <div>
+                  <button
+                    type="button"
+                    class="secondary-button"
+                    disabled={archiveBusyId !== ""}
+                    onclick={() => restoreArchived(card.id)}
+                  >Restore</button>
+                  <button
+                    type="button"
+                    class="danger-button"
+                    disabled={archiveBusyId !== ""}
+                    onclick={() => deleteArchived(card.id, card.title)}
+                  >Delete permanently</button>
+                </div>
+              </li>
+            {/each}
+          </ul>
+        {:else}
+          <p>No archived memories.</p>
+        {/if}
+        {#if archiveError}<p role="alert">{archiveError}</p>{/if}
+        <footer>
+          <button type="submit" class="card-button">Done</button>
+        </footer>
+      </form>
+    </dialog>
+  {/if}
 </div>

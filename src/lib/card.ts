@@ -1,3 +1,6 @@
+import { labelsAreValid, partitionLabels } from "./labels";
+import { isHttpUrl, parseMarkdown } from "./markdown";
+
 export type CardInput = {
   id: string;
   title: string;
@@ -6,6 +9,7 @@ export type CardInput = {
   tags: string[];
   topics: string[];
   links: string[];
+  archived: boolean;
 };
 
 export type Card = CardInput & { createdAt: string; updatedAt: string };
@@ -21,10 +25,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object";
 }
 
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
-}
-
 function isPosition(value: unknown): value is CardInput["position"] {
   return (
     isRecord(value) &&
@@ -35,16 +35,17 @@ function isPosition(value: unknown): value is CardInput["position"] {
   );
 }
 
-function isHttpUrl(value: string): boolean {
-  try {
-    return ["http:", "https:"].includes(new URL(value).protocol);
-  } catch {
-    return false;
-  }
-}
-
 export function parseCardInput(value: unknown): CardInput | null {
-  const allowed = new Set(["id", "title", "body", "position", "tags", "topics", "links"]);
+  const allowed = new Set([
+    "id",
+    "title",
+    "body",
+    "position",
+    "tags",
+    "topics",
+    "links",
+    "archived",
+  ]);
   if (
     !isRecord(value) ||
     Object.keys(value).some((key) => !allowed.has(key)) ||
@@ -53,22 +54,27 @@ export function parseCardInput(value: unknown): CardInput | null {
     !value.title.trim() ||
     typeof value.body !== "string" ||
     !isPosition(value.position) ||
-    !isStringArray(value.tags) ||
-    !isStringArray(value.topics) ||
-    !isStringArray(value.links) ||
-    !value.links.every(isHttpUrl)
+    !labelsAreValid(value.tags) ||
+    !labelsAreValid(value.topics) ||
+    value.tags.length + value.topics.length > 200 ||
+    !Array.isArray(value.links) ||
+    !value.links.every((link) => typeof link === "string") ||
+    !value.links.every(isHttpUrl) ||
+    typeof value.archived !== "boolean"
   ) {
     return null;
   }
+
+  const labels = partitionLabels([...value.tags, ...value.topics]);
 
   return {
     id: value.id,
     title: value.title.trim(),
     body: value.body,
     position: value.position,
-    tags: value.tags,
-    topics: value.topics,
-    links: value.links,
+    ...labels,
+    links: parseMarkdown(value.body).links,
+    archived: value.archived,
   };
 }
 
@@ -76,8 +82,15 @@ export function parseCardChanges(value: unknown): CardChanges | null {
   if (!isRecord(value)) return null;
 
   const keys = Object.keys(value);
-  const allowed = new Set(["title", "body", "position", "tags", "topics", "links"]);
-  if (keys.length === 0 || keys.some((key) => !allowed.has(key))) return null;
+  const allowed = new Set(["title", "body", "position", "tags", "topics", "links", "archived"]);
+  if (
+    keys.length === 0 ||
+    keys.some((key) => !allowed.has(key)) ||
+    ("links" in value && !("body" in value)) ||
+    "tags" in value !== "topics" in value
+  ) {
+    return null;
+  }
 
   const changes: CardChanges = {};
 
@@ -88,22 +101,26 @@ export function parseCardChanges(value: unknown): CardChanges | null {
   if ("body" in value) {
     if (typeof value.body !== "string") return null;
     changes.body = value.body;
+    changes.links = parseMarkdown(value.body).links;
   }
   if ("position" in value) {
     if (!isPosition(value.position)) return null;
     changes.position = value.position;
   }
-  if ("tags" in value) {
-    if (!isStringArray(value.tags)) return null;
-    changes.tags = value.tags;
-  }
-  if ("topics" in value) {
-    if (!isStringArray(value.topics)) return null;
-    changes.topics = value.topics;
+  if ("tags" in value || "topics" in value) {
+    const tags = "tags" in value ? value.tags : [];
+    const topics = "topics" in value ? value.topics : [];
+    if (!labelsAreValid(tags) || !labelsAreValid(topics) || tags.length + topics.length > 200) {
+      return null;
+    }
+    Object.assign(changes, partitionLabels([...tags, ...topics]));
   }
   if ("links" in value) {
-    if (!isStringArray(value.links) || !value.links.every(isHttpUrl)) return null;
-    changes.links = value.links;
+    if (!Array.isArray(value.links) || !value.links.every(isHttpUrl)) return null;
+  }
+  if ("archived" in value) {
+    if (typeof value.archived !== "boolean") return null;
+    changes.archived = value.archived;
   }
 
   return changes;

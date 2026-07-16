@@ -1,12 +1,8 @@
-import { dev } from "$app/environment";
 import { error, json } from "@sveltejs/kit";
 import { parseCardInput } from "$lib/card";
 import { insertCard, listCards } from "$lib/server/database";
+import { requirePrivateBoard } from "$lib/server/private-board";
 import type { RequestHandler } from "./$types";
-
-function requirePrivateBoard(): void {
-  if (!dev) error(503, "Authentication is required before production use");
-}
 
 export const GET: RequestHandler = async () => {
   requirePrivateBoard();
