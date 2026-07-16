@@ -8,7 +8,6 @@
     type Viewport,
   } from "@xyflow/svelte";
   import { useLiveQuery } from "@tanstack/svelte-db";
-  import { resolve } from "$app/paths";
   import { SvelteMap } from "svelte/reactivity";
   import "@xyflow/svelte/dist/style.css";
   import MemoryNodeComponent from "./components/MemoryNode.svelte";
@@ -18,7 +17,6 @@
   import {
     findClusterPosition,
     reflowClusters,
-    restorePositions,
     snapshotPositions,
   } from "./lib/cluster-layout";
   import { fallbackTitle, requestEnrichment } from "./lib/enrichment";
@@ -26,7 +24,6 @@
   import { parseMarkdown } from "./lib/markdown";
   import {
     cardToMemoryNode,
-    createDemoBoard,
     getMemoryBackground,
     getTopicBorder,
     memoryNodeToCard,
@@ -46,18 +43,11 @@
   type CachedEnrichment = { title: string; tags: string[]; warning: string };
   type Positions = Record<string, { x: number; y: number }>;
 
-  let { demo = false }: { demo?: boolean } = $props();
-  let isDemo = $derived(demo);
-  const board = createDemoBoard();
   const nodeTypes = { memory: MemoryNodeComponent } satisfies NodeTypes;
   const cardsQuery = useLiveQuery((query) => query.from({ card: cardsCollection }));
   const enrichmentCache = new SvelteMap<string, CachedEnrichment>();
   setCardPersistence({
-    get canManage() {
-      return !isDemo;
-    },
     async update(id, changes) {
-      if (isDemo) return;
       try {
         await updateCard(id, changes);
       } catch (error) {
@@ -66,7 +56,6 @@
       }
     },
     async delete(id) {
-      if (isDemo) return;
       try {
         await deleteCard(id);
       } catch (error) {
@@ -84,13 +73,13 @@
       ...(cardsQuery.data ?? []).flatMap((card) => [...card.tags, ...card.topics]),
     ]),
   );
-  let nodes = $derived<MemoryNode[]>(
-    isDemo
-      ? board.nodes
-      : (cardsQuery.data ?? [])
-          .filter((card) => !card.archived)
-          .map((card) => cardToMemoryNode(card, tagVocabulary)),
+  let databaseNodes = $derived(
+    (cardsQuery.data ?? [])
+      .filter((card) => !card.archived)
+      .map((card) => cardToMemoryNode(card, tagVocabulary)),
   );
+  let reflowPreview = $state.raw<{ nodes: MemoryNode[]; snapshot: Positions } | null>(null);
+  let nodes = $derived(reflowPreview?.nodes ?? databaseNodes);
   let archivedCards = $derived((cardsQuery.data ?? []).filter((card) => card.archived));
   let viewport = $state<Viewport>({ x: 32, y: 32, zoom: 1 });
   let canvasWidth = $state(0);
@@ -102,10 +91,9 @@
   let memoryLabels = $state<string[]>([]);
   let enrichmentWarning = $state("");
   let enrichingMemory = $state(false);
-  let boardReady = $derived(isDemo || cardsQuery.isReady);
+  let boardReady = $derived(cardsQuery.isReady);
   let savingMemory = $state(false);
   let persistenceError = $state("");
-  let reflowSnapshot = $state.raw<Positions | null>(null);
   let archiveOpen = $state(false);
   let archiveError = $state("");
   let archiveBusyId = $state("");
@@ -251,7 +239,7 @@
   }
 
   async function saveMovedCards({ nodes: movedNodes }: { nodes: MemoryNode[] }) {
-    if (isDemo || reflowSnapshot) return;
+    if (reflowPreview) return;
 
     persistenceError = "";
     try {
@@ -264,34 +252,33 @@
   }
 
   function previewReflow(): void {
-    reflowSnapshot = snapshotPositions(nodes);
-    nodes = reflowClusters(nodes);
+    reflowPreview = {
+      nodes: reflowClusters(nodes),
+      snapshot: snapshotPositions(nodes),
+    };
   }
 
   function restoreReflow(): void {
-    if (!reflowSnapshot) return;
-    nodes = restorePositions(nodes, reflowSnapshot);
-    reflowSnapshot = null;
+    reflowPreview = null;
   }
 
   async function applyReflow(): Promise<void> {
-    if (!reflowSnapshot) return;
-    const snapshot = reflowSnapshot;
-    const changed = nodes.filter((node) => {
-      const original = snapshot[node.id];
+    const preview = reflowPreview;
+    if (!preview) return;
+    const changed = preview.nodes.filter((node) => {
+      const original = preview.snapshot[node.id];
       return original && (original.x !== node.position.x || original.y !== node.position.y);
     });
 
     persistenceError = "";
     try {
       await Promise.all(changed.map((node) => updateCard(node.id, { position: node.position })));
-      reflowSnapshot = null;
+      reflowPreview = null;
     } catch (error) {
       await Promise.allSettled(
-        changed.map((node) => updateCard(node.id, { position: snapshot[node.id] })),
+        changed.map((node) => updateCard(node.id, { position: preview.snapshot[node.id] })),
       );
-      nodes = restorePositions(nodes, snapshot);
-      reflowSnapshot = null;
+      reflowPreview = null;
       persistenceError = getErrorMessage(error);
     }
   }
@@ -302,7 +289,7 @@
     <header class="topbar">
       <div>
         <p>Pile of Memories II</p>
-        <h1>{isDemo ? "Demo canvas" : "Arrange your memories."}</h1>
+        <h1>Arrange your memories.</h1>
       </div>
       <div class="topbar-actions">
         <select class="theme-select" aria-label="Color theme" value={primaryColor} onchange={selectTheme}>
@@ -310,23 +297,18 @@
             <option value={theme.color}>{theme.label}</option>
           {/each}
         </select>
-        <a class="demo-button" href={resolve(isDemo ? "/" : "/demo")}>
-          {isDemo ? "Back to board" : "Show demo"}
-        </a>
-        {#if !isDemo}
-          <button type="button" class="demo-button" onclick={openArchive} disabled={!boardReady}>
-            Archived ({archivedCards.length})
-          </button>
-        {/if}
-        {#if reflowSnapshot}
-          <button type="button" class="demo-button" onclick={restoreReflow}>Cancel reflow</button>
+        <button type="button" class="secondary-button" onclick={openArchive} disabled={!boardReady}>
+          Archived ({archivedCards.length})
+        </button>
+        {#if reflowPreview}
+          <button type="button" class="secondary-button" onclick={restoreReflow}>Cancel reflow</button>
           <button type="button" class="card-button" onclick={applyReflow}>Apply reflow</button>
         {:else}
           <button
             type="button"
-            class="demo-button"
+            class="secondary-button"
             onclick={previewReflow}
-            disabled={isDemo || !boardReady || nodes.length === 0}
+            disabled={!boardReady || nodes.length === 0}
           >
             Reorganize clusters
           </button>
@@ -334,7 +316,7 @@
             type="button"
             class="card-button"
             onclick={openNewMemoryDialog}
-            disabled={isDemo || !boardReady}
+            disabled={!boardReady}
           >
             New Memory
           </button>
@@ -342,7 +324,7 @@
       </div>
       {#if persistenceError}
         <p role="alert">{persistenceError}</p>
-      {:else if !isDemo && cardsQuery.isError}
+      {:else if cardsQuery.isError}
         <p role="alert">Database unavailable</p>
       {:else if !boardReady}
         <p role="status">Loading board…</p>
@@ -350,7 +332,7 @@
     </header>
     <main
       class="canvas"
-      aria-label={isDemo ? "Demo memory board" : "Memory board"}
+      aria-label="Memory board"
       bind:clientWidth={canvasWidth}
       bind:clientHeight={canvasHeight}
     >
@@ -360,8 +342,7 @@
         {nodeTypes}
         minZoom={0.5}
         maxZoom={1.5}
-        fitView={isDemo}
-        nodesDraggable={(isDemo || boardReady) && !reflowSnapshot}
+        nodesDraggable={boardReady && !reflowPreview}
         deleteKey={[]}
         onnodedragstop={saveMovedCards}
       >
@@ -395,7 +376,7 @@
             ></textarea>
           </label>
           <footer>
-            <button type="button" class="demo-button" onclick={() => (newMemoryOpen = false)}>
+            <button type="button" class="secondary-button" onclick={() => (newMemoryOpen = false)}>
               Cancel
             </button>
             <button type="submit" class="card-button" disabled={enrichingMemory}>
@@ -421,7 +402,7 @@
           </label>
           {#if persistenceError}<p role="alert">{persistenceError}</p>{/if}
           <footer>
-            <button type="button" class="demo-button" onclick={() => (newMemoryStep = "capture")}>
+            <button type="button" class="secondary-button" onclick={() => (newMemoryStep = "capture")}>
               Back
             </button>
             <button type="submit" class="card-button" disabled={savingMemory}>Create Memory</button>
@@ -452,7 +433,7 @@
                 <div>
                   <button
                     type="button"
-                    class="demo-button"
+                    class="secondary-button"
                     disabled={archiveBusyId !== ""}
                     onclick={() => restoreArchived(card.id)}
                   >Restore</button>

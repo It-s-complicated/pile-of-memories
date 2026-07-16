@@ -50,7 +50,7 @@
     saving = true;
     saveError = "";
     try {
-      await cardPersistence?.update(id, changes);
+      await cardPersistence.update(id, changes);
       updateNodeData(id, { ...data, ...changes });
       editOpen = false;
     } catch {
@@ -61,7 +61,6 @@
   }
 
   async function archive(): Promise<void> {
-    if (!cardPersistence?.canManage) return;
     saving = true;
     saveError = "";
     try {
@@ -75,10 +74,7 @@
   }
 
   async function remove(): Promise<void> {
-    if (
-      !cardPersistence?.canManage ||
-      !confirm(`Permanently delete “${data.title || "Untitled memory"}”? This cannot be undone.`)
-    )
+    if (!confirm(`Permanently delete “${data.title || "Untitled memory"}”? This cannot be undone.`))
       return;
 
     saving = true;
@@ -159,15 +155,13 @@
 
       {#if saveError}<p class="save-error" role="alert">{saveError}</p>{/if}
       <footer>
-        {#if cardPersistence?.canManage}
-          <button type="button" class="danger-button" disabled={saving} onclick={remove}>
-            Delete permanently
-          </button>
-          <button type="button" class="demo-button" disabled={saving} onclick={archive}>
-            Archive
-          </button>
-        {/if}
-        <button type="button" class="demo-button" onclick={() => (editOpen = false)}>
+        <button type="button" class="danger-button" disabled={saving} onclick={remove}>
+          Delete permanently
+        </button>
+        <button type="button" class="secondary-button" disabled={saving} onclick={archive}>
+          Archive
+        </button>
+        <button type="button" class="secondary-button" onclick={() => (editOpen = false)}>
           Cancel
         </button>
         <button type="submit" class="card-button" disabled={saving}>Save</button>

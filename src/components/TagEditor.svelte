@@ -54,7 +54,7 @@
           <button
             type="button"
             aria-label={`Remove ${tag}`}
-            onclick={() => (value = value.filter((value) => value !== tag))}
+            onclick={() => (value = value.filter((v) => v !== tag))}
           >
             ×
           </button>

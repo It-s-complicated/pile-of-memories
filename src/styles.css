@@ -75,7 +75,7 @@ select {
 
 .theme-select,
 .card-button,
-.demo-button,
+.secondary-button,
 .danger-button {
   box-sizing: border-box;
   border: 1px solid var(--primary-color);
@@ -86,7 +86,7 @@ select {
 }
 
 .theme-select,
-.demo-button {
+.secondary-button {
   color: var(--primary-color);
   background: transparent;
 }
@@ -103,7 +103,7 @@ select {
 }
 
 .card-button:disabled,
-.demo-button:disabled,
+.secondary-button:disabled,
 .danger-button:disabled {
   cursor: not-allowed;
   opacity: 0.5;

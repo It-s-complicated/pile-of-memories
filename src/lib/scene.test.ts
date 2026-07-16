@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { parseCardChanges, parseCardInput } from "./card";
 import {
-  createDemoBoard,
   getMemoryBackground,
   getPrimaryTagAccent,
   getTopicBorder,
@@ -18,16 +17,6 @@ describe("board", () => {
     expect(getPrimaryTagAccent("unknown")).toBe("var(--primary-color)");
     expect(getTopicBorder(["Vue", "React"])).toBe("linear-gradient(135deg, #2f855a, #1677a8)");
     expect(getTopicTagColor("unknown")).toBe("var(--theme-muted)");
-  });
-
-  it("provides a demo with diverse area combinations", () => {
-    const demo = createDemoBoard();
-    expect(demo.nodes).toHaveLength(9);
-    expect(demo.nodes.map((node) => node.data.tags)).toContainEqual([
-      "job",
-      "web development",
-      "personal development",
-    ]);
   });
 });
 
