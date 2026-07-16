@@ -1,7 +1,6 @@
 <script lang="ts">
   import {
     Controls,
-    MiniMap,
     SvelteFlow,
     type Node,
     type NodeTypes,
@@ -10,6 +9,7 @@
   import { useLiveQuery } from "@tanstack/svelte-db";
   import { SvelteMap } from "svelte/reactivity";
   import "@xyflow/svelte/dist/style.css";
+  import ClickableMiniMap from "./components/ClickableMiniMap.svelte";
   import MemoryNodeComponent from "./components/MemoryNode.svelte";
   import TagEditor from "./components/TagEditor.svelte";
   import { setCardPersistence } from "./lib/card-persistence";
@@ -312,7 +312,7 @@
         onnodedragstop={saveMovedCards}
       >
         <Controls showLock={false} fitViewOptions={{ maxZoom: 1 }} />
-        <MiniMap nodeColor={getMiniMapFill} nodeStrokeColor={getMiniMapStroke} />
+        <ClickableMiniMap nodeColor={getMiniMapFill} nodeStrokeColor={getMiniMapStroke} />
       </SvelteFlow>
     </main>
   </div>
