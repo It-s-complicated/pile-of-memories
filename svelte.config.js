@@ -4,5 +4,13 @@ import adapter from "@sveltejs/adapter-auto";
 export default {
   kit: {
     adapter: adapter(),
+    experimental: {
+      remoteFunctions: true,
+    },
+  },
+  compilerOptions: {
+    experimental: {
+      async: true,
+    },
   },
 };
