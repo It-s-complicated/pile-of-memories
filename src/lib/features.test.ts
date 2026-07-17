@@ -6,7 +6,19 @@ import {
   jaccardSimilarity,
   reflowClusters,
 } from "./cluster-layout";
-import { enrichmentInputSchema, enrichmentOutputSchema, fallbackTitle } from "./enrichment";
+import {
+  enrichmentInputSchema,
+  enrichmentOutputSchema,
+  enrichmentRequestSchema,
+  enrichmentResponseSchema,
+  fallbackTitle,
+} from "./enrichment";
+import {
+  cardCreationProvenanceSchema,
+  compareTagFingerprints,
+  normalizeAnalyticsTags,
+  ratioOrNull,
+} from "./enrichment-analytics";
 import { canonicalizeLabels, partitionLabels } from "./labels";
 import { parseMarkdown } from "./markdown";
 
@@ -118,9 +130,56 @@ describe("AI contracts", () => {
     });
   });
 
+  it("validates correlated HTTP request and response contracts", () => {
+    const attemptId = "00000000-0000-4000-8000-000000000001";
+    expect(
+      enrichmentRequestSchema.parse({ attemptId, description: " Memory ", existingTags: [] }),
+    ).toEqual({ attemptId, description: "Memory", existingTags: [] });
+    expect(
+      enrichmentRequestSchema.safeParse({ description: "Memory", existingTags: [] }).success,
+    ).toBe(false);
+    expect(enrichmentResponseSchema.parse({ attemptId, title: "Title", tags: ["CSS"] })).toEqual({
+      attemptId,
+      title: "Title",
+      tags: ["CSS"],
+    });
+  });
+
   it("builds a fallback title without losing the description", () => {
     const description = `\n\n${"A".repeat(100)}\nsecond line`;
     expect(fallbackTitle(description)).toBe("A".repeat(80));
     expect(description).toContain("second line");
+  });
+});
+
+describe("enrichment analytics", () => {
+  it("canonicalizes tag comparisons and reports empty ratios as null", () => {
+    expect(normalizeAnalyticsTags([" CSS ", "css", "Job"])).toEqual(["css", "job"]);
+    expect(compareTagFingerprints(["css", "job"], ["css", "new"])).toEqual({
+      generatedTagCount: 2,
+      finalTagCount: 2,
+      retainedTagCount: 1,
+      removedTagCount: 1,
+      addedTagCount: 1,
+      generatedTagAcceptance: 0.5,
+      finalTagCoverage: 0.5,
+    });
+    expect(ratioOrNull(0, 0)).toBeNull();
+    expect(compareTagFingerprints([], []).generatedTagAcceptance).toBeNull();
+  });
+
+  it("validates bounded creation provenance", () => {
+    const valid = {
+      enrichmentAttemptId: "00000000-0000-4000-8000-000000000001",
+      resultSource: "cache",
+      reviewStartedAt: "2026-01-01T12:00:00.000Z",
+    };
+    expect(cardCreationProvenanceSchema.parse(valid)).toEqual(valid);
+    expect(
+      cardCreationProvenanceSchema.safeParse({ ...valid, resultSource: "manual" }).success,
+    ).toBe(false);
+    expect(
+      cardCreationProvenanceSchema.safeParse({ ...valid, privateTitle: "secret" }).success,
+    ).toBe(false);
   });
 });

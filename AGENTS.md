@@ -24,6 +24,7 @@ Memory cards are Svelte Flow nodes with `type === "memory"`.
 
 - Keep changes small and app-shaped.
 - Prefer Svelte Flow APIs over custom canvas code.
+- Prefer Zod schemas with inferred types over hand-written runtime validators and type guards.
 
 ## Available Svelte MCP Tools:
 

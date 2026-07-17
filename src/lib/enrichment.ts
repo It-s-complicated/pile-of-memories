@@ -1,7 +1,5 @@
 import { z } from "zod";
-import { canonicalizeLabels, MAX_LABEL_LENGTH } from "./labels";
-
-const labelSchema = z.string().trim().min(1).max(MAX_LABEL_LENGTH);
+import { canonicalizeLabels, labelSchema } from "./labels";
 
 export const enrichmentInputSchema = z
   .object({
@@ -21,8 +19,18 @@ export const enrichmentOutputSchema = z
   })
   .strict();
 
+export const enrichmentRequestSchema = enrichmentInputSchema.safeExtend({
+  attemptId: z.string().uuid(),
+});
+
+export const enrichmentResponseSchema = enrichmentOutputSchema.safeExtend({
+  attemptId: z.string().uuid(),
+});
+
 export type EnrichmentInput = z.infer<typeof enrichmentInputSchema>;
 export type EnrichmentOutput = z.infer<typeof enrichmentOutputSchema>;
+export type EnrichmentRequest = z.infer<typeof enrichmentRequestSchema>;
+export type EnrichmentResponse = z.infer<typeof enrichmentResponseSchema>;
 
 export function fallbackTitle(description: string): string {
   return (
@@ -34,7 +42,7 @@ export function fallbackTitle(description: string): string {
   );
 }
 
-export async function requestEnrichment(input: EnrichmentInput): Promise<EnrichmentOutput> {
+export async function requestEnrichment(input: EnrichmentRequest): Promise<EnrichmentResponse> {
   const response = await fetch("/api/memories/enrich", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -43,5 +51,7 @@ export async function requestEnrichment(input: EnrichmentInput): Promise<Enrichm
   });
 
   if (!response.ok) throw new Error("AI enrichment is unavailable");
-  return enrichmentOutputSchema.parse(await response.json());
+  const enrichment = enrichmentResponseSchema.parse(await response.json());
+  if (enrichment.attemptId !== input.attemptId) throw new Error("AI enrichment is unavailable");
+  return enrichment;
 }

@@ -16,6 +16,7 @@
   import { cardsCollection, deleteCard, insertCard, updateCard } from "./lib/cards-collection";
   import { findClusterPosition, reflowClusters } from "./lib/cluster-layout";
   import { fallbackTitle, requestEnrichment } from "./lib/enrichment";
+  import type { CardCreationProvenance } from "./lib/enrichment-analytics";
   import { canonicalizeLabels, partitionLabels, PRIMARY_TAGS, TOPIC_TAGS } from "./lib/labels";
   import { parseMarkdown } from "./lib/markdown";
   import {
@@ -36,7 +37,12 @@
     { label: "Forest", color: "#2f6b4f" },
   ] as const;
 
-  type CachedEnrichment = { title: string; tags: string[]; warning: string };
+  type CachedEnrichment = {
+    attemptId: string;
+    title: string;
+    tags: string[];
+    warning: string;
+  };
 
   const nodeTypes = { memory: MemoryNodeComponent } satisfies NodeTypes;
   const cardsQuery = useLiveQuery((query) => query.from({ card: cardsCollection }));
@@ -83,6 +89,8 @@
   let memoryBody = $state("");
   let memoryLabels = $state<string[]>([]);
   let enrichmentWarning = $state("");
+  let creationProvenance = $state<CardCreationProvenance>();
+  let enrichmentGeneration = 0;
   let enrichingMemory = $state(false);
   let boardReady = $derived(cardsQuery.isReady);
   let savingMemory = $state(false);
@@ -114,13 +122,22 @@
   }
 
   function openNewMemoryDialog(): void {
+    enrichmentGeneration += 1;
     memoryTitle = "";
     memoryBody = "";
     memoryLabels = [];
     enrichmentWarning = "";
+    creationProvenance = undefined;
+    enrichingMemory = false;
     persistenceError = "";
     newMemoryStep = "capture";
     newMemoryOpen = true;
+  }
+
+  function closeNewMemoryDialog(): void {
+    enrichmentGeneration += 1;
+    enrichingMemory = false;
+    newMemoryOpen = false;
   }
 
   function openArchive(): void {
@@ -168,30 +185,47 @@
     const description = memoryBody.trim();
     if (!description) return;
 
+    const generation = enrichmentGeneration;
     enrichingMemory = true;
     enrichmentWarning = "";
     try {
       let enrichment = enrichmentCache.get(description);
+      let resultSource: CardCreationProvenance["resultSource"] = "cache";
       if (!enrichment) {
+        const attemptId = crypto.randomUUID();
         try {
-          const result = await requestEnrichment({ description, existingTags: tagVocabulary });
+          const result = await requestEnrichment({
+            attemptId,
+            description,
+            existingTags: tagVocabulary,
+          });
           enrichment = { ...result, warning: "" };
           enrichmentCache.set(description, enrichment);
+          resultSource = "ai";
         } catch {
           enrichment = {
+            attemptId,
             title: fallbackTitle(memoryBody),
             tags: [],
             warning: "AI suggestions were unavailable. You can finish this memory manually.",
           };
+          resultSource = "fallback";
         }
       }
+
+      if (generation !== enrichmentGeneration || memoryBody.trim() !== description) return;
 
       memoryTitle = enrichment.title;
       memoryLabels = enrichment.tags;
       enrichmentWarning = enrichment.warning;
+      creationProvenance = {
+        enrichmentAttemptId: enrichment.attemptId,
+        resultSource,
+        reviewStartedAt: new Date().toISOString(),
+      };
       newMemoryStep = "review";
     } finally {
-      enrichingMemory = false;
+      if (generation === enrichmentGeneration) enrichingMemory = false;
     }
   }
 
@@ -222,7 +256,7 @@
     savingMemory = true;
     persistenceError = "";
     try {
-      await insertCard(memoryNodeToCard(node));
+      await insertCard(memoryNodeToCard(node), creationProvenance);
       newMemoryOpen = false;
     } catch (error) {
       persistenceError = getErrorMessage(error);
@@ -321,7 +355,7 @@
     <dialog
       class="memory-dialog"
       aria-labelledby="new-memory-title"
-      onclose={() => (newMemoryOpen = false)}
+      onclose={closeNewMemoryDialog}
       {@attach showModal}
     >
       {#if newMemoryStep === "capture"}
@@ -337,11 +371,12 @@
               rows="12"
               maxlength="8000"
               required
+              disabled={enrichingMemory}
               {@attach focusCapture}
             ></textarea>
           </label>
           <footer>
-            <button type="button" class="secondary-button" onclick={() => (newMemoryOpen = false)}>
+            <button type="button" class="secondary-button" onclick={closeNewMemoryDialog}>
               Cancel
             </button>
             <button type="submit" class="card-button" disabled={enrichingMemory}>
