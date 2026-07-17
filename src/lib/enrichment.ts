@@ -41,17 +41,3 @@ export function fallbackTitle(description: string): string {
       ?.slice(0, 80) || "Untitled memory"
   );
 }
-
-export async function requestEnrichment(input: EnrichmentRequest): Promise<EnrichmentResponse> {
-  const response = await fetch("/api/memories/enrich", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(input),
-    signal: AbortSignal.timeout(60_000),
-  });
-
-  if (!response.ok) throw new Error("AI enrichment is unavailable");
-  const enrichment = enrichmentResponseSchema.parse(await response.json());
-  if (enrichment.attemptId !== input.attemptId) throw new Error("AI enrichment is unavailable");
-  return enrichment;
-}

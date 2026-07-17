@@ -15,8 +15,9 @@
   import { setCardPersistence } from "./lib/card-persistence";
   import { cardsCollection, deleteCard, insertCard, updateCard } from "./lib/cards-collection";
   import { findClusterPosition, reflowClusters } from "./lib/cluster-layout";
-  import { fallbackTitle, requestEnrichment } from "./lib/enrichment";
+  import { fallbackTitle } from "./lib/enrichment";
   import type { CardCreationProvenance } from "./lib/enrichment-analytics";
+  import { enrichMemory } from "./lib/enrichment.remote";
   import { canonicalizeLabels, partitionLabels, PRIMARY_TAGS, TOPIC_TAGS } from "./lib/labels";
   import { parseMarkdown } from "./lib/markdown";
   import {
@@ -192,10 +193,8 @@
       let enrichment = enrichmentCache.get(description);
       let resultSource: CardCreationProvenance["resultSource"] = "cache";
       if (!enrichment) {
-        const attemptId = crypto.randomUUID();
         try {
-          const result = await requestEnrichment({
-            attemptId,
+          const result = await enrichMemory({
             description,
             existingTags: tagVocabulary,
           });
@@ -204,7 +203,7 @@
           resultSource = "ai";
         } catch {
           enrichment = {
-            attemptId,
+            attemptId: crypto.randomUUID(),
             title: fallbackTitle(memoryBody),
             tags: [],
             warning: "AI suggestions were unavailable. You can finish this memory manually.",
