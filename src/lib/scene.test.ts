@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { parseCardChanges, parseCardInput } from "./card";
+import { parseCardChanges, parseCardInput, parseCreateCardRequest } from "./card";
 import {
   getMemoryBackground,
   getPrimaryTagAccent,
@@ -45,6 +45,20 @@ describe("card writes", () => {
       links: [],
     });
     expect(parseCardChanges({ links: [] })).toBeNull();
+  });
+
+  it("accepts the creation envelope without allowing extra analytics payload", () => {
+    const creation = {
+      enrichmentAttemptId: "00000000-0000-4000-8000-000000000002",
+      resultSource: "ai",
+      reviewStartedAt: "2026-01-01T12:00:00.000Z",
+    };
+    expect(parseCreateCardRequest({ card, creation })).toMatchObject({
+      card: { title: "Capture" },
+      creation,
+    });
+    expect(parseCreateCardRequest(card)).toBeNull();
+    expect(parseCreateCardRequest({ card, creation, generatedTitle: "private" })).toBeNull();
   });
 
   it("rejects invalid IDs, positions, and partial label updates", () => {

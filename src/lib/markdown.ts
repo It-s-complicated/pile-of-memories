@@ -1,13 +1,12 @@
 import { Lexer, marked, type Token, type TokensList } from "marked";
+import { z } from "zod";
 
 export type ParsedMarkdown = { tokens: Token[]; links: string[] };
 
+export const httpUrlSchema = z.url({ protocol: /^https?$/ });
+
 export function isHttpUrl(value: string): boolean {
-  try {
-    return ["http:", "https:"].includes(new URL(value).protocol);
-  } catch {
-    return false;
-  }
+  return httpUrlSchema.safeParse(value).success;
 }
 
 export function parseMarkdown(source: string): ParsedMarkdown {

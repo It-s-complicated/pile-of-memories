@@ -1,7 +1,12 @@
+import { z } from "zod";
+
 export const PRIMARY_TAGS = ["Web development", "Job", "Personal development"] as const;
 export const TOPIC_TAGS = ["Local-first", "CSS", "Hosting", "Vue", "React", "Finance"] as const;
 export const MAX_LABEL_LENGTH = 40;
 export const MAX_LABELS = 200;
+
+export const labelSchema = z.string().trim().min(1).max(MAX_LABEL_LENGTH);
+export const labelsSchema = z.array(labelSchema).max(MAX_LABELS);
 
 const primaryTags = new Map(PRIMARY_TAGS.map((tag) => [tag.toLowerCase(), tag]));
 
@@ -25,17 +30,4 @@ export function partitionLabels(labels: string[]): { tags: string[]; topics: str
   }
 
   return { tags, topics };
-}
-
-export function labelsAreValid(labels: unknown): labels is string[] {
-  return (
-    Array.isArray(labels) &&
-    labels.length <= MAX_LABELS &&
-    labels.every(
-      (label) =>
-        typeof label === "string" &&
-        label.trim().length > 0 &&
-        label.trim().length <= MAX_LABEL_LENGTH,
-    )
-  );
 }

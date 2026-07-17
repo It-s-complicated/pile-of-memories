@@ -1,6 +1,7 @@
 import { error, json } from "@sveltejs/kit";
-import { parseCardInput } from "$lib/card";
-import { insertCard, listCards } from "$lib/server/database";
+import { parseCreateCardRequest } from "$lib/card";
+import { insertCard, listCards, recordEnrichmentReview } from "$lib/server/database";
+import { buildReviewAnalyticsJob, reportAnalyticsFailure } from "$lib/server/enrichment-analytics";
 import { requirePrivateBoard } from "$lib/server/private-board";
 import type { RequestHandler } from "./$types";
 
@@ -11,8 +12,18 @@ export const GET: RequestHandler = async () => {
 
 export const POST: RequestHandler = async ({ request }) => {
   requirePrivateBoard();
-  const card = parseCardInput(await request.json().catch(() => null));
-  if (!card) error(400, "Invalid card");
+  const input = parseCreateCardRequest(await request.json().catch(() => null));
+  if (!input) error(400, "Invalid card");
 
-  return json(await insertCard(card), { status: 201 });
+  const card = await insertCard(input.card);
+  if (input.creation) {
+    try {
+      const job = buildReviewAnalyticsJob(card, input.creation);
+      void recordEnrichmentReview(job).catch(() => reportAnalyticsFailure("record_review"));
+    } catch {
+      reportAnalyticsFailure("build_review");
+    }
+  }
+
+  return json(card, { status: 201 });
 };
