@@ -6,13 +6,11 @@
     type NodeTypes,
     type Viewport,
   } from "@xyflow/svelte";
-  import { onDestroy } from "svelte";
   import { SvelteMap } from "svelte/reactivity";
   import "@xyflow/svelte/dist/style.css";
   import ClickableMiniMap from "./components/ClickableMiniMap.svelte";
   import MemoryNodeComponent from "./components/MemoryNode.svelte";
   import TagEditor from "./components/TagEditor.svelte";
-  import { createCardOverlay } from "./lib/card-overlay.svelte";
   import { setCardPersistence } from "./lib/card-persistence";
   import {
     createCard,
@@ -54,42 +52,17 @@
 
   const nodeTypes = { memory: MemoryNodeComponent } satisfies NodeTypes;
   const cardsQuery = getLiveCards();
-  const overlay = createCardOverlay(
-    () => cardsQuery.current ?? [],
-    {
-      create: createCard,
-      update: updateCard,
-      updatePositions: updateCardPositions,
-      delete: deleteCard,
-    },
-    () => cardsQuery.reconnect(),
-  );
   const enrichmentCache = new SvelteMap<string, CachedEnrichment>();
   setCardPersistence({
     async update(id, changes) {
-      try {
-        await overlay.update(id, changes);
-      } catch (error) {
-        persistenceError = getErrorMessage(error);
-        throw error;
-      }
+      await updateCard({ id, changes });
     },
     async delete(id) {
-      try {
-        await overlay.delete(id);
-      } catch (error) {
-        persistenceError = getErrorMessage(error);
-        throw error;
-      }
+      await deleteCard({ id });
     },
   });
-  onDestroy(() => overlay.destroy());
-  $effect(() => {
-    const snapshot = cardsQuery.current;
-    if (snapshot) overlay.authoritative = snapshot;
-  });
 
-  let cards = $derived(overlay.effectiveCards(cardsQuery.current ?? []));
+  let cards = $derived(cardsQuery.current ?? []);
   let primaryColor = $state<string>(getInitialPrimaryColor());
   let tagVocabulary = $derived(
     canonicalizeLabels([
@@ -173,7 +146,7 @@
     archiveBusyId = id;
     archiveError = "";
     try {
-      await overlay.update(id, { archived: false });
+      await updateCard({ id, changes: { archived: false } });
     } catch (error) {
       archiveError = getErrorMessage(error);
     } finally {
@@ -187,7 +160,7 @@
     archiveBusyId = id;
     archiveError = "";
     try {
-      await overlay.delete(id);
+      await deleteCard({ id });
     } catch (error) {
       archiveError = getErrorMessage(error);
     } finally {
@@ -278,7 +251,10 @@
     savingMemory = true;
     persistenceError = "";
     try {
-      await overlay.create(memoryNodeToCard(node), creationProvenance);
+      await createCard({
+        card: memoryNodeToCard(node),
+        ...(creationProvenance ? { creation: creationProvenance } : {}),
+      });
       newMemoryOpen = false;
     } catch (error) {
       persistenceError = getErrorMessage(error);
@@ -290,22 +266,24 @@
   async function saveMovedCards({ nodes: movedNodes }: { nodes: MemoryNode[] }) {
     persistenceError = "";
     try {
-      await overlay.updatePositions(
-        movedNodes.map(({ id, position }) => ({ id, position })),
-      );
+      await updateCardPositions({
+        positions: movedNodes.map(({ id, position }) => ({ id, position })),
+      });
     } catch (error) {
       persistenceError = getErrorMessage(error);
+      void cardsQuery.reconnect();
     }
   }
 
   async function reorganizeClusters(): Promise<void> {
     persistenceError = "";
     try {
-      await overlay.updatePositions(
-        reflowClusters(nodes).map(({ id, position }) => ({ id, position })),
-      );
+      await updateCardPositions({
+        positions: reflowClusters(nodes).map(({ id, position }) => ({ id, position })),
+      });
     } catch (error) {
       persistenceError = getErrorMessage(error);
+      void cardsQuery.reconnect();
     }
   }
 </script>
@@ -349,7 +327,7 @@
         <p role="alert">Database unavailable</p>
       {:else if !boardReady}
         <p role="status">Loading board…</p>
-      {:else if !cardsQuery.connected || overlay.stale}
+      {:else if !cardsQuery.connected}
         <p role="status">
           Live updates paused.
           <button type="button" class="edit-button" onclick={() => cardsQuery.reconnect()}>

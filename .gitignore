@@ -4,6 +4,5 @@ build
 dist
 .data
 .output
-docs/*
-!docs/live-card-query-plan.md
+docs
 .env
