@@ -7,6 +7,7 @@
     "dev": "vp dev",
     "build": "vp build",
     "preview": "vp preview",
+    "db:migrate": "psql \"$DATABASE_CONNECTION_STRING\" -v ON_ERROR_STOP=1 -f migrations/0001_cards.sql",
     "svelte-check": "svelte-check --tsconfig ./tsconfig.json",
     "prepare": "svelte-kit sync"
   },
@@ -14,10 +15,6 @@
     "@humanspeak/svelte-markdown": "~1.8.4",
     "@tanstack/ai": "^0.40.0",
     "@tanstack/ai-openai": "^0.16.0",
-    "@tanstack/db": "^0.6.14",
-    "@tanstack/query-core": "^5.101.2",
-    "@tanstack/query-db-collection": "^1.0.47",
-    "@tanstack/svelte-db": "^0.1.91",
     "@xyflow/svelte": "^1.6.2",
     "marked": "^18.0.6",
     "postgres": "^3.4.9",
@@ -25,7 +22,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@sveltejs/adapter-auto": "^7.0.1",
+    "@sveltejs/adapter-node": "^5.5.7",
     "@sveltejs/kit": "^2.69.3",
     "@types/node": "^26.1.1",
     "agent-browser": "^0.31.2",

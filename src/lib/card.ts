@@ -10,6 +10,7 @@ export function isCardId(value: unknown): value is string {
 }
 
 const positionSchema = z.object({ x: z.number().finite(), y: z.number().finite() }).strict();
+export const CARD_POSITION_BATCH_LIMIT = 200;
 
 export const cardInputSchema = z
   .object({
@@ -85,6 +86,20 @@ export const updateCardCommandSchema = z
   .strict();
 
 export const deleteCardCommandSchema = z.object({ id: cardIdSchema }).strict();
+
+const cardPositionUpdateSchema = z.object({ id: cardIdSchema, position: positionSchema }).strict();
+
+export const updateCardPositionsCommandSchema = z
+  .object({
+    positions: z.array(cardPositionUpdateSchema).min(1).max(CARD_POSITION_BATCH_LIMIT),
+  })
+  .strict()
+  .refine(({ positions }) => new Set(positions.map(({ id }) => id)).size === positions.length, {
+    message: "Card IDs must be unique",
+    path: ["positions"],
+  });
+
+export type CardPositionUpdate = z.infer<typeof cardPositionUpdateSchema>;
 
 export function parseCardInput(value: unknown): CardInput | null {
   const result = cardInputSchema.safeParse(value);

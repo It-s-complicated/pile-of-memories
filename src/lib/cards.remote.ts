@@ -1,9 +1,10 @@
-import { command, query } from "$app/server";
+import { command, getRequestEvent, query } from "$app/server";
 import { error } from "@sveltejs/kit";
 import {
   createCardRequestSchema,
   deleteCardCommandSchema,
   updateCardCommandSchema,
+  updateCardPositionsCommandSchema,
 } from "$lib/card";
 import {
   insertCard as insertCardInDatabase,
@@ -11,7 +12,9 @@ import {
   recordEnrichmentReview,
   removeCard as removeCardFromDatabase,
   updateCard as updateCardInDatabase,
+  updateCardPositions as updateCardPositionsInDatabase,
 } from "$lib/server/database";
+import { streamCardSnapshots } from "$lib/server/card-changes";
 import { buildReviewAnalyticsJob, reportAnalyticsFailure } from "$lib/server/enrichment-analytics";
 import { requirePrivateBoard } from "$lib/server/private-board";
 
@@ -19,12 +22,14 @@ function databaseUnavailable(): never {
   error(503, "Database unavailable");
 }
 
-export const getCards = query(async () => {
+export const getLiveCards = query.live(async function* () {
   requirePrivateBoard();
+  const signal = getRequestEvent().request.signal;
+
   try {
-    return await listCards();
+    yield* streamCardSnapshots(listCards, signal);
   } catch {
-    databaseUnavailable();
+    if (!signal.aborted) databaseUnavailable();
   }
 });
 
@@ -63,6 +68,23 @@ export const updateCard = command(updateCardCommandSchema, async ({ id, changes 
   if (!card) error(404, "Card not found");
   return card;
 });
+
+export const updateCardPositions = command(
+  updateCardPositionsCommandSchema,
+  async ({ positions }) => {
+    requirePrivateBoard();
+
+    let cards;
+    try {
+      cards = await updateCardPositionsInDatabase(positions);
+    } catch {
+      databaseUnavailable();
+    }
+
+    if (!cards) error(404, "Card not found");
+    return cards;
+  },
+);
 
 export const deleteCard = command(deleteCardCommandSchema, async ({ id }) => {
   requirePrivateBoard();

@@ -1,6 +1,6 @@
 import { env } from "$env/dynamic/private";
 import postgres from "postgres";
-import type { Card, CardChanges, CardInput } from "../card";
+import type { Card, CardChanges, CardInput, CardPositionUpdate } from "../card";
 import {
   compareTagFingerprints,
   type EnrichmentAttemptFailed,
@@ -11,7 +11,6 @@ import {
 import { parseMarkdown } from "../markdown";
 
 let database: ReturnType<typeof postgres> | undefined;
-let schemaReady: Promise<unknown> | undefined;
 let analyticsSchemaReady: Promise<unknown> | undefined;
 
 function getSql(): ReturnType<typeof postgres> {
@@ -35,34 +34,8 @@ type CardRow = {
   updated_at: Date;
 };
 
-function ensureSchema(): Promise<unknown> {
-  return (schemaReady ??= (async () => {
-    const sql = getSql();
-    await sql`
-      CREATE TABLE IF NOT EXISTS cards (
-        id uuid PRIMARY KEY,
-        title text NOT NULL CHECK (btrim(title) <> ''),
-        body text NOT NULL,
-        x double precision NOT NULL,
-        y double precision NOT NULL,
-        tags text[] NOT NULL DEFAULT ARRAY[]::text[],
-        topics text[] NOT NULL DEFAULT ARRAY[]::text[],
-        links text[] NOT NULL DEFAULT ARRAY[]::text[],
-        archived boolean NOT NULL DEFAULT false,
-        created_at timestamptz NOT NULL DEFAULT now(),
-        updated_at timestamptz NOT NULL DEFAULT now()
-      )
-    `;
-    await sql`ALTER TABLE cards ADD COLUMN IF NOT EXISTS archived boolean NOT NULL DEFAULT false`;
-  })().catch((error) => {
-    schemaReady = undefined;
-    throw error;
-  }));
-}
-
 function ensureAnalyticsSchema(): Promise<unknown> {
   return (analyticsSchemaReady ??= (async () => {
-    await ensureSchema();
     const sql = getSql();
     await sql`
       CREATE TABLE IF NOT EXISTS analytics_ai_enrichment_attempts (
@@ -254,14 +227,12 @@ async function findCard(id: string): Promise<Card | null> {
 }
 
 export async function listCards(): Promise<Card[]> {
-  await ensureSchema();
   const sql = getSql();
   const rows = await sql<CardRow[]>`SELECT * FROM cards ORDER BY created_at, id`;
   return rows.map(toCard);
 }
 
 export async function insertCard(card: CardInput): Promise<Card> {
-  await ensureSchema();
   const sql = getSql();
   const [row] = await sql<CardRow[]>`
     INSERT INTO cards (id, title, body, x, y, tags, topics, links, archived)
@@ -279,7 +250,6 @@ export async function insertCard(card: CardInput): Promise<Card> {
 }
 
 export async function updateCard(id: string, changes: CardChanges): Promise<Card | null> {
-  await ensureSchema();
   const sql = getSql();
   const values: Record<string, string | number | boolean | string[] | Date> = {
     updated_at: new Date(),
@@ -303,10 +273,38 @@ export async function updateCard(id: string, changes: CardChanges): Promise<Card
 }
 
 export async function removeCard(id: string): Promise<boolean> {
-  await ensureSchema();
   const sql = getSql();
   const result = await sql`DELETE FROM cards WHERE id = ${id}`;
   return result.count > 0;
+}
+
+class MissingCardInPositionBatch extends Error {}
+
+export async function updateCardPositions(positions: CardPositionUpdate[]): Promise<Card[] | null> {
+  const sql = getSql();
+
+  try {
+    return await sql.begin(async (transaction) => {
+      const rows = await transaction<CardRow[]>`
+        UPDATE cards AS card
+        SET x = position.x, y = position.y, updated_at = now()
+        FROM unnest(
+          ${positions.map(({ id }) => id)}::uuid[],
+          ${positions.map(({ position }) => position.x)}::double precision[],
+          ${positions.map(({ position }) => position.y)}::double precision[]
+        ) AS position(id, x, y)
+        WHERE card.id = position.id
+        RETURNING card.*
+      `;
+
+      if (rows.length !== positions.length) throw new MissingCardInPositionBatch();
+      const cards = new Map(rows.map((row) => [row.id, toCard(row)]));
+      return positions.map(({ id }) => cards.get(id)!);
+    });
+  } catch (error) {
+    if (error instanceof MissingCardInPositionBatch) return null;
+    throw error;
+  }
 }
 
 export async function recordEnrichmentAttemptStarted(
