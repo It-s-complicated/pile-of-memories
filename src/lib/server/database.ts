@@ -1,4 +1,4 @@
-import { env } from "$env/dynamic/private";
+import { DATABASE_CONNECTION_STRING } from "$app/env/private";
 import postgres from "postgres";
 import type { Card, CardChanges, CardInput, CardPositionUpdate } from "../card";
 import {
@@ -14,10 +14,10 @@ let database: ReturnType<typeof postgres> | undefined;
 let analyticsSchemaReady: Promise<unknown> | undefined;
 
 function getSql(): ReturnType<typeof postgres> {
-  if (!env.DATABASE_CONNECTION_STRING) {
+  if (!DATABASE_CONNECTION_STRING) {
     throw new Error("DATABASE_CONNECTION_STRING is not set");
   }
-  return (database ??= postgres(env.DATABASE_CONNECTION_STRING, { ssl: "require" }));
+  return (database ??= postgres(DATABASE_CONNECTION_STRING, { ssl: "require" }));
 }
 
 type CardRow = {

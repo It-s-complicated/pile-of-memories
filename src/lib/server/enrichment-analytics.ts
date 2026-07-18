@@ -1,15 +1,15 @@
-import { env } from "$env/dynamic/private";
+import { ANALYTICS_FINGERPRINT_KEY } from "$app/env/private";
 import { createHmac } from "node:crypto";
 import { z } from "zod";
-import type { Card } from "$lib/card";
+import type { Card } from "#lib/card.js";
 import {
   normalizeAnalyticsTags,
   type CardCreationProvenance,
   type EnrichmentAttemptStarted,
   type EnrichmentAttemptSucceeded,
   type EnrichmentReviewJob,
-} from "$lib/enrichment-analytics";
-import type { EnrichmentInput, EnrichmentOutput } from "$lib/enrichment";
+} from "#lib/enrichment-analytics.js";
+import type { EnrichmentInput, EnrichmentOutput } from "#lib/enrichment.js";
 import {
   ENRICHMENT_MODEL,
   ENRICHMENT_PROMPT_VERSION,
@@ -51,7 +51,7 @@ export function buildAttemptSucceeded(
   input: EnrichmentInput,
   output: EnrichmentOutput,
   execution: EnrichmentExecution,
-  fingerprintKeyValue: string | undefined = env.ANALYTICS_FINGERPRINT_KEY,
+  fingerprintKeyValue: string | undefined = ANALYTICS_FINGERPRINT_KEY,
 ): EnrichmentAttemptSucceeded {
   const key = fingerprintKeySchema.parse(fingerprintKeyValue);
   const normalizedGeneratedTags = normalizeAnalyticsTags(output.tags);
@@ -76,7 +76,7 @@ function reviewDuration(reviewStartedAt?: string): number | null {
 export function buildReviewAnalyticsJob(
   card: Card,
   creation: CardCreationProvenance,
-  fingerprintKeyValue: string | undefined = env.ANALYTICS_FINGERPRINT_KEY,
+  fingerprintKeyValue: string | undefined = ANALYTICS_FINGERPRINT_KEY,
 ): EnrichmentReviewJob {
   const key = fingerprintKeySchema.parse(fingerprintKeyValue);
   const finalTags = [...card.tags, ...card.topics];
@@ -95,7 +95,7 @@ export function buildReviewAnalyticsJob(
 }
 
 export function hasAnalyticsFingerprintKey(
-  fingerprintKeyValue: string | undefined = env.ANALYTICS_FINGERPRINT_KEY,
+  fingerprintKeyValue: string | undefined = ANALYTICS_FINGERPRINT_KEY,
 ): boolean {
   return fingerprintKeySchema.parse(fingerprintKeyValue) !== null;
 }

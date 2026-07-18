@@ -3,6 +3,9 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "imports": {
+    "#lib/*": "./src/lib/*"
+  },
   "scripts": {
     "dev": "vp dev",
     "build": "vp build",
@@ -22,8 +25,8 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@sveltejs/adapter-node": "^5.5.7",
-    "@sveltejs/kit": "^2.69.3",
+    "@sveltejs/adapter-node": "6.0.0-next.4",
+    "@sveltejs/kit": "3.0.0-next.10",
     "@types/node": "^26.1.1",
     "agent-browser": "^0.31.2",
     "svelte-check": "^4.7.2",
@@ -42,6 +45,9 @@
         "name": "npm"
       }
     ]
+  },
+  "engines": {
+    "node": ">=22"
   },
   "allowScripts": {
     "file:../../lightningcss@1.32.0/node_modules/lightningcss": true,

@@ -1,15 +1,15 @@
 <script lang="ts">
   import { type NodeProps, useSvelteFlow } from "@xyflow/svelte";
-  import { getCardPersistence } from "$lib/card-persistence";
-  import { partitionLabels } from "$lib/labels";
-  import { parseMarkdown } from "$lib/markdown";
+  import { getCardPersistence } from "#lib/card-persistence.js";
+  import { partitionLabels } from "#lib/labels.js";
+  import { parseMarkdown } from "#lib/markdown.js";
   import {
     getMemoryBackground,
     getPrimaryTagAccent,
     getTopicBorder,
     getTopicTagColor,
     type MemoryNode,
-  } from "$lib/scene";
+  } from "#lib/scene.js";
   import MemoryMarkdown from "./MemoryMarkdown.svelte";
   import TagEditor from "./TagEditor.svelte";
 

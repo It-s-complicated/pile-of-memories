@@ -3,7 +3,7 @@
     allowRenderersOnly,
     buildUnsupportedHTML,
   } from "@humanspeak/svelte-markdown";
-  import { isHttpUrl, type ParsedMarkdown } from "$lib/markdown";
+  import { isHttpUrl, type ParsedMarkdown } from "#lib/markdown.js";
 
   let { parsed }: { parsed: ParsedMarkdown } = $props();
   const renderers = {
