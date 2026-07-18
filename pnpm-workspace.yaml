@@ -18,3 +18,5 @@ peerDependencyRules:
 allowBuilds:
   agent-browser: true
   esbuild: true
+minimumReleaseAgeExclude:
+  - "@sveltejs/kit@3.0.0-next.10"

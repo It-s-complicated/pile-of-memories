@@ -1,3 +1,4 @@
+import adapter from "@sveltejs/adapter-node";
 import { defineConfig, lazyPlugins } from "vite-plus";
 
 export default defineConfig({
@@ -11,6 +12,10 @@ export default defineConfig({
   },
   plugins: lazyPlugins(async () => {
     const { sveltekit } = await import("@sveltejs/kit/vite");
-    return sveltekit();
+    return sveltekit({
+      adapter: adapter(),
+      experimental: { remoteFunctions: true },
+      compilerOptions: { experimental: { async: true } },
+    });
   }),
 });

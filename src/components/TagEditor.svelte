@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { canonicalizeLabels, MAX_LABEL_LENGTH } from "$lib/labels";
+  import { canonicalizeLabels, MAX_LABEL_LENGTH } from "#lib/labels.js";
 
   interface Props {
     id: string;

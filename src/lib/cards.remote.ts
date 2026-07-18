@@ -5,7 +5,7 @@ import {
   deleteCardCommandSchema,
   updateCardCommandSchema,
   updateCardPositionsCommandSchema,
-} from "$lib/card";
+} from "#lib/card.js";
 import {
   insertCard as insertCardInDatabase,
   listCards,
@@ -13,10 +13,13 @@ import {
   removeCard as removeCardFromDatabase,
   updateCard as updateCardInDatabase,
   updateCardPositions as updateCardPositionsInDatabase,
-} from "$lib/server/database";
-import { streamCardSnapshots } from "$lib/server/card-changes";
-import { buildReviewAnalyticsJob, reportAnalyticsFailure } from "$lib/server/enrichment-analytics";
-import { requirePrivateBoard } from "$lib/server/private-board";
+} from "#lib/server/database.js";
+import { streamCardSnapshots } from "#lib/server/card-changes.js";
+import {
+  buildReviewAnalyticsJob,
+  reportAnalyticsFailure,
+} from "#lib/server/enrichment-analytics.js";
+import { requirePrivateBoard } from "#lib/server/private-board.js";
 
 function databaseUnavailable(): never {
   error(503, "Database unavailable");

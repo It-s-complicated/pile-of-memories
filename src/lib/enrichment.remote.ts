@@ -1,24 +1,24 @@
 import { command } from "$app/server";
 import { error } from "@sveltejs/kit";
-import { enrichmentInputSchema, enrichmentResponseSchema } from "$lib/enrichment";
-import type { EnrichmentUsage } from "$lib/enrichment-analytics";
+import { enrichmentInputSchema, enrichmentResponseSchema } from "#lib/enrichment.js";
+import type { EnrichmentUsage } from "#lib/enrichment-analytics.js";
 import {
   recordEnrichmentAttemptFailed,
   recordEnrichmentAttemptStarted,
   recordEnrichmentAttemptSucceeded,
-} from "$lib/server/database";
-import { withDeadline } from "$lib/server/deadline";
+} from "#lib/server/database.js";
+import { withDeadline } from "#lib/server/deadline.js";
 import {
   buildAttemptStarted,
   buildAttemptSucceeded,
   hasAnalyticsFingerprintKey,
   reportAnalyticsFailure,
-} from "$lib/server/enrichment-analytics";
+} from "#lib/server/enrichment-analytics.js";
 import {
   enrichMemory as enrichMemoryWithProvider,
   EnrichmentExecutionError,
-} from "$lib/server/enrichment";
-import { requirePrivateBoard } from "$lib/server/private-board";
+} from "#lib/server/enrichment.js";
+import { requirePrivateBoard } from "#lib/server/private-board.js";
 
 const RESPONSE_DEADLINE_MS = 60_000;
 const EMPTY_USAGE: EnrichmentUsage = {

@@ -1,4 +1,4 @@
-import { env } from "$env/dynamic/private";
+import { OPENCODE_GO_API_KEY } from "$app/env/private";
 import { chat, type ChatMiddleware, type TokenUsage } from "@tanstack/ai";
 import { openaiCompatible } from "@tanstack/ai-openai/compatible";
 import { z, ZodError } from "zod";
@@ -6,12 +6,12 @@ import {
   enrichmentOutputSchema,
   type EnrichmentInput,
   type EnrichmentOutput,
-} from "$lib/enrichment";
+} from "#lib/enrichment.js";
 import {
   enrichmentUsageSchema,
   type EnrichmentErrorCode,
   type EnrichmentUsage,
-} from "$lib/enrichment-analytics";
+} from "#lib/enrichment-analytics.js";
 
 export const ENRICHMENT_PROVIDER = "opencode-go";
 export const ENRICHMENT_MODEL = "deepseek-v4-flash";
@@ -101,7 +101,7 @@ export async function enrichMemory(input: EnrichmentInput): Promise<EnrichmentEx
   let middlewareDurationMs: number | undefined;
   let timedOut = false;
 
-  if (!env.OPENCODE_GO_API_KEY) {
+  if (!OPENCODE_GO_API_KEY) {
     throw new EnrichmentExecutionError(
       "configuration_missing",
       Date.now() - startedAt,
@@ -136,7 +136,7 @@ export async function enrichMemory(input: EnrichmentInput): Promise<EnrichmentEx
     const opencode = openaiCompatible({
       name: ENRICHMENT_PROVIDER,
       baseURL: "https://opencode.ai/zen/go/v1",
-      apiKey: env.OPENCODE_GO_API_KEY,
+      apiKey: OPENCODE_GO_API_KEY,
       models: [ENRICHMENT_MODEL],
     });
 
