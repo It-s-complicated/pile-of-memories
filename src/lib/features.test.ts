@@ -9,7 +9,6 @@ import {
 import {
   enrichmentInputSchema,
   enrichmentOutputSchema,
-  enrichmentRequestSchema,
   enrichmentResponseSchema,
   fallbackTitle,
 } from "./enrichment";
@@ -130,14 +129,8 @@ describe("AI contracts", () => {
     });
   });
 
-  it("validates correlated HTTP request and response contracts", () => {
+  it("validates correlated enrichment responses", () => {
     const attemptId = "00000000-0000-4000-8000-000000000001";
-    expect(
-      enrichmentRequestSchema.parse({ attemptId, description: " Memory ", existingTags: [] }),
-    ).toEqual({ attemptId, description: "Memory", existingTags: [] });
-    expect(
-      enrichmentRequestSchema.safeParse({ description: "Memory", existingTags: [] }).success,
-    ).toBe(false);
     expect(enrichmentResponseSchema.parse({ attemptId, title: "Title", tags: ["CSS"] })).toEqual({
       attemptId,
       title: "Title",

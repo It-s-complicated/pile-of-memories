@@ -19,17 +19,12 @@ export const enrichmentOutputSchema = z
   })
   .strict();
 
-export const enrichmentRequestSchema = enrichmentInputSchema.safeExtend({
-  attemptId: z.string().uuid(),
-});
-
 export const enrichmentResponseSchema = enrichmentOutputSchema.safeExtend({
   attemptId: z.string().uuid(),
 });
 
 export type EnrichmentInput = z.infer<typeof enrichmentInputSchema>;
 export type EnrichmentOutput = z.infer<typeof enrichmentOutputSchema>;
-export type EnrichmentRequest = z.infer<typeof enrichmentRequestSchema>;
 export type EnrichmentResponse = z.infer<typeof enrichmentResponseSchema>;
 
 export function fallbackTitle(description: string): string {

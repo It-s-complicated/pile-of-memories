@@ -42,8 +42,17 @@ describe("card creation validation", () => {
   });
 
   it("validates the remote creation envelope without trusting extra fields", () => {
-    expect(createCardRequestSchema.safeParse({ card: validCard }).success).toBe(true);
-    expect(createCardRequestSchema.safeParse({ card: validCard, extra: true }).success).toBe(false);
+    const creation = {
+      enrichmentAttemptId: "00000000-0000-4000-8000-000000000002",
+      resultSource: "ai",
+      reviewStartedAt: "2026-01-01T12:00:00.000Z",
+    };
+
+    expect(createCardRequestSchema.safeParse({ card: validCard, creation }).success).toBe(true);
+    expect(
+      createCardRequestSchema.safeParse({ card: validCard, creation, generatedTitle: "private" })
+        .success,
+    ).toBe(false);
     expect(isCardId(CARD_ID)).toBe(true);
     expect(isCardId("not-a-card-id")).toBe(false);
   });

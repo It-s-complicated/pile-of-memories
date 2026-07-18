@@ -3,9 +3,7 @@ import { cardCreationProvenanceSchema } from "./enrichment-analytics";
 import { labelsSchema, partitionLabels } from "./labels";
 import { httpUrlSchema, parseMarkdown } from "./markdown";
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-export const cardIdSchema = z.string().regex(UUID_PATTERN);
+export const cardIdSchema = z.uuidv4();
 
 export function isCardId(value: unknown): value is string {
   return cardIdSchema.safeParse(value).success;
@@ -79,8 +77,6 @@ export const createCardRequestSchema = z
   })
   .strict();
 
-export type CreateCardRequest = z.infer<typeof createCardRequestSchema>;
-
 export const updateCardCommandSchema = z
   .object({
     id: cardIdSchema,
@@ -92,11 +88,6 @@ export const deleteCardCommandSchema = z.object({ id: cardIdSchema }).strict();
 
 export function parseCardInput(value: unknown): CardInput | null {
   const result = cardInputSchema.safeParse(value);
-  return result.success ? result.data : null;
-}
-
-export function parseCreateCardRequest(value: unknown): CreateCardRequest | null {
-  const result = createCardRequestSchema.safeParse(value);
   return result.success ? result.data : null;
 }
 

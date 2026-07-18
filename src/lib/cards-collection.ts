@@ -17,7 +17,8 @@ const insertMetadataSchema = z.object({ creation: cardCreationProvenanceSchema }
 async function fetchCards(): Promise<Card[]> {
   const cards = getCards();
   if (cards.ready) await cards.refresh();
-  return cards;
+  const loadedCards = await cards;
+  return loadedCards;
 }
 
 function toCardInput(card: Card): CardInput {
