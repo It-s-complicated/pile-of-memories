@@ -16,20 +16,20 @@
   },
   "dependencies": {
     "@humanspeak/svelte-markdown": "~1.8.4",
-    "@tanstack/ai": "^0.40.0",
-    "@tanstack/ai-openai": "^0.16.0",
+    "@tanstack/ai": "^0.41.0",
+    "@tanstack/ai-openai": "^0.17.0",
     "@xyflow/svelte": "^1.6.2",
     "marked": "^18.0.6",
     "postgres": "^3.4.9",
-    "svelte": "^5.56.5",
+    "svelte": "^5.56.6",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@sveltejs/adapter-node": "6.0.0-next.4",
     "@sveltejs/kit": "3.0.0-next.10",
     "@types/node": "^26.1.1",
-    "agent-browser": "^0.31.2",
-    "svelte-check": "^4.7.2",
+    "agent-browser": "^0.32.1",
+    "svelte-check": "^4.7.3",
     "typescript": "6.0.3",
     "vite": "catalog:",
     "vite-plus": "catalog:"
