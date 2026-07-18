@@ -48,7 +48,7 @@
     ]
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "allowScripts": {
     "file:../../lightningcss@1.32.0/node_modules/lightningcss": true,
