@@ -226,18 +226,6 @@ importers:
       '@tanstack/ai-openai':
         specifier: ^0.16.0
         version: 0.16.0(@tanstack/ai@0.40.0)(ws@8.21.0)(zod@4.4.3)
-      '@tanstack/db':
-        specifier: ^0.6.14
-        version: 0.6.16(typescript@6.0.3)
-      '@tanstack/query-core':
-        specifier: ^5.101.2
-        version: 5.101.2
-      '@tanstack/query-db-collection':
-        specifier: ^1.0.47
-        version: 1.1.0(@tanstack/query-core@5.101.2)(typescript@6.0.3)
-      '@tanstack/svelte-db':
-        specifier: ^0.1.91
-        version: 0.1.93(svelte@5.56.5)(typescript@6.0.3)
       '@xyflow/svelte':
         specifier: ^1.6.2
         version: 1.6.2(svelte@5.56.5)
@@ -872,16 +860,6 @@ packages:
       '@opentelemetry/api':
         optional: true
 
-  '@tanstack/db-ivm@0.1.18':
-    resolution: {integrity: sha512-+pZJiRKdoKRM5Epq9T7otD9ZJl82pRFauo7LKuJGrarjVKQ7r+QQlPe3kGdN9LEKSnuNGIWjX9OOY4M8kH4eLw==}
-    peerDependencies:
-      typescript: '>=4.7'
-
-  '@tanstack/db@0.6.16':
-    resolution: {integrity: sha512-6tZ4sAyh7g4G5awO4Q4D/UQVPoPEBsqqDBImjCZNTRJznrpwGqFJZxozov197k8ty8QxZC++eGcbo+BBKF3nzw==}
-    peerDependencies:
-      typescript: '>=4.7'
-
   '@tanstack/devtools-event-client@0.4.4':
     resolution: {integrity: sha512-6T5Yop/793YI+H+5J8Hsyj4kCih9sl4t3ElLgKioW5hk3ocn+ZdSJ94tT7vL7uabxSugWYBZlOTMPzEw2puvQw==}
     engines: {node: '>=18'}
@@ -891,24 +869,6 @@ packages:
     resolution: {integrity: sha512-Bfla4zR0RNF3htTgzLMhfs5bbyqdXLZunXBRWdzghki9+jw2upuiKfHxgc8eAe3X+/mFP84KQSMEfKZxW98oBQ==}
     peerDependencies:
       '@tanstack/ai': ^0.40.0
-
-  '@tanstack/pacer-lite@0.2.2':
-    resolution: {integrity: sha512-eQ1MyLKCHyXiH7NbdmB80W77OhiMgGBUb+qDx/8WMGbwg5Lf/NlfD0TfNYAqY77i8V3AxoDoYdICrQE5ADw4Yw==}
-    engines: {node: '>=18'}
-
-  '@tanstack/query-core@5.101.2':
-    resolution: {integrity: sha512-hH5MLoJhF7KaIGd7q3xTXGXvslI+GYlM1Z/35aSHHWaCJWB7XvTSHYuV3eM7tw+aE0mT/xMro4M4Q9rCGHT0lw==}
-
-  '@tanstack/query-db-collection@1.1.0':
-    resolution: {integrity: sha512-duggStGqINUX9dqq7+1JDsq4utNn/XExgtna1ACTO+WueqOmDyh83Lu2XUf+9457m9ozlbZvIFq2bcxdTXhx4Q==}
-    peerDependencies:
-      '@tanstack/query-core': ^5.0.0
-      typescript: '>=4.7'
-
-  '@tanstack/svelte-db@0.1.93':
-    resolution: {integrity: sha512-cqUhnmWvyWYrN1gdz7kKDLqo94zasAZKlAYFJNpHQebj7JeydWrabY+Pqw5pfx1oM4NHSWWVTi/pMvCoNI+V+A==}
-    peerDependencies:
-      svelte: ^5.0.0
 
   '@testing-library/dom@10.4.1':
     resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}
@@ -1286,10 +1246,6 @@ packages:
       picomatch:
         optional: true
 
-  fractional-indexing@3.4.0:
-    resolution: {integrity: sha512-8J3glhz2rrpKG6KmI7wmJo3zH1VjeOpN+vTJSw1fOyO+Viqq3zX6/5NGh6oaZB2qIAYdOYuu5Dz9xp4faOO0Pg==}
-    engines: {node: ^14.13.1 || >=16.0.0}
-
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
@@ -1551,9 +1507,6 @@ packages:
   sirv@3.0.2:
     resolution: {integrity: sha512-2wcC/oGxHis/BoHkkPwldgiPSYcpZK3JU28WoMVv55yHJgcZ8rlXvuG9iZggz+sU1d4bRgIGASwyWqjxu3FM0g==}
     engines: {node: '>=18'}
-
-  sorted-btree@1.8.1:
-    resolution: {integrity: sha512-395+XIP+wqNn3USkFSrNz7G3Ss/MXlZEqesxvzCRFwL14h6e8LukDHdLBePn5pwbm5OQ9vGu8mDyz2lLDIqamQ==}
 
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
@@ -2082,19 +2035,6 @@ snapshots:
       '@tanstack/ai-utils': 0.3.1
       partial-json: 0.1.7
 
-  '@tanstack/db-ivm@0.1.18(typescript@6.0.3)':
-    dependencies:
-      fractional-indexing: 3.4.0
-      sorted-btree: 1.8.1
-      typescript: 6.0.3
-
-  '@tanstack/db@0.6.16(typescript@6.0.3)':
-    dependencies:
-      '@standard-schema/spec': 1.1.0
-      '@tanstack/db-ivm': 0.1.18(typescript@6.0.3)
-      '@tanstack/pacer-lite': 0.2.2
-      typescript: 6.0.3
-
   '@tanstack/devtools-event-client@0.4.4': {}
 
   '@tanstack/openai-base@0.9.7(@tanstack/ai@0.40.0)(ws@8.21.0)(zod@4.4.3)':
@@ -2108,24 +2048,6 @@ snapshots:
       - '@smithy/signature-v4'
       - ws
       - zod
-
-  '@tanstack/pacer-lite@0.2.2': {}
-
-  '@tanstack/query-core@5.101.2': {}
-
-  '@tanstack/query-db-collection@1.1.0(@tanstack/query-core@5.101.2)(typescript@6.0.3)':
-    dependencies:
-      '@standard-schema/spec': 1.1.0
-      '@tanstack/db': 0.6.16(typescript@6.0.3)
-      '@tanstack/query-core': 5.101.2
-      typescript: 6.0.3
-
-  '@tanstack/svelte-db@0.1.93(svelte@5.56.5)(typescript@6.0.3)':
-    dependencies:
-      '@tanstack/db': 0.6.16(typescript@6.0.3)
-      svelte: 5.56.5
-    transitivePeerDependencies:
-      - typescript
 
   '@testing-library/dom@10.4.1':
     dependencies:
@@ -2428,8 +2350,6 @@ snapshots:
     optionalDependencies:
       picomatch: 4.0.5
 
-  fractional-indexing@3.4.0: {}
-
   fsevents@2.3.3:
     optional: true
 
@@ -2681,8 +2601,6 @@ snapshots:
       '@polka/url': 1.0.0-next.29
       mrmime: 2.0.1
       totalist: 3.0.1
-
-  sorted-btree@1.8.1: {}
 
   source-map-js@1.2.1: {}
 

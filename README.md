@@ -55,5 +55,5 @@ failed mutation, and unused-stream cleanup against a session-capable production 
 Card invalidations are coalesced for 50 ms before re-reading the full ordered snapshot. Successful
 optimistic mutations wait up to 5 seconds for a matching `updatedAt` (or a missing deleted ID); an
 unconfirmed mutation drops its overlay and requests one live-query reconnect. Snapshots represent
-current authoritative state, not event history. Keep the Stage 1 collection and its TanStack DB
-packages until hosted staging accepts Stage 2, then remove them in the final cleanup commit.
+current authoritative state, not event history. The Stage 1 TanStack DB collection has been removed;
+TanStack remains only for AI enrichment.

@@ -22,15 +22,6 @@ function databaseUnavailable(): never {
   error(503, "Database unavailable");
 }
 
-export const getCards = query(async () => {
-  requirePrivateBoard();
-  try {
-    return await listCards();
-  } catch {
-    databaseUnavailable();
-  }
-});
-
 export const getLiveCards = query.live(async function* () {
   requirePrivateBoard();
   const signal = getRequestEvent().request.signal;
