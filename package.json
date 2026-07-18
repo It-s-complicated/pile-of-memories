@@ -7,6 +7,7 @@
     "dev": "vp dev",
     "build": "vp build",
     "preview": "vp preview",
+    "db:migrate": "psql \"$DATABASE_CONNECTION_STRING\" -v ON_ERROR_STOP=1 -f migrations/0001_cards.sql",
     "svelte-check": "svelte-check --tsconfig ./tsconfig.json",
     "prepare": "svelte-kit sync"
   },
@@ -25,7 +26,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@sveltejs/adapter-auto": "^7.0.1",
+    "@sveltejs/adapter-node": "^5.5.7",
     "@sveltejs/kit": "^2.69.3",
     "@types/node": "^26.1.1",
     "agent-browser": "^0.31.2",

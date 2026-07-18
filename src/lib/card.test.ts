@@ -6,6 +6,7 @@ import {
   parseCardChanges,
   parseCardInput,
   updateCardCommandSchema,
+  updateCardPositionsCommandSchema,
 } from "./card";
 
 const CARD_ID = "00000000-0000-4000-8000-000000000001";
@@ -101,5 +102,22 @@ describe("card change validation", () => {
     ).toBe(false);
     expect(deleteCardCommandSchema.safeParse({ id: CARD_ID }).success).toBe(true);
     expect(deleteCardCommandSchema.safeParse({ id: CARD_ID, extra: true }).success).toBe(false);
+  });
+
+  it("validates bounded position batches before database work", () => {
+    const position = { x: 1, y: 2 };
+    expect(
+      updateCardPositionsCommandSchema.safeParse({ positions: [{ id: CARD_ID, position }] })
+        .success,
+    ).toBe(true);
+    expect(updateCardPositionsCommandSchema.safeParse({ positions: [] }).success).toBe(false);
+    expect(
+      updateCardPositionsCommandSchema.safeParse({
+        positions: [
+          { id: CARD_ID, position },
+          { id: CARD_ID, position: { x: 3, y: 4 } },
+        ],
+      }).success,
+    ).toBe(false);
   });
 });

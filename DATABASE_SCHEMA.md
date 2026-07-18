@@ -1,0 +1,12 @@
+# Database schema
+
+`migrations/0001_cards.sql` owns the `cards` table and its statement-level change-notification
+trigger. Run it with `vp run db:migrate` before starting the application.
+
+Each card stores its UUID, title, Markdown body, canvas coordinates, tags, topics, derived HTTP links,
+archive flag, and creation/update timestamps. Application reads return complete snapshots ordered by
+`created_at, id`; links are re-derived from the Markdown body.
+
+The `cards_changed` trigger publishes an empty payload only after a transaction commits. It is an
+invalidation signal: application processes re-read the table rather than treating notifications as
+card data or event history.
