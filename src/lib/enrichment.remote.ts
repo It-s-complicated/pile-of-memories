@@ -1,21 +1,26 @@
-import { error, json } from "@sveltejs/kit";
-import { enrichmentRequestSchema } from "$lib/enrichment";
+import { command } from "$app/server";
+import { error } from "@sveltejs/kit";
+import { enrichmentInputSchema, enrichmentResponseSchema } from "$lib/enrichment";
+import type { EnrichmentUsage } from "$lib/enrichment-analytics";
 import {
   recordEnrichmentAttemptFailed,
   recordEnrichmentAttemptStarted,
   recordEnrichmentAttemptSucceeded,
 } from "$lib/server/database";
+import { withDeadline } from "$lib/server/deadline";
 import {
   buildAttemptStarted,
   buildAttemptSucceeded,
   hasAnalyticsFingerprintKey,
   reportAnalyticsFailure,
 } from "$lib/server/enrichment-analytics";
-import { enrichMemory, EnrichmentExecutionError } from "$lib/server/enrichment";
+import {
+  enrichMemory as enrichMemoryWithProvider,
+  EnrichmentExecutionError,
+} from "$lib/server/enrichment";
 import { requirePrivateBoard } from "$lib/server/private-board";
-import type { EnrichmentUsage } from "$lib/enrichment-analytics";
-import type { RequestHandler } from "./$types";
 
+const RESPONSE_DEADLINE_MS = 60_000;
 const EMPTY_USAGE: EnrichmentUsage = {
   promptTokens: null,
   completionTokens: null,
@@ -23,12 +28,10 @@ const EMPTY_USAGE: EnrichmentUsage = {
   providerCost: null,
 };
 
-export const POST: RequestHandler = async ({ request }) => {
+export const enrichMemory = command(enrichmentInputSchema, async (input) => {
   requirePrivateBoard();
-  const parsed = enrichmentRequestSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) error(400, "Invalid enrichment request");
 
-  const { attemptId, ...input } = parsed.data;
+  const attemptId = crypto.randomUUID();
   const started = buildAttemptStarted(attemptId, input);
   void recordEnrichmentAttemptStarted(started).catch(() =>
     reportAnalyticsFailure("record_attempt_started"),
@@ -36,7 +39,13 @@ export const POST: RequestHandler = async ({ request }) => {
 
   let execution;
   try {
-    execution = await enrichMemory(input);
+    // The provider call cooperatively aborts after 55 seconds. This outer race caps the response
+    // at 60 seconds if upstream cancellation stalls, but does not itself cancel remaining work.
+    execution = await withDeadline(
+      enrichMemoryWithProvider(input),
+      RESPONSE_DEADLINE_MS,
+      () => new EnrichmentExecutionError("provider_timeout", RESPONSE_DEADLINE_MS, EMPTY_USAGE),
+    );
   } catch (caught) {
     const failure =
       caught instanceof EnrichmentExecutionError
@@ -61,5 +70,5 @@ export const POST: RequestHandler = async ({ request }) => {
     reportAnalyticsFailure("build_attempt_succeeded");
   }
 
-  return json({ ...execution.output, attemptId });
-};
+  return enrichmentResponseSchema.parse({ ...execution.output, attemptId });
+});

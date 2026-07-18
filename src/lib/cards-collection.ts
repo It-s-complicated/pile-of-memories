@@ -2,19 +2,24 @@ import { createCollection } from "@tanstack/db";
 import { QueryClient } from "@tanstack/query-core";
 import { queryCollectionOptions } from "@tanstack/query-db-collection";
 import { z } from "zod";
+import type { Card, CardChanges, CardInput } from "./card";
 import {
   createCard as createCardRequest,
   deleteCard as deleteCardRequest,
   getCards,
-  patchCard as patchCardRequest,
-  type Card,
-  type CardChanges,
-  type CardInput,
-} from "./card";
+  updateCard as updateCardRequest,
+} from "./cards.remote";
 import { cardCreationProvenanceSchema, type CardCreationProvenance } from "./enrichment-analytics";
 
 const queryClient = new QueryClient();
 const insertMetadataSchema = z.object({ creation: cardCreationProvenanceSchema }).loose();
+
+async function fetchCards(): Promise<Card[]> {
+  const cards = getCards();
+  if (cards.ready) await cards.refresh();
+  const loadedCards = await cards;
+  return loadedCards;
+}
 
 function toCardInput(card: Card): CardInput {
   const { createdAt: _createdAt, updatedAt: _updatedAt, ...input } = card;
@@ -29,6 +34,7 @@ function toCardChanges(card: Card): CardChanges {
     tags: card.tags,
     topics: card.topics,
     links: card.links,
+    archived: card.archived,
   };
 }
 
@@ -36,29 +42,30 @@ export const cardsCollection = createCollection(
   queryCollectionOptions<Card>({
     id: "cards",
     queryKey: ["cards"],
-    queryFn: getCards,
+    queryFn: fetchCards,
     queryClient,
     getKey: (card) => card.id,
     onInsert: async ({ transaction }) => {
       await Promise.all(
         transaction.mutations.map(({ modified, metadata }) => {
           const parsedMetadata = insertMetadataSchema.safeParse(metadata);
-          return createCardRequest(
-            toCardInput(modified),
-            parsedMetadata.success ? parsedMetadata.data.creation : undefined,
-          );
+          const creation = parsedMetadata.success ? parsedMetadata.data.creation : undefined;
+          return createCardRequest({
+            card: toCardInput(modified),
+            ...(creation ? { creation } : {}),
+          });
         }),
       );
     },
     onUpdate: async ({ transaction }) => {
       await Promise.all(
         transaction.mutations.map(({ key, modified }) =>
-          patchCardRequest(key, toCardChanges(modified)),
+          updateCardRequest({ id: key, changes: toCardChanges(modified) }),
         ),
       );
     },
     onDelete: async ({ transaction }) => {
-      await Promise.all(transaction.mutations.map(({ key }) => deleteCardRequest(key)));
+      await Promise.all(transaction.mutations.map(({ key }) => deleteCardRequest({ id: key })));
     },
   }),
 );

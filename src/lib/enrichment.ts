@@ -19,17 +19,12 @@ export const enrichmentOutputSchema = z
   })
   .strict();
 
-export const enrichmentRequestSchema = enrichmentInputSchema.safeExtend({
-  attemptId: z.string().uuid(),
-});
-
 export const enrichmentResponseSchema = enrichmentOutputSchema.safeExtend({
   attemptId: z.string().uuid(),
 });
 
 export type EnrichmentInput = z.infer<typeof enrichmentInputSchema>;
 export type EnrichmentOutput = z.infer<typeof enrichmentOutputSchema>;
-export type EnrichmentRequest = z.infer<typeof enrichmentRequestSchema>;
 export type EnrichmentResponse = z.infer<typeof enrichmentResponseSchema>;
 
 export function fallbackTitle(description: string): string {
@@ -40,18 +35,4 @@ export function fallbackTitle(description: string): string {
       .find(Boolean)
       ?.slice(0, 80) || "Untitled memory"
   );
-}
-
-export async function requestEnrichment(input: EnrichmentRequest): Promise<EnrichmentResponse> {
-  const response = await fetch("/api/memories/enrich", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(input),
-    signal: AbortSignal.timeout(60_000),
-  });
-
-  if (!response.ok) throw new Error("AI enrichment is unavailable");
-  const enrichment = enrichmentResponseSchema.parse(await response.json());
-  if (enrichment.attemptId !== input.attemptId) throw new Error("AI enrichment is unavailable");
-  return enrichment;
 }

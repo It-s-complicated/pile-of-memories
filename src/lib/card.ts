@@ -1,11 +1,14 @@
 import { z } from "zod";
-import { cardCreationProvenanceSchema, type CardCreationProvenance } from "./enrichment-analytics";
+import { cardCreationProvenanceSchema } from "./enrichment-analytics";
 import { labelsSchema, partitionLabels } from "./labels";
 import { httpUrlSchema, parseMarkdown } from "./markdown";
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const cardIdSchema = z.uuidv4();
 
-export const cardIdSchema = z.string().regex(UUID_PATTERN);
+export function isCardId(value: unknown): value is string {
+  return cardIdSchema.safeParse(value).success;
+}
+
 const positionSchema = z.object({ x: z.number().finite(), y: z.number().finite() }).strict();
 
 export const cardInputSchema = z
@@ -74,58 +77,21 @@ export const createCardRequestSchema = z
   })
   .strict();
 
-export type CreateCardRequest = z.infer<typeof createCardRequestSchema>;
+export const updateCardCommandSchema = z
+  .object({
+    id: cardIdSchema,
+    changes: cardChangesSchema,
+  })
+  .strict();
 
-const errorResponseSchema = z.object({ message: z.string() }).loose();
+export const deleteCardCommandSchema = z.object({ id: cardIdSchema }).strict();
 
 export function parseCardInput(value: unknown): CardInput | null {
   const result = cardInputSchema.safeParse(value);
   return result.success ? result.data : null;
 }
 
-export function parseCreateCardRequest(value: unknown): CreateCardRequest | null {
-  const result = createCardRequestSchema.safeParse(value);
-  return result.success ? result.data : null;
-}
-
 export function parseCardChanges(value: unknown): CardChanges | null {
   const result = cardChangesSchema.safeParse(value);
   return result.success ? result.data : null;
-}
-
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
-  if (!response.ok) {
-    const parsedBody = errorResponseSchema.safeParse(await response.json().catch(() => null));
-    let message = parsedBody.success ? parsedBody.data.message : response.statusText;
-    if (response.status >= 500) message = "Database unavailable";
-    throw new Error(message || `Request failed with status ${response.status}`);
-  }
-
-  return response.status === 204 ? (undefined as T) : response.json();
-}
-
-export function getCards(): Promise<Card[]> {
-  return request("/api/cards");
-}
-
-export function createCard(card: CardInput, creation?: CardCreationProvenance): Promise<Card> {
-  const body: CreateCardRequest = { card, ...(creation ? { creation } : {}) };
-  return request("/api/cards", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
-}
-
-export function patchCard(id: string, changes: CardChanges): Promise<Card> {
-  return request(`/api/cards/${encodeURIComponent(id)}`, {
-    method: "PATCH",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(changes),
-  });
-}
-
-export function deleteCard(id: string): Promise<void> {
-  return request(`/api/cards/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
