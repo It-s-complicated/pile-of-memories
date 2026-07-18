@@ -11,7 +11,7 @@
     "build": "vp build",
     "preview": "vp preview",
     "db:migrate": "psql \"$DATABASE_CONNECTION_STRING\" -v ON_ERROR_STOP=1 -f migrations/0001_cards.sql",
-    "svelte-check": "svelte-check --tsconfig ./tsconfig.json",
+    "svelte-check": "svelte-check --tsconfig ./tsconfig.json --tsgo-experimental-api",
     "prepare": "svelte-kit sync"
   },
   "dependencies": {
@@ -28,6 +28,7 @@
     "@sveltejs/adapter-node": "6.0.0-next.4",
     "@sveltejs/kit": "3.0.0-next.10",
     "@types/node": "^26.1.1",
+    "@typescript/native-preview": "npm:typescript@7.0.2",
     "agent-browser": "^0.32.1",
     "svelte-check": "^4.7.3",
     "typescript": "6.0.3",
