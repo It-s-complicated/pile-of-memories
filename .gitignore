@@ -6,3 +6,5 @@ dist
 .output
 docs
 .env
+.agents/skills
+
