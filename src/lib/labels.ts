@@ -1,7 +1,15 @@
 import { z } from "zod";
 
 export const PRIMARY_TAGS = ["Web development", "Job", "Personal development"] as const;
-export const TOPIC_TAGS = ["Local-first", "CSS", "Hosting", "Vue", "React", "Finance"] as const;
+export const TOPIC_TAGS = [
+  "AI",
+  "Local-first",
+  "CSS",
+  "Hosting",
+  "Vue",
+  "React",
+  "Finance",
+] as const;
 export const MAX_LABEL_LENGTH = 40;
 export const MAX_LABELS = 200;
 

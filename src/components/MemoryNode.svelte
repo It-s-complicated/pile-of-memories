@@ -3,22 +3,18 @@
   import { getCardPersistence } from "#lib/card-persistence.js";
   import { partitionLabels } from "#lib/labels.js";
   import { parseMarkdown } from "#lib/markdown.js";
-  import {
-    getMemoryBackground,
-    getPrimaryTagAccent,
-    getTopicBorder,
-    getTopicTagColor,
-    type MemoryNode,
-  } from "#lib/scene.js";
+  import { getPrimaryTagAccent, getTopicTagColor, type MemoryNode } from "#lib/scene.js";
   import MemoryMarkdown from "./MemoryMarkdown.svelte";
   import TagEditor from "./TagEditor.svelte";
 
   let { id, data }: NodeProps<MemoryNode> = $props();
   const { updateNodeData } = useSvelteFlow<MemoryNode>();
   const cardPersistence = getCardPersistence();
-  let background = $derived(getMemoryBackground(data.tags));
-  let borderBackground = $derived(getTopicBorder(data.topics));
   let parsedBody = $derived(parseMarkdown(data.body));
+  let accession = $derived(id.replaceAll("-", "").slice(-4).toUpperCase());
+  let updatedDate = $derived(
+    new Date(data.updatedAt).toLocaleDateString("en-GB", { dateStyle: "medium" }),
+  );
   let editOpen = $state(false);
   let editTitle = $state("");
   let editBody = $state("");
@@ -90,41 +86,42 @@
   }
 </script>
 
-<div class="memory-card" style:background={borderBackground}>
-  <div class="drag-handle" aria-hidden="true"></div>
-  <article aria-label={`Memory: ${data.title || "Untitled memory"}`} style:background>
-    <header>
-      <h2>{data.title || "Untitled memory"}</h2>
-      <button type="button" class="edit-button nodrag" onclick={openEditor}>Edit</button>
-    </header>
+<article class="memory-card" aria-label={`Memory: ${data.title || "Untitled memory"}`}>
+  <header>
+    <p class="card-meta">
+      NO. {accession} ·
+      <time datetime={data.updatedAt}>Updated {updatedDate}</time>
+    </p>
+    <h2>{data.title || "Untitled memory"}</h2>
+    <button type="button" class="edit-button nodrag" onclick={openEditor}>Edit</button>
+  </header>
 
-    <div class="markdown nowheel">
-      <MemoryMarkdown parsed={parsedBody} />
-    </div>
+  <div class="markdown nowheel">
+    <MemoryMarkdown parsed={parsedBody} />
+  </div>
 
-    {#if data.tags.length || data.topics.length}
-      <ul class="tags" aria-label="Tags">
-        {#each data.tags as tag (tag.toLowerCase())}
-          <li style:--tag-color={getPrimaryTagAccent(tag)}>{tag}</li>
-        {/each}
-        {#each data.topics as topic (topic.toLowerCase())}
-          <li class="topic" style:--topic-color={getTopicTagColor(topic)}>{topic}</li>
+  {#if data.tags.length || data.topics.length}
+    <ul class="tags" aria-label="Tags">
+      {#each data.tags as tag (tag.toLowerCase())}
+        <li class="primary" style:--tag-color={getPrimaryTagAccent(tag)}>{tag}</li>
+      {/each}
+      {#each data.topics as topic (topic.toLowerCase())}
+        <li class="topic" style:--topic-color={getTopicTagColor(topic)}>{topic}</li>
+      {/each}
+    </ul>
+  {/if}
+
+  {#if data.links.length}
+    <details class="links nodrag nowheel">
+      <summary>Links ({data.links.length})</summary>
+      <ul>
+        {#each data.links as link (link)}
+          <li><a href={link} target="_blank" rel="external noopener noreferrer">{link}</a></li>
         {/each}
       </ul>
-    {/if}
-
-    {#if data.links.length}
-      <details class="links nodrag nowheel">
-        <summary>Links ({data.links.length})</summary>
-        <ul>
-          {#each data.links as link (link)}
-            <li><a href={link} target="_blank" rel="external noopener noreferrer">{link}</a></li>
-          {/each}
-        </ul>
-      </details>
-    {/if}
-  </article>
-</div>
+    </details>
+  {/if}
+</article>
 
 {#if editOpen}
   <dialog
@@ -135,7 +132,7 @@
   >
     <form method="dialog" onsubmit={save}>
       <header>
-        <p>Edit memory</p>
+        <p>Edit memory · № {accession}</p>
         <h2 id={`edit-memory-${id}`}>{data.title || "Untitled memory"}</h2>
       </header>
 
@@ -172,71 +169,60 @@
 
 <style>
   .memory-card {
-    position: relative;
     box-sizing: border-box;
     width: 320px;
     min-height: 180px;
-    padding: 2px;
-    border-radius: 0.75rem;
-    background: var(--primary-color);
-    box-shadow: 0 4px 14px color-mix(in srgb, var(--theme-ink) 14%, transparent);
-  }
-
-  .drag-handle {
-    position: absolute;
-    z-index: 1;
-    top: -1rem;
-    right: -1rem;
-    display: grid;
-    width: 2.25rem;
-    height: 2.75rem;
-    place-items: center;
-    border: 1px solid var(--theme-ink);
-    border-radius: 0.6rem;
-    color: var(--theme-ink);
-    background: color-mix(in srgb, #fffaf2 92%, var(--primary-color));
+    border: 1px solid var(--hairline);
+    border-radius: 3px;
+    padding: 0.9rem 1.1rem 1rem;
+    color: var(--text);
+    background: var(--paper);
+    box-shadow: var(--shadow-slip);
     cursor: grab;
-    touch-action: none;
   }
 
-  .drag-handle::before {
-    width: 0.25rem;
-    height: 0.25rem;
-    border-radius: 50%;
-    background: currentcolor;
-    box-shadow: 0.45rem 0, 0 0.45rem, 0.45rem 0.45rem, 0 0.9rem, 0.45rem 0.9rem;
-    content: "";
-    transform: translate(-0.225rem, -0.45rem);
+  .memory-card > header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 0.1rem 0.5rem;
   }
 
-  article {
-    box-sizing: border-box;
-    width: 100%;
-    min-height: 176px;
-    padding: 1rem 1.1rem;
-    border-radius: calc(0.75rem - 2px);
-    color: var(--theme-ink);
-    background: #fff3bf;
+  .card-meta {
+    grid-column: 1 / -1;
+    margin: 0 0 0.15rem;
+    font-family: var(--font-label);
+    font-size: 0.64rem;
+    letter-spacing: 0.14em;
+    color: var(--muted);
   }
 
-  article > header {
-    display: flex;
-    align-items: start;
-    justify-content: space-between;
-    gap: 0.5rem;
+  .card-meta time {
+    letter-spacing: 0.04em;
   }
 
   h2 {
     margin: 0;
     font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
 
   .edit-button {
     border: 0;
     padding: 0.15rem;
-    color: var(--primary-color);
+    font-family: var(--font-label);
+    font-size: 0.64rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--theme-ink);
     background: transparent;
     cursor: pointer;
+  }
+
+  .edit-button:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
 
   .markdown {
@@ -244,7 +230,8 @@
     overflow: auto;
     overflow-wrap: anywhere;
     font-size: 0.86rem;
-    line-height: 1.45;
+    line-height: 1.5;
+    cursor: default;
   }
 
   .markdown :global(h3) {
@@ -262,15 +249,16 @@
 
   .markdown :global(pre),
   .markdown :global(code) {
-    font-family: ui-monospace, monospace;
+    font-family: var(--font-label);
     font-size: 0.78rem;
   }
 
   .markdown :global(pre) {
     overflow: auto;
-    border-radius: 0.35rem;
+    border: 1px solid var(--hairline);
+    border-radius: 3px;
     padding: 0.5rem;
-    background: rgb(255 250 242 / 70%);
+    background: var(--ink-tint);
   }
 
   .markdown :global(input[type="checkbox"]) {
@@ -281,30 +269,43 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.3rem;
-    margin: 0.55rem 0 0;
+    margin: 0.6rem 0 0;
     padding: 0;
     list-style: none;
   }
 
   .tags li {
-    padding: 0.15rem 0.4rem;
-    border: 1px solid var(--tag-color);
-    border-radius: 999px;
-    font-size: 0.68rem;
-    line-height: 1.25;
-    color: #fffaf2;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    padding: 0.4rem 0.5rem;
+    font-family: var(--font-label);
+    font-size: 0.64rem;
+    letter-spacing: 0.08em;
+    line-height: 1.4;
+    text-box: trim-both cap alphabetic;
+    text-transform: uppercase;
+  }
+
+  .tags .primary {
+    color: var(--paper);
     background: var(--tag-color);
   }
 
   .tags .topic {
-    border-color: var(--topic-color);
+    border-color: color-mix(in oklch, var(--topic-color) 55%, var(--paper));
     color: var(--topic-color);
-    background: #fffaf2;
+    background: var(--paper);
   }
 
   .links {
     margin-top: 0.65rem;
-    font-size: 0.72rem;
+    font-family: var(--font-label);
+    font-size: 0.68rem;
+  }
+
+  .links summary {
+    color: var(--muted);
+    cursor: pointer;
   }
 
   .links ul {
@@ -313,11 +314,11 @@
   }
 
   .links a {
-    color: var(--primary-color);
+    color: var(--theme-ink);
   }
 
   .save-error {
     margin: 0;
-    color: #9f1239;
+    color: var(--danger);
   }
 </style>
