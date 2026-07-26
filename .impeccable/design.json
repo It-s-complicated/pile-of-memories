@@ -1,0 +1,294 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-26T16:14:53Z",
+  "title": "Design System: Pile of Memories",
+  "extensions": {
+    "colorMeta": {
+      "theme-ink": {
+        "role": "primary",
+        "displayName": "Archive Ink",
+        "canonical": "oklch(0.44 0.06 168)",
+        "tonalRamp": [
+          "oklch(0.18 0.03 168)",
+          "oklch(0.28 0.045 168)",
+          "oklch(0.36 0.055 168)",
+          "oklch(0.44 0.06 168)",
+          "oklch(0.54 0.06 168)",
+          "oklch(0.66 0.05 168)",
+          "oklch(0.8 0.03 168)",
+          "oklch(0.94 0.012 168)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Archival Paper",
+        "canonical": "color-mix(in oklch, #ffffff 96.5%, var(--theme-ink))",
+        "tonalRamp": [
+          "oklch(0.3 0.02 168)",
+          "oklch(0.42 0.03 168)",
+          "oklch(0.54 0.03 168)",
+          "oklch(0.66 0.02 168)",
+          "oklch(0.78 0.014 168)",
+          "oklch(0.88 0.009 168)",
+          "oklch(0.94 0.006 168)",
+          "oklch(0.98 0.002 168)"
+        ]
+      },
+      "sheet": {
+        "role": "neutral",
+        "displayName": "Drawer Sheet",
+        "canonical": "color-mix(in oklch, #ffffff 90%, var(--theme-ink))",
+        "tonalRamp": [
+          "oklch(0.18 0.02 168)",
+          "oklch(0.3 0.024 168)",
+          "oklch(0.42 0.025 168)",
+          "oklch(0.56 0.022 168)",
+          "oklch(0.7 0.017 168)",
+          "oklch(0.82 0.012 168)",
+          "oklch(0.9 0.008 168)",
+          "oklch(0.95 0.005 168)"
+        ]
+      },
+      "ink-strong": {
+        "role": "primary",
+        "displayName": "Deep Archive Ink",
+        "canonical": "color-mix(in oklch, var(--theme-ink) 82%, #000000)",
+        "tonalRamp": [
+          "oklch(0.15 0.025 168)",
+          "oklch(0.25 0.04 168)",
+          "oklch(0.35 0.055 168)",
+          "oklch(0.45 0.06 168)",
+          "oklch(0.57 0.055 168)",
+          "oklch(0.69 0.045 168)",
+          "oklch(0.82 0.028 168)",
+          "oklch(0.95 0.008 168)"
+        ]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Catalog Ink Black",
+        "canonical": "color-mix(in oklch, var(--theme-ink) 28%, #17181a)",
+        "tonalRamp": [
+          "oklch(0.15 0.012 168)",
+          "oklch(0.27 0.02 168)",
+          "oklch(0.39 0.022 168)",
+          "oklch(0.51 0.02 168)",
+          "oklch(0.63 0.017 168)",
+          "oklch(0.75 0.013 168)",
+          "oklch(0.86 0.008 168)",
+          "oklch(0.95 0.004 168)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Pencil Annotation",
+        "canonical": "color-mix(in oklch, var(--theme-ink) 42%, #4f5350)",
+        "tonalRamp": [
+          "oklch(0.16 0.018 168)",
+          "oklch(0.28 0.028 168)",
+          "oklch(0.4 0.034 168)",
+          "oklch(0.52 0.034 168)",
+          "oklch(0.64 0.029 168)",
+          "oklch(0.76 0.021 168)",
+          "oklch(0.87 0.012 168)",
+          "oklch(0.95 0.005 168)"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Ruled Hairline",
+        "canonical": "color-mix(in oklch, var(--theme-ink) 20%, var(--paper))",
+        "tonalRamp": [
+          "oklch(0.18 0.016 168)",
+          "oklch(0.3 0.022 168)",
+          "oklch(0.42 0.024 168)",
+          "oklch(0.55 0.022 168)",
+          "oklch(0.68 0.018 168)",
+          "oklch(0.8 0.013 168)",
+          "oklch(0.9 0.008 168)",
+          "oklch(0.96 0.003 168)"
+        ]
+      },
+      "ink-tint": {
+        "role": "neutral",
+        "displayName": "Ink Wash",
+        "canonical": "color-mix(in oklch, var(--theme-ink) 9%, var(--paper))",
+        "tonalRamp": [
+          "oklch(0.2 0.016 168)",
+          "oklch(0.32 0.02 168)",
+          "oklch(0.44 0.021 168)",
+          "oklch(0.57 0.019 168)",
+          "oklch(0.7 0.015 168)",
+          "oklch(0.82 0.01 168)",
+          "oklch(0.91 0.006 168)",
+          "oklch(0.97 0.002 168)"
+        ]
+      },
+      "danger": {
+        "role": "semantic",
+        "displayName": "Cabinet Red",
+        "canonical": "#a04032",
+        "tonalRamp": [
+          "oklch(0.18 0.045 30)",
+          "oklch(0.28 0.075 30)",
+          "oklch(0.4 0.105 30)",
+          "oklch(0.52 0.125 30)",
+          "oklch(0.64 0.115 30)",
+          "oklch(0.76 0.085 30)",
+          "oklch(0.87 0.045 30)",
+          "oklch(0.95 0.018 30)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Title", "purpose": "Slip titles and dialog headings." },
+      "body": { "displayName": "Body", "purpose": "Markdown card bodies and dialog copy." },
+      "label": {
+        "displayName": "Typed Label",
+        "purpose": "All metadata: accession numbers, kickers, tags, chip buttons, status."
+      }
+    },
+    "shadows": [
+      {
+        "name": "slip",
+        "value": "0 1px 2px color-mix(in oklch, var(--theme-ink) 14%, transparent), 0 6px 18px color-mix(in oklch, var(--theme-ink) 10%, transparent)",
+        "purpose": "Resting elevation for slips and floating chrome."
+      },
+      {
+        "name": "dialog",
+        "value": "0 24px 70px color-mix(in oklch, var(--theme-ink) 30%, transparent)",
+        "purpose": "Catalog dialogs above the dimmed sheet."
+      }
+    ],
+    "motion": [
+      {
+        "name": "dialog-in",
+        "value": "160ms cubic-bezier(0.16, 1, 0.3, 1), opacity 0 + translateY(6px) to rest",
+        "purpose": "Single authored motion: catalog dialog entrance. Off under prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [{ "name": "sm", "value": "520px" }]
+  },
+  "components": [
+    {
+      "name": "Capture FAB",
+      "kind": "button",
+      "refersTo": "fab-capture",
+      "description": "The one round element: always-visible memory capture, bottom-right.",
+      "html": "<button class=\"ds-fab\" aria-label=\"New memory\">+</button>",
+      "css": ".ds-fab { display: grid; width: 3rem; height: 3rem; place-items: center; border: 0; border-radius: 50%; font-size: 1.4rem; color: var(--paper); background: var(--theme-ink); box-shadow: var(--shadow-slip); cursor: pointer; } .ds-fab:hover { background: var(--ink-strong); } .ds-fab:focus-visible { outline: 2px solid var(--theme-ink); outline-offset: 2px; }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Inked action inside dialogs (Continue, Create Memory, Save).",
+      "html": "<button class=\"ds-btn-primary\">Create Memory</button>",
+      "css": ".ds-btn-primary { border: 1px solid var(--theme-ink); border-radius: 3px; padding: 0.55rem 0.85rem; color: var(--paper); background: var(--theme-ink); cursor: pointer; } .ds-btn-primary:hover { background: var(--ink-strong); } .ds-btn-primary:focus-visible { outline: 2px solid color-mix(in oklch, var(--theme-ink) 55%, var(--paper)); outline-offset: 1px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Quiet ink-outline action (Cancel, Back, Archive).",
+      "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn-secondary { border: 1px solid var(--theme-ink); border-radius: 3px; padding: 0.55rem 0.85rem; color: var(--theme-ink); background: transparent; cursor: pointer; } .ds-btn-secondary:hover { background: var(--ink-tint); } .ds-btn-secondary:focus-visible { outline: 2px solid color-mix(in oklch, var(--theme-ink) 55%, var(--paper)); outline-offset: 1px; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Cabinet Red outline reserved for permanent deletion.",
+      "html": "<button class=\"ds-btn-danger\">Delete permanently</button>",
+      "css": ".ds-btn-danger { border: 1px solid var(--danger); border-radius: 3px; padding: 0.55rem 0.85rem; color: var(--danger); background: transparent; cursor: pointer; } .ds-btn-danger:hover { background: color-mix(in oklch, var(--danger) 8%, var(--paper)); } .ds-btn-danger:focus-visible { outline: 2px solid color-mix(in oklch, var(--danger) 55%, var(--paper)); outline-offset: 1px; }"
+    },
+    {
+      "name": "Floating Chip",
+      "kind": "chip",
+      "refersTo": "chip-action",
+      "description": "Typed paper chip for quiet canvas actions beside the FAB.",
+      "html": "<button class=\"ds-chip\">Archive · 3</button>",
+      "css": ".ds-chip { border: 1px solid var(--hairline); border-radius: 3px; padding: 0.45rem 0.7rem; font-family: var(--font-label); font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text); background: var(--paper); box-shadow: var(--shadow-slip); cursor: pointer; } .ds-chip:hover { background: var(--ink-tint); } .ds-chip:focus-visible { outline: 2px solid var(--theme-ink); outline-offset: 1px; }"
+    },
+    {
+      "name": "Specimen Slip",
+      "kind": "card",
+      "refersTo": "specimen-slip",
+      "description": "The memory card: neutral archival slip with accession, updated date, and typed labels.",
+      "html": "<article class=\"ds-slip\"><p class=\"ds-slip-no\">NO. 8CBF · Updated 26 Jul 2026</p><h3 class=\"ds-slip-title\">Breaking out with AI</h3><p class=\"ds-slip-body\">AI enables us to break out and get off the rails.</p><ul class=\"ds-slip-tags\"><li class=\"ds-slip-tag ds-tag-primary\">Personal development</li><li class=\"ds-slip-tag ds-tag-topic\">AI</li></ul></article>",
+      "css": ".ds-slip { box-sizing: border-box; width: 320px; border: 1px solid var(--hairline); border-radius: 3px; padding: 0.9rem 1.1rem 1rem; color: var(--text); background: var(--paper); box-shadow: var(--shadow-slip); } .ds-slip-no { margin: 0 0 0.15rem; font-family: var(--font-label); font-size: 0.64rem; letter-spacing: 0.14em; color: var(--muted); } .ds-slip-title { margin: 0; font-size: 1.05rem; font-weight: 600; letter-spacing: -0.01em; } .ds-slip-body { font-size: 0.86rem; line-height: 1.5; } .ds-slip-tags { display: flex; gap: 0.3rem; margin: 0.6rem 0 0; padding: 0; list-style: none; } .ds-slip-tag { border: 1px solid transparent; border-radius: 2px; padding: 0.4rem 0.5rem; font-family: var(--font-label); font-size: 0.64rem; letter-spacing: 0.08em; line-height: 1.4; text-transform: uppercase; } .ds-tag-primary { color: var(--paper); background: oklch(0.46 0.09 305); } .ds-tag-topic { border-color: color-mix(in oklch, oklch(0.44 0.08 50) 55%, var(--paper)); color: oklch(0.44 0.08 50); background: var(--paper); }"
+    },
+    {
+      "name": "Primary Tag",
+      "kind": "chip",
+      "refersTo": "tag-primary",
+      "description": "Filled typed label carrying a primary tag's family color.",
+      "html": "<span class=\"ds-tag-primary\">Web development</span>",
+      "css": ".ds-tag-primary { display: inline-block; border-radius: 2px; padding: 0.4rem 0.5rem; font-family: var(--font-label); font-size: 0.64rem; letter-spacing: 0.08em; line-height: 1.4; text-transform: uppercase; color: var(--paper); background: oklch(0.46 0.09 255); }"
+    },
+    {
+      "name": "Topic Tag",
+      "kind": "chip",
+      "refersTo": "tag-topic",
+      "description": "Outlined typed label for topic tags.",
+      "html": "<span class=\"ds-tag-topic\">Local-first</span>",
+      "css": ".ds-tag-topic { display: inline-block; border: 1px solid color-mix(in oklch, oklch(0.44 0.08 50) 55%, var(--paper)); border-radius: 2px; padding: 0.4rem 0.5rem; font-family: var(--font-label); font-size: 0.64rem; letter-spacing: 0.08em; line-height: 1.4; text-transform: uppercase; color: oklch(0.44 0.08 50); background: var(--paper); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "White field with hairline border and ink focus ring.",
+      "html": "<input class=\"ds-input\" value=\"Breaking out with AI\" />",
+      "css": ".ds-input { box-sizing: border-box; width: 100%; border: 1px solid var(--hairline); border-radius: 3px; padding: 0.65rem; color: var(--text); background: #ffffff; } .ds-input:focus-visible { outline: 2px solid color-mix(in oklch, var(--theme-ink) 55%, var(--paper)); outline-offset: 1px; }"
+    },
+    {
+      "name": "Drawer Index",
+      "kind": "nav",
+      "description": "The minimap: a paper drawer index whose split-color specimens show primary-tag families.",
+      "html": "<div class=\"ds-minimap\" aria-label=\"Memory board index\"><span class=\"ds-minimap-card ds-minimap-card-a\"><i></i><i></i></span><span class=\"ds-minimap-card ds-minimap-card-b\"><i></i><i></i><i></i></span><span class=\"ds-minimap-mask\"></span></div>",
+      "css": ".ds-minimap { position: relative; box-sizing: border-box; width: 220px; height: 160px; overflow: hidden; border: 1px solid var(--hairline); border-radius: 3px; background: var(--paper); box-shadow: var(--shadow-slip); } .ds-minimap-card { position: absolute; display: flex; overflow: hidden; border: 1px solid color-mix(in oklch, var(--theme-ink) 35%, var(--paper)); } .ds-minimap-card i { flex: 1; } .ds-minimap-card-a { top: 34px; right: 22px; width: 42px; height: 26px; } .ds-minimap-card-a i:first-child { background: oklch(0.62 0.1 305); } .ds-minimap-card-a i:last-child { background: oklch(0.62 0.1 145); } .ds-minimap-card-b { bottom: 18px; left: 78px; width: 50px; height: 28px; } .ds-minimap-card-b i:nth-child(1) { background: oklch(0.62 0.1 145); } .ds-minimap-card-b i:nth-child(2) { background: oklch(0.62 0.1 255); } .ds-minimap-card-b i:nth-child(3) { background: oklch(0.62 0.1 305); } .ds-minimap-mask { position: absolute; inset: 20px 14px 36px 22px; border: 1px solid color-mix(in oklch, var(--theme-ink) 35%, transparent); background: color-mix(in oklch, var(--theme-ink) 12%, transparent); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Specimen Cabinet",
+    "overview": "The app is a natural-history drawer: the pile is a curated collection, and every memory is a cataloged specimen slip on an archival sheet. Museum-modern register — hairline rules, typed catalog labels, near-black ink, one quiet accent — never scrapbook-nostalgic and never productivity-SaaS. Canvas-first: no topbar, only floating controls; one theme ink derives the palette via color-mix.",
+    "keyCharacteristics": [
+      "Canvas-first: the canvas is the app; there is no topbar, only floating controls.",
+      "Cards are neutral archival slips; tag color lives on labels, not on card fills.",
+      "One theme ink derives the entire UI palette via CSS color-mix.",
+      "Typed mono labels carry metadata; a grotesque carries reading text."
+    ],
+    "rules": [
+      {
+        "name": "The One Ink Rule",
+        "body": "Every chrome color derives from --theme-ink by color-mix; no second accent hue enters the interface chrome. (Tag colors and the destructive red are meaning, not chrome.)",
+        "section": "colors"
+      },
+      {
+        "name": "The Color-on-Labels Rule",
+        "body": "Tag color appears on labels, chips, and the minimap index — never as a full card background fill.",
+        "section": "colors"
+      },
+      {
+        "name": "The Typed Label Rule",
+        "body": "Metadata is set in the mono face like a catalog entry; prose is set in the grotesque. The mono is never used for body copy, and the grotesque is never tracked out like a label.",
+        "section": "typography"
+      }
+    ],
+    "dos": [
+      "Do derive every chrome color from --theme-ink via color-mix.",
+      "Do keep cards neutral; express tag identity through label color and the minimap split.",
+      "Do keep capture one click away on the canvas at all times.",
+      "Do set metadata in the typed mono face at small sizes (0.64–0.68rem).",
+      "Do preserve the persisted viewport; the owner returns to their spot."
+    ],
+    "donts": [
+      "Don't fill card backgrounds with tag colors (the sticky-note look).",
+      "Don't add a topbar, sidebar, or any persistent chrome band.",
+      "Don't use pill radii, dot grids, or a second accent hue in the chrome.",
+      "Don't add a dark mode; the scene is a desk in daylight.",
+      "Don't animate canvas content or add hover effects to slips; motion belongs to dialog entrances only."
+    ]
+  }
+}

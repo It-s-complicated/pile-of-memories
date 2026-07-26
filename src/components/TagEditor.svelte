@@ -1,5 +1,8 @@
 <script lang="ts">
-  import { canonicalizeLabels, MAX_LABEL_LENGTH } from "#lib/labels.js";
+  import { canonicalizeLabels, MAX_LABEL_LENGTH, PRIMARY_TAGS } from "#lib/labels.js";
+  import { getPrimaryTagAccent, getTopicTagColor } from "#lib/scene.js";
+
+  const primaryTagKeys = new Set(PRIMARY_TAGS.map((tag) => tag.toLowerCase()));
 
   interface Props {
     id: string;
@@ -49,8 +52,12 @@
   {#if value.length}
     <ul aria-label="Selected tags">
       {#each value as tag (tag.toLowerCase())}
-        <li>
-          {tag}
+        {@const primary = primaryTagKeys.has(tag.toLowerCase())}
+        <li
+          class:primary
+          style:--tag-color={primary ? getPrimaryTagAccent(tag) : getTopicTagColor(tag)}
+        >
+          <span>{tag}</span>
           <button
             type="button"
             aria-label={`Remove ${tag}`}
@@ -88,7 +95,11 @@
   }
 
   label {
-    font-weight: 700;
+    font-family: var(--font-label);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
   }
 
   ul {
@@ -103,24 +114,42 @@
   li {
     display: flex;
     align-items: center;
-    gap: 0.2rem;
-    border: 1px solid var(--theme-border);
-    border-radius: 999px;
-    padding: 0.2rem 0.25rem 0.2rem 0.55rem;
-    color: var(--theme-ink);
-    background: #fff;
+    gap: 0.25rem;
+    border: 1px solid color-mix(in oklch, var(--tag-color) 55%, var(--paper));
+    border-radius: 2px;
+    padding: 0.15rem 0.3rem 0.15rem 0.45rem;
+    font-family: var(--font-label);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--tag-color);
+    background: var(--paper);
+  }
+
+  li > span {
+    text-box: trim-both cap alphabetic;
+  }
+
+  li.primary {
+    border-color: transparent;
+    color: var(--paper);
+    background: var(--tag-color);
   }
 
   li button {
     display: grid;
-    width: 1.35rem;
-    height: 1.35rem;
+    width: 1.2rem;
+    height: 1.2rem;
     place-items: center;
     border: 0;
-    border-radius: 50%;
+    border-radius: 2px;
     color: inherit;
     background: transparent;
     cursor: pointer;
+  }
+
+  li button:hover {
+    background: color-mix(in oklch, var(--tag-color) 18%, transparent);
   }
 
   .tag-input {
@@ -131,14 +160,24 @@
 
   input,
   .tag-input button {
-    border: 1px solid var(--theme-border);
-    border-radius: 0.4rem;
+    border: 1px solid var(--hairline);
+    border-radius: 3px;
     padding: 0.65rem;
-    color: var(--theme-ink);
+    color: var(--text);
     background: #fff;
   }
 
+  input:focus-visible {
+    outline: 2px solid color-mix(in oklch, var(--theme-ink) 55%, var(--paper));
+    outline-offset: 1px;
+  }
+
   .tag-input button {
+    color: var(--theme-ink);
     cursor: pointer;
+  }
+
+  .tag-input button:hover {
+    background: var(--ink-tint);
   }
 </style>

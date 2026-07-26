@@ -2,7 +2,7 @@
 
 ## Project Direction
 
-Pile of Memories II is a personal spatial memory board.
+Pile of Memories is a personal spatial memory board.
 
 The first product loop is intentionally small:
 

@@ -1,22 +1,19 @@
 import { describe, expect, it } from "vite-plus/test";
 import { parseCardChanges, parseCardInput } from "./card";
-import {
-  getMemoryBackground,
-  getPrimaryTagAccent,
-  getTopicBorder,
-  getTopicTagColor,
-} from "./scene";
+import { getMinimapColors, getPrimaryTagAccent, getTopicTagColor } from "./scene";
 
 describe("board", () => {
-  it("colors cards from their area and topic tags", () => {
-    expect(getMemoryBackground([])).toBe("#fff3bf");
-    expect(getMemoryBackground(["web development"])).toBe("#d9e9ff");
-    expect(getMemoryBackground(["job", "web development"])).toBe(
-      "linear-gradient(135deg, #dff2d8, #d9e9ff)",
-    );
-    expect(getPrimaryTagAccent("unknown")).toBe("var(--primary-color)");
-    expect(getTopicBorder(["Vue", "React"])).toBe("linear-gradient(135deg, #2f855a, #1677a8)");
-    expect(getTopicTagColor("unknown")).toBe("var(--theme-muted)");
+  it("colors labels from one OKLCH family, hue per tag", () => {
+    expect(getPrimaryTagAccent("web development")).toBe("oklch(0.46 0.09 255)");
+    expect(getPrimaryTagAccent("unknown")).toBe("var(--theme-ink)");
+    expect(getTopicTagColor("AI")).toBe("oklch(0.44 0.08 195)");
+    expect(getTopicTagColor("Vue")).toBe("oklch(0.44 0.08 160)");
+    expect(getTopicTagColor("unknown")).toBe("var(--muted)");
+    expect(getMinimapColors(["job", "web development", "unknown"])).toEqual([
+      "oklch(0.62 0.1 145)",
+      "oklch(0.62 0.1 255)",
+    ]);
+    expect(getMinimapColors([])).toEqual(["color-mix(in oklch, var(--muted) 45%, var(--paper))"]);
   });
 });
 

@@ -34,7 +34,7 @@ Note: the README's "place them spatially instead of burying them in lists" frami
 
 - Memory cards are Svelte Flow nodes (`type === "memory"`) persisted in PostgreSQL; positions stored per card.
 - Cluster model: memories sharing the same normalized, sorted union of areas and topics form a cluster; new memories join exact clusters at the nearest collision-free position, novel combinations are placed by Jaccard similarity; 640px gap between cluster bounds.
-- **Reorganize clusters** is the only group-move operation: deterministic three-column preview, cancel restores the snapshot, apply persists only changed positions.
+- **Reorganize clusters** is the only group-move operation: deterministic two-dimensional proximity preview, cancel restores the snapshot, apply persists only changed positions.
 - Placement is currently client-side (see GUIDED_MEMORY_PLACEMENT.md); the stated direction is to move placement primarily into the AI backend.
 - Markdown is an important, near-term-binding format for card bodies.
 - Live updates stream complete snapshots after Postgres invalidations; deployment requires the Node adapter, persistent runtime, unbuffered SSE, `Cache-Control: no-store`.
@@ -43,7 +43,7 @@ Note: the README's "place them spatially instead of burying them in lists" frami
 
 ## Brand Commitments
 
-- The name is **"Pile of Memories"** (the "II" suffix is a working title artifact; a rename is planned). Use "Pile of Memories" in all new copy.
+- The name is **"Pile of Memories"**.
 - Private-by-default and self-directed: own database (Supabase Postgres), own API keys, no public deployment, no accounts beyond the owner.
 
 ## Evidence on Hand

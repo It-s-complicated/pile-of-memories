@@ -1,4 +1,4 @@
-# Pile of Memories II
+# Pile of Memories
 
 A private spatial memory board for capturing, clustering, and revisiting ideas.
 

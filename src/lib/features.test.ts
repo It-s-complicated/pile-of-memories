@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
-  CLUSTER_GAP,
   findClusterPosition,
   getClusterKey,
   jaccardSimilarity,
@@ -84,7 +83,7 @@ describe("cluster placement", () => {
       y: 0,
     });
     const related = findClusterPosition(existing, { tags: ["A", "B"], topics: [] }, { x: 0, y: 0 });
-    expect(related.x).toBe(320 + CLUSTER_GAP);
+    expect(related.x).toBe(660);
     expect(
       findClusterPosition(
         [...existing, node("b", ["B"], [], { x: 500, y: 0 })],
@@ -94,7 +93,7 @@ describe("cluster placement", () => {
     ).toEqual({ x: 360, y: 1040 });
   });
 
-  it("reflows deterministically into three-column clusters", () => {
+  it("reflows deterministically in two dimensions while keeping exact groups together", () => {
     const nodes = [
       node("d", ["A"], [], { x: 9, y: 9 }),
       node("b", ["A"]),
@@ -104,14 +103,39 @@ describe("cluster placement", () => {
     ];
     const reflowed = reflowClusters(nodes);
     const positions = Object.fromEntries(reflowed.map(({ id, position }) => [id, position]));
+    const reversed = Object.fromEntries(
+      reflowClusters(nodes.toReversed()).map(({ id, position }) => [id, position]),
+    );
 
-    expect(positions).toMatchObject({
-      a: { x: 0, y: 0 },
-      b: { x: 360, y: 0 },
-      c: { x: 720, y: 0 },
-      d: { x: 0, y: 260 },
-      e: { x: 1680, y: 0 },
-    });
+    expect(reversed).toEqual(positions);
+    expect(positions.b.x - positions.a.x).toBe(360);
+    expect(positions.c.x - positions.a.x).toBe(720);
+    expect(positions.d).toEqual({ x: positions.a.x, y: positions.a.y + 260 });
+    expect(new Set(Object.values(positions).map(({ y }) => y)).size).toBeGreaterThan(1);
+  });
+
+  it("places overlapping tag sets closer than unrelated ones", () => {
+    const positions = Object.fromEntries(
+      reflowClusters([
+        node("a", ["A"]),
+        node("ab", ["A", "B"]),
+        node("b", ["B"]),
+        node("c", ["C"]),
+      ]).map(({ id, position }) => [id, position]),
+    );
+    const distance = (left: string, right: string) =>
+      Math.hypot(positions[left].x - positions[right].x, positions[left].y - positions[right].y);
+    const relatedDistances = [distance("a", "ab"), distance("ab", "b")];
+    const unrelatedDistances = [
+      distance("a", "b"),
+      distance("a", "c"),
+      distance("ab", "c"),
+      distance("b", "c"),
+    ];
+
+    expect(Math.max(...relatedDistances)).toBeLessThan(Math.min(...unrelatedDistances));
+    expect(new Set(Object.values(positions).map(({ x }) => x)).size).toBeGreaterThan(1);
+    expect(new Set(Object.values(positions).map(({ y }) => y)).size).toBeGreaterThan(1);
   });
 });
 
