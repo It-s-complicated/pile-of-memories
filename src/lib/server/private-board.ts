@@ -1,6 +1,6 @@
-import { dev } from "$app/env";
+import { getRequestEvent } from "$app/server";
 import { error } from "@sveltejs/kit";
 
 export function requirePrivateBoard(): void {
-  if (!dev) error(503, "Authentication is required before production use");
+  if (!getRequestEvent().locals.user) error(401, "Sign in with the approved GitHub account");
 }

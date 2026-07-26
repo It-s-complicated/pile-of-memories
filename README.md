@@ -28,7 +28,19 @@ vp dev
 Set `DATABASE_CONNECTION_STRING` in `.env`. If it uses transaction pooling, set
 `DATABASE_LISTEN_CONNECTION_STRING` to a session-mode URL for live updates. Set
 `OPENCODE_GO_API_KEY` to enable DeepSeek V4 Flash title and tag suggestions through OpenCode Go.
-Database access remains development-only until authentication is implemented.
+
+## Authentication
+
+The board uses Better Auth with GitHub and admits one account. Configure `BETTER_AUTH_SECRET`,
+`BETTER_AUTH_URL`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and the approved account's stable
+numeric GitHub ID in `APPROVED_GITHUB_PROVIDER_ID`. The GitHub OAuth callback is:
+
+```text
+<BETTER_AUTH_URL>/api/auth/callback/github
+```
+
+Every card and enrichment remote function requires the approved session. The board itself remains a
+single shared dataset without ownership columns.
 
 ## Deployment
 
