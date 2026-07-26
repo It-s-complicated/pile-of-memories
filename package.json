@@ -29,7 +29,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@sveltejs/adapter-node": "6.0.0-next.4",
+    "@sveltejs/adapter-netlify": "7.0.0-next.4",
     "@sveltejs/kit": "3.0.0-next.10",
     "@types/node": "^26.1.1",
     "@types/pg": "^8.20.0",

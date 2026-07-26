@@ -254,9 +254,9 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@sveltejs/adapter-node':
-        specifier: 6.0.0-next.4
-        version: 6.0.0-next.4(@sveltejs/kit@3.0.0-next.10(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.2.5(@types/node@26.1.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.56.6))(@voidzero-dev/vite-plus-core@0.2.5(@types/node@26.1.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.56.6)(typescript@6.0.3))
+      '@sveltejs/adapter-netlify':
+        specifier: 7.0.0-next.4
+        version: 7.0.0-next.4(@sveltejs/kit@3.0.0-next.10(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.2.5(@types/node@26.1.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.56.6))(@voidzero-dev/vite-plus-core@0.2.5(@types/node@26.1.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.56.6)(typescript@6.0.3))
       '@sveltejs/kit':
         specifier: 3.0.0-next.10
         version: 3.0.0-next.10(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.2.5(@types/node@26.1.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.56.6))(@voidzero-dev/vite-plus-core@0.2.5(@types/node@26.1.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.56.6)(typescript@6.0.3)
@@ -419,6 +419,9 @@ packages:
       shiki:
         optional: true
 
+  '@iarna/toml@2.2.5':
+    resolution: {integrity: sha512-trnsAYxU3xnS1gPHPyU961coFyLkh4gAD/0zQ5mymY4yOZ+CYvsPqUbOFSw0aDM4y0tV7tiFxL/1XfXPNC6IPg==}
+
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
 
@@ -440,6 +443,14 @@ packages:
     peerDependencies:
       '@emnapi/core': ^1.7.1
       '@emnapi/runtime': ^1.7.1
+
+  '@netlify/functions@5.3.0':
+    resolution: {integrity: sha512-FP+xCoZMkMOUsKa4UdG/oiK/2md1/TxuXvqqieaMVMgDbFFMaHI8h0oHCViUY73kPbKV6HyzayaSXGYXKpBSoQ==}
+    engines: {node: '>=18.0.0'}
+
+  '@netlify/types@2.8.0':
+    resolution: {integrity: sha512-8/g0Pt6y6wXj5Ia5eeYLiXhRfWeqZXGXpGFeCiiQdUOem+FPtXdA4+YdGxqzWc7D0AvptKSO01KGeeVWHSu8Kg==}
+    engines: {node: ^18.14.0 || >=20}
 
   '@noble/ciphers@2.2.0':
     resolution: {integrity: sha512-Z6pjIZ/8IJcCGzb2S/0Px5J81yij85xASuk1teLNeg75bfT07MV3a/O2Mtn1I2se43k3lkVEcFaR10N4cgQcZA==}
@@ -855,10 +866,10 @@ packages:
     peerDependencies:
       acorn: ^8.9.0
 
-  '@sveltejs/adapter-node@6.0.0-next.4':
-    resolution: {integrity: sha512-PJSCFbwGSDkbRxEfj0pENvUd3I9TM/RS08zF/6yiWOS7dpuM769JObGHWJir/rKkhOaF1iPM1iO3cGR8gYIN0w==}
+  '@sveltejs/adapter-netlify@7.0.0-next.4':
+    resolution: {integrity: sha512-4dKBDwsr8goZ9wIlSnLKxZW7V+7vZwM6dTwbuDWksAsRKs1opHpUmMIZ4bDkoarULo59TBuxpaAl97lz7VF07A==}
     peerDependencies:
-      '@sveltejs/kit': ^3.0.0-next.0
+      '@sveltejs/kit': ^2.31.0
 
   '@sveltejs/kit@3.0.0-next.10':
     resolution: {integrity: sha512-gGP0kyuHBlbW9t0gHhUjqTnkGdgbIL+Bn6BgnIvXd3hfs3iMbGLBNsdA83bdKLgmvK4SEDRnSSr+0GiqcQjHEQ==}
@@ -2161,6 +2172,8 @@ snapshots:
       marked: 18.0.6
       svelte: 5.56.6
 
+  '@iarna/toml@2.2.5': {}
+
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
@@ -2186,6 +2199,12 @@ snapshots:
       '@emnapi/runtime': 1.11.2
       '@tybys/wasm-util': 0.10.3
     optional: true
+
+  '@netlify/functions@5.3.0':
+    dependencies:
+      '@netlify/types': 2.8.0
+
+  '@netlify/types@2.8.0': {}
 
   '@noble/ciphers@2.2.0': {}
 
@@ -2396,8 +2415,10 @@ snapshots:
     dependencies:
       acorn: 8.17.0
 
-  '@sveltejs/adapter-node@6.0.0-next.4(@sveltejs/kit@3.0.0-next.10(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.2.5(@types/node@26.1.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.56.6))(@voidzero-dev/vite-plus-core@0.2.5(@types/node@26.1.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.56.6)(typescript@6.0.3))':
+  '@sveltejs/adapter-netlify@7.0.0-next.4(@sveltejs/kit@3.0.0-next.10(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.2.5(@types/node@26.1.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.56.6))(@voidzero-dev/vite-plus-core@0.2.5(@types/node@26.1.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.56.6)(typescript@6.0.3))':
     dependencies:
+      '@iarna/toml': 2.2.5
+      '@netlify/functions': 5.3.0
       '@sveltejs/kit': 3.0.0-next.10(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.2.5(@types/node@26.1.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.56.6))(@voidzero-dev/vite-plus-core@0.2.5(@types/node@26.1.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.56.6)(typescript@6.0.3)
       rolldown: 1.2.0
 
