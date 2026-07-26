@@ -253,6 +253,7 @@
       data: {
         title: memoryTitle.trim() || fallbackTitle(memoryBody),
         body: memoryBody,
+        updatedAt: new Date().toISOString(),
         tags,
         topics,
         links,
