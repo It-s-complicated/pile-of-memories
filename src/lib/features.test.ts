@@ -62,8 +62,8 @@ describe("labels", () => {
       "Job",
       "New topic",
     ]);
-    expect(partitionLabels(["css", "JOB", "new topic"])).toEqual({
-      tags: ["Job"],
+    expect(partitionLabels(["css", "JOB", "project", "new topic"])).toEqual({
+      tags: ["Job", "Project"],
       topics: ["css", "new topic"],
     });
   });

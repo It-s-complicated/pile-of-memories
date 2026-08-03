@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const PRIMARY_TAGS = ["Web development", "Job", "Personal development"] as const;
+export const PRIMARY_TAGS = ["Web development", "Job", "Personal development", "Project"] as const;
 export const TOPIC_TAGS = [
   "AI",
   "Local-first",

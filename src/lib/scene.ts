@@ -12,6 +12,7 @@ const PRIMARY_TAG_HUES = {
   "web development": 255,
   job: 145,
   "personal development": 305,
+  project: 354,
 } satisfies Record<PrimaryTagKey, number>;
 const TOPIC_TAG_HUES = {
   ai: 195,

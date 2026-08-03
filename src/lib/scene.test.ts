@@ -5,6 +5,7 @@ import { getMinimapColors, getPrimaryTagAccent, getTopicTagColor } from "./scene
 describe("board", () => {
   it("colors labels from one OKLCH family, hue per tag", () => {
     expect(getPrimaryTagAccent("web development")).toBe("oklch(0.46 0.09 255)");
+    expect(getPrimaryTagAccent("project")).toBe("oklch(0.46 0.09 354)");
     expect(getPrimaryTagAccent("unknown")).toBe("var(--theme-ink)");
     expect(getTopicTagColor("AI")).toBe("oklch(0.44 0.08 195)");
     expect(getTopicTagColor("Vue")).toBe("oklch(0.44 0.08 160)");
