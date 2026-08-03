@@ -14,7 +14,7 @@ import {
 } from "#lib/enrichment-analytics.js";
 
 export const ENRICHMENT_PROVIDER = "opencode-go";
-export const ENRICHMENT_MODEL = "deepseek-v4-flash";
+export const ENRICHMENT_MODEL = "mimo-v2.5";
 export const ENRICHMENT_PROMPT_VERSION = "memory-enrichment-v1";
 const PROVIDER_TIMEOUT_MS = 55_000;
 
