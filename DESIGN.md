@@ -234,8 +234,8 @@ system is the capture FAB. Pills are banned everywhere else.
 - **Corner Style:** near-square (3px).
 - **Background:** Paper with 1px Hairline; shadow-slip.
 - **Selection:** border deepens to 65% ink; keyboard focus gets a 2px ink outline.
-- **Anatomy:** accession `NO.` and updated date (typed, muted) → title
-  (Archivo 600) → quiet typed Edit action → Markdown body (max 13rem,
+- **Anatomy:** compact created and updated dates (`DD.MM.YY`, typed, muted) →
+  title (Archivo 600) → quiet typed Edit action → Markdown body (max 13rem,
   scrolls) → tag labels → links.
 
 ### Tags

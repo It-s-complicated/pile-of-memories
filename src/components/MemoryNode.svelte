@@ -1,3 +1,9 @@
+<script module lang="ts">
+  const compactDateFormatter = new Intl.DateTimeFormat("de-DE", {
+    dateStyle: "short",
+  });
+</script>
+
 <script lang="ts">
   import { type NodeProps, useSvelteFlow } from "@xyflow/svelte";
   import { getCardPersistence } from "#lib/card-persistence.js";
@@ -11,10 +17,8 @@
   const { updateNodeData } = useSvelteFlow<MemoryNode>();
   const cardPersistence = getCardPersistence();
   let parsedBody = $derived(parseMarkdown(data.body));
-  let accession = $derived(id.replaceAll("-", "").slice(-4).toUpperCase());
-  let updatedDate = $derived(
-    new Date(data.updatedAt).toLocaleDateString("en-GB", { dateStyle: "medium" }),
-  );
+  let createdDate = $derived(compactDateFormatter.format(new Date(data.createdAt)));
+  let updatedDate = $derived(compactDateFormatter.format(new Date(data.updatedAt)));
   let editOpen = $state(false);
   let editTitle = $state("");
   let editBody = $state("");
@@ -89,7 +93,8 @@
 <article class="memory-card" aria-label={`Memory: ${data.title || "Untitled memory"}`}>
   <header>
     <p class="card-meta">
-      NO. {accession} ·
+      <time datetime={data.createdAt}>Created {createdDate}</time>
+      ·
       <time datetime={data.updatedAt}>Updated {updatedDate}</time>
     </p>
     <h2>{data.title || "Untitled memory"}</h2>

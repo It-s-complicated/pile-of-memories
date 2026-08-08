@@ -27,6 +27,7 @@ const TOPIC_TAG_HUES = {
 export type MemoryData = {
   title: string;
   body: string;
+  createdAt: string;
   updatedAt: string;
   tags: string[];
   topics: string[];
@@ -71,6 +72,7 @@ export function cardToMemoryNode(card: Card, tagVocabulary: string[] = []): Memo
     data: {
       title: card.title,
       body: card.body,
+      createdAt: card.createdAt,
       updatedAt: card.updatedAt,
       tags: card.tags,
       topics: card.topics,
