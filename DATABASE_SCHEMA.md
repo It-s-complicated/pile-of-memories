@@ -2,7 +2,9 @@
 
 `migrations/0001_cards.sql` owns the cards table and its change-notification trigger;
 `migrations/0002_better_auth.sql` owns Better Auth's user, session, account, and verification
-tables. Run both with `vp run db:migrate` before starting the application.
+tables; `migrations/0003_enrichment_analytics.sql` owns the private AI-enrichment analytics tables,
+views, row-level security, and grants. Run all migrations with `vp run db:migrate` before starting
+the application. Runtime application code never creates or alters schema.
 
 Each card stores its UUID, title, Markdown body, canvas coordinates, tags, topics, derived HTTP links,
 archive flag, and creation/update timestamps. Application reads return complete snapshots ordered by

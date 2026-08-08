@@ -33,7 +33,7 @@ Note: the README's "place them spatially instead of burying them in lists" frami
 ## Capabilities and Constraints
 
 - Memory cards are Svelte Flow nodes (`type === "memory"`) persisted in PostgreSQL; positions stored per card.
-- Cluster model: memories sharing the same normalized, sorted union of areas and topics form a cluster; new memories join exact clusters at the nearest collision-free position, novel combinations are placed by Jaccard similarity; 640px gap between cluster bounds.
+- Cluster model: memories sharing the same normalized, sorted union of areas and topics form a cluster; new memories join exact clusters at the nearest collision-free position, novel combinations are placed by Jaccard similarity; spacing targets range from 24px inside exact clusters to 180px between unrelated cluster bounds.
 - **Reorganize clusters** is the only group-move operation: deterministic two-dimensional proximity preview, cancel restores the snapshot, apply persists only changed positions.
 - Placement is currently client-side (see GUIDED_MEMORY_PLACEMENT.md); the stated direction is to move placement primarily into the AI backend.
 - Markdown is an important, near-term-binding format for card bodies.
