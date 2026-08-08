@@ -79,9 +79,16 @@ export async function insertCard(card: CardInput): Promise<Card> {
 
 export async function updateCard(id: string, changes: CardChanges): Promise<Card | null> {
   const sql = getSql();
-  const values: Record<string, string | number | boolean | string[] | Date> = {
-    updated_at: new Date(),
-  };
+  const values: Record<string, string | number | boolean | string[] | Date> = {};
+
+  if (
+    changes.title !== undefined ||
+    changes.body !== undefined ||
+    changes.tags !== undefined ||
+    changes.topics !== undefined
+  ) {
+    values.updated_at = new Date();
+  }
 
   if (changes.title !== undefined) values.title = changes.title;
   if (changes.body !== undefined) values.body = changes.body;
@@ -115,7 +122,7 @@ export async function updateCardPositions(positions: CardPositionUpdate[]): Prom
     return await sql.begin(async (transaction) => {
       const rows = await transaction<CardRow[]>`
         UPDATE cards AS card
-        SET x = position.x, y = position.y, updated_at = now()
+        SET x = position.x, y = position.y
         FROM unnest(
           ${positions.map(({ id }) => id)}::uuid[],
           ${positions.map(({ position }) => position.x)}::double precision[],

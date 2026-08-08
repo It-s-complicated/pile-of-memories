@@ -77,9 +77,11 @@ describeIntegration("PostgreSQL card integration", () => {
     await sql?.end();
   });
 
-  it("updates a position batch atomically", async () => {
+  it("updates a position batch atomically without changing content timestamps", async () => {
     await insertCard(input(FIRST_ID));
     await insertCard(input(SECOND_ID));
+    const contentTimestamp = new Date("2020-01-02T03:04:05.000Z");
+    await sql`UPDATE cards SET updated_at = ${contentTimestamp}`;
 
     const updated = await updateCardPositions([
       { id: FIRST_ID, position: { x: 10, y: 20 } },
@@ -89,6 +91,10 @@ describeIntegration("PostgreSQL card integration", () => {
       { x: 10, y: 20 },
       { x: 30, y: 40 },
     ]);
+    expect(updated?.map(({ updatedAt }) => updatedAt)).toEqual([
+      contentTimestamp.toISOString(),
+      contentTimestamp.toISOString(),
+    ]);
 
     await expect(
       updateCardPositions([
@@ -96,10 +102,26 @@ describeIntegration("PostgreSQL card integration", () => {
         { id: MISSING_ID, position: { x: 99, y: 99 } },
       ]),
     ).resolves.toBeNull();
-    expect((await listCards()).find(({ id }) => id === FIRST_ID)?.position).toEqual({
-      x: 10,
-      y: 20,
+    expect((await listCards()).find(({ id }) => id === FIRST_ID)).toMatchObject({
+      position: { x: 10, y: 20 },
+      updatedAt: contentTimestamp.toISOString(),
     });
+  });
+
+  it("changes the update date only for content edits", async () => {
+    await sql`TRUNCATE cards CASCADE`;
+    await insertCard(input(FIRST_ID));
+    const contentTimestamp = new Date("2020-01-02T03:04:05.000Z");
+    await sql`UPDATE cards SET updated_at = ${contentTimestamp}`;
+
+    const archived = await updateCard(FIRST_ID, { archived: true });
+    expect(archived?.updatedAt).toBe(contentTimestamp.toISOString());
+
+    const moved = await updateCard(FIRST_ID, { position: { x: 10, y: 20 } });
+    expect(moved?.updatedAt).toBe(contentTimestamp.toISOString());
+
+    const edited = await updateCard(FIRST_ID, { title: "Updated" });
+    expect(new Date(edited!.updatedAt).getTime()).toBeGreaterThan(contentTimestamp.getTime());
   });
 
   it("streams authoritative snapshots and releases its listener", async () => {
