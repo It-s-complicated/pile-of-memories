@@ -76,21 +76,21 @@ describe("cluster placement", () => {
     expect(jaccardSimilarity("a", "b")).toBe(0);
   });
 
-  it("adds to exact clusters without collisions and keeps new clusters 640px away", () => {
+  it("adds cards without collisions using compact, similarity-scaled gaps", () => {
     const existing = [node("a", ["A"])];
     expect(findClusterPosition(existing, { tags: ["a"], topics: [] }, { x: 20, y: 20 })).toEqual({
-      x: 360,
+      x: 344,
       y: 0,
     });
     const related = findClusterPosition(existing, { tags: ["A", "B"], topics: [] }, { x: 0, y: 0 });
-    expect(related.x).toBe(660);
+    expect(related.x).toBe(364);
     expect(
       findClusterPosition(
         [...existing, node("b", ["B"], [], { x: 500, y: 0 })],
         { tags: ["A"], topics: [] },
         { x: 0, y: 0 },
       ),
-    ).toEqual({ x: 360, y: 1040 });
+    ).toEqual({ x: 1032, y: 0 });
   });
 
   it("reflows deterministically in two dimensions while keeping exact groups together", () => {
@@ -108,9 +108,9 @@ describe("cluster placement", () => {
     );
 
     expect(reversed).toEqual(positions);
-    expect(positions.b.x - positions.a.x).toBe(360);
-    expect(positions.c.x - positions.a.x).toBe(720);
-    expect(positions.d).toEqual({ x: positions.a.x, y: positions.a.y + 260 });
+    expect(positions.b.x - positions.a.x).toBe(344);
+    expect(positions.c).toEqual({ x: positions.a.x, y: positions.a.y + 244 });
+    expect(positions.d).toEqual({ x: positions.b.x, y: positions.b.y + 244 });
     expect(new Set(Object.values(positions).map(({ y }) => y)).size).toBeGreaterThan(1);
   });
 
@@ -136,6 +136,43 @@ describe("cluster placement", () => {
     expect(Math.max(...relatedDistances)).toBeLessThan(Math.min(...unrelatedDistances));
     expect(new Set(Object.values(positions).map(({ x }) => x)).size).toBeGreaterThan(1);
     expect(new Set(Object.values(positions).map(({ y }) => y)).size).toBeGreaterThan(1);
+  });
+
+  it("keeps a representative board compact enough to navigate at readable zoom", () => {
+    const labelSets = [
+      ["Personal development", "AI"],
+      ["Personal development", "Job"],
+      ["Job", "Personal development", "Agile"],
+      ["Job", "AI"],
+      ["AI", "Agent Skills"],
+      ["Agile"],
+      ["Web development", "AI"],
+      ["AI"],
+      ["Job", "Agile"],
+      ["Web development", "CSS"],
+      ["Web development"],
+      ["Personal development", "Job", "Web development"],
+      ["Web development", "React", "SolidJS"],
+      ["Web development", "Vue", "CSS", "Nuxt"],
+      ["Job", "Agile"],
+      ["AI"],
+      ["Project", "Atproto"],
+      ["Web development", "Job"],
+      ["Job", "Web development", "Agile"],
+      ["Personal development", "Job"],
+      ["Project", "AI"],
+    ];
+    const reflowed = reflowClusters(
+      labelSets.map((labels, index) =>
+        node(index.toString().padStart(2, "0"), labels, [], { x: 0, y: 0 }),
+      ),
+    );
+    const minX = Math.min(...reflowed.map(({ position }) => position.x));
+    const minY = Math.min(...reflowed.map(({ position }) => position.y));
+    const maxX = Math.max(...reflowed.map(({ position }) => position.x + 320));
+    const maxY = Math.max(...reflowed.map(({ position }) => position.y + 220));
+
+    expect((maxX - minX) * (maxY - minY)).toBeLessThan(7_000_000);
   });
 });
 

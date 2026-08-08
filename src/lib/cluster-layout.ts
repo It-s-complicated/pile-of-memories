@@ -1,5 +1,5 @@
-export const CLUSTER_GAP = 640;
-export const CARD_GAP = 40;
+export const CLUSTER_GAP = 180;
+export const CARD_GAP = 24;
 export const DEFAULT_CARD_SIZE = { width: 320, height: 220 };
 const REFLOW_ITERATIONS = 160;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
@@ -17,6 +17,7 @@ type Rect = { minX: number; minY: number; maxX: number; maxY: number };
 type ClusterBox<T extends ClusterNode> = {
   key: string;
   nodes: T[];
+  columns: number;
   width: number;
   height: number;
   x: number;
@@ -45,7 +46,9 @@ export function jaccardSimilarity(left: string, right: string): number {
 }
 
 function clusterGap(left: string, right: string): number {
-  return Math.round(CARD_GAP + (CLUSTER_GAP - CARD_GAP) * (1 - jaccardSimilarity(left, right)));
+  const dissimilarity = 1 - jaccardSimilarity(left, right);
+  // Preserve a visible gap for unrelated clusters without letting partially shared labels spread out.
+  return Math.round(CARD_GAP + (CLUSTER_GAP - CARD_GAP) * dissimilarity ** 3);
 }
 
 function size(node?: ClusterNode): { width: number; height: number } {
@@ -177,12 +180,13 @@ function clusterBoxes<T extends ClusterNode>(nodes: T[]): ClusterBox<T>[] {
       const orderedNodes = clusterNodes.slice().sort((a, b) => a.id.localeCompare(b.id));
       const maxWidth = Math.max(...orderedNodes.map((node) => size(node).width));
       const maxHeight = Math.max(...orderedNodes.map((node) => size(node).height));
-      const columns = Math.min(3, orderedNodes.length);
-      const rows = Math.ceil(orderedNodes.length / 3);
+      const columns = Math.ceil(Math.sqrt(orderedNodes.length));
+      const rows = Math.ceil(orderedNodes.length / columns);
 
       return {
         key,
         nodes: orderedNodes,
+        columns,
         width: columns * maxWidth + (columns - 1) * CARD_GAP,
         height: rows * maxHeight + (rows - 1) * CARD_GAP,
         x: 0,
@@ -355,10 +359,10 @@ export function reflowClusters<T extends ClusterNode>(nodes: T[]): T[] {
     const maxHeight = Math.max(...box.nodes.map((node) => size(node).height));
     box.nodes.forEach((node, index) => {
       positions.set(node.id, {
-        x: Math.round(box.x - box.width / 2 - minX + (index % 3) * (maxWidth + CARD_GAP)),
-        y: Math.round(
-          box.y - box.height / 2 - minY + Math.floor(index / 3) * (maxHeight + CARD_GAP),
-        ),
+        x: Math.round(box.x - box.width / 2 - minX) + (index % box.columns) * (maxWidth + CARD_GAP),
+        y:
+          Math.round(box.y - box.height / 2 - minY) +
+          Math.floor(index / box.columns) * (maxHeight + CARD_GAP),
       });
     });
   }
