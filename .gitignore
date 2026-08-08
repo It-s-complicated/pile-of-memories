@@ -4,6 +4,7 @@ build
 dist
 .data
 .output
+.netlify
 docs
 .env
 .agents/skills
