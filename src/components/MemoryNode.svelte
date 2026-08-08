@@ -137,7 +137,7 @@
   >
     <form method="dialog" onsubmit={save}>
       <header>
-        <p>Edit memory · № {accession}</p>
+        <p>Edit memory</p>
         <h2 id={`edit-memory-${id}`}>{data.title || "Untitled memory"}</h2>
       </header>
 

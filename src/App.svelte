@@ -246,6 +246,7 @@
     };
     const position = findClusterPosition(nodes, { tags, topics }, openSpace);
     const links = parseMarkdown(memoryBody).links;
+    const timestamp = new Date().toISOString();
     const node: MemoryNode = {
       id: crypto.randomUUID(),
       type: "memory",
@@ -253,7 +254,8 @@
       data: {
         title: memoryTitle.trim() || fallbackTitle(memoryBody),
         body: memoryBody,
-        updatedAt: new Date().toISOString(),
+        createdAt: timestamp,
+        updatedAt: timestamp,
         tags,
         topics,
         links,

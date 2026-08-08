@@ -259,10 +259,10 @@ vertical segments. There are no menus, tabs, or breadcrumbs.
 
 ### Dialogs
 
-Centered catalog cards (4px, shadow-dialog) with a typed kicker
-(`CAPTURE`, `REVIEW`, `EDIT MEMORY · № XXXX`), Archivo heading, and a sticky
-footer of right-aligned buttons held above a hairline rule, so actions stay
-visible when the form scrolls. Selected tags in the tag editor carry the same
+Centered catalog cards (4px, shadow-dialog) with a typed kicker (`CAPTURE`,
+`REVIEW`, `EDIT MEMORY`), Archivo heading, and a sticky footer of right-aligned
+buttons held above a hairline rule, so actions stay visible when the form scrolls.
+Selected tags in the tag editor carry the same
 filled-primary / outlined-topic color roles as card labels. Entrance: 160ms
 fade-rise (cubic-bezier(0.16, 1, 0.3, 1)); disabled under
 prefers-reduced-motion.
