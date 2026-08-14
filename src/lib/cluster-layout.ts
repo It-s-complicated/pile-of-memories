@@ -178,8 +178,6 @@ function clusterBoxes<T extends ClusterNode>(nodes: T[]): ClusterBox<T>[] {
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([key, clusterNodes]) => {
       const orderedNodes = clusterNodes.slice().sort((a, b) => a.id.localeCompare(b.id));
-      const maxWidth = Math.max(...orderedNodes.map((node) => size(node).width));
-      const maxHeight = Math.max(...orderedNodes.map((node) => size(node).height));
       const columns = Math.ceil(Math.sqrt(orderedNodes.length));
       const rows = Math.ceil(orderedNodes.length / columns);
 
@@ -187,8 +185,8 @@ function clusterBoxes<T extends ClusterNode>(nodes: T[]): ClusterBox<T>[] {
         key,
         nodes: orderedNodes,
         columns,
-        width: columns * maxWidth + (columns - 1) * CARD_GAP,
-        height: rows * maxHeight + (rows - 1) * CARD_GAP,
+        width: columns * DEFAULT_CARD_SIZE.width + (columns - 1) * CARD_GAP,
+        height: rows * DEFAULT_CARD_SIZE.height + (rows - 1) * CARD_GAP,
         x: 0,
         y: 0,
       };
@@ -355,14 +353,14 @@ export function reflowClusters<T extends ClusterNode>(nodes: T[]): T[] {
   const minY = Math.min(...boxes.map((box) => box.y - box.height / 2));
 
   for (const box of boxes) {
-    const maxWidth = Math.max(...box.nodes.map((node) => size(node).width));
-    const maxHeight = Math.max(...box.nodes.map((node) => size(node).height));
     box.nodes.forEach((node, index) => {
       positions.set(node.id, {
-        x: Math.round(box.x - box.width / 2 - minX) + (index % box.columns) * (maxWidth + CARD_GAP),
+        x:
+          Math.round(box.x - box.width / 2 - minX) +
+          (index % box.columns) * (DEFAULT_CARD_SIZE.width + CARD_GAP),
         y:
           Math.round(box.y - box.height / 2 - minY) +
-          Math.floor(index / box.columns) * (maxHeight + CARD_GAP),
+          Math.floor(index / box.columns) * (DEFAULT_CARD_SIZE.height + CARD_GAP),
       });
     });
   }

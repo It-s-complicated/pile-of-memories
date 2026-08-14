@@ -106,8 +106,17 @@ describe("cluster placement", () => {
     const reversed = Object.fromEntries(
       reflowClusters(nodes.toReversed()).map(({ id, position }) => [id, position]),
     );
+    const differentlyMeasured = Object.fromEntries(
+      reflowClusters(
+        nodes.map((item, index) => ({
+          ...item,
+          measured: { width: 320 + index * 20, height: 220 + index * 40 },
+        })),
+      ).map(({ id, position }) => [id, position]),
+    );
 
     expect(reversed).toEqual(positions);
+    expect(differentlyMeasured).toEqual(positions);
     expect(positions.b.x - positions.a.x).toBe(344);
     expect(positions.c).toEqual({ x: positions.a.x, y: positions.a.y + 244 });
     expect(positions.d).toEqual({ x: positions.b.x, y: positions.b.y + 244 });
