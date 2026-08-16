@@ -3,8 +3,11 @@ import {
   createCardRequestSchema,
   deleteCardCommandSchema,
   isCardId,
+  memoryListSettingsSchema,
   parseCardChanges,
   parseCardInput,
+  sortAndFilterCards,
+  type Card,
   updateCardCommandSchema,
   updateCardPositionsCommandSchema,
 } from "./card";
@@ -119,5 +122,40 @@ describe("card change validation", () => {
         ],
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("memory list", () => {
+  const cards: Card[] = [
+    {
+      ...validCard,
+      title: "Beta",
+      tags: ["Job"],
+      topics: [],
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-03T00:00:00.000Z",
+    },
+    {
+      ...validCard,
+      id: "00000000-0000-4000-8000-000000000002",
+      title: "Alpha",
+      tags: ["Project"],
+      topics: ["CSS"],
+      createdAt: "2026-01-02T00:00:00.000Z",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    },
+  ];
+
+  it("validates settings, matches any selected tag, and sorts the result", () => {
+    const settings = memoryListSettingsSchema.parse({
+      sort: "title-asc",
+      tags: ["job", "css"],
+    });
+
+    expect(sortAndFilterCards(cards, settings).map(({ title }) => title)).toEqual([
+      "Alpha",
+      "Beta",
+    ]);
+    expect(memoryListSettingsSchema.safeParse({ sort: "random", tags: [] }).success).toBe(false);
   });
 });

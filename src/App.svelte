@@ -12,10 +12,12 @@
   import { z } from "zod";
   import "@xyflow/svelte/dist/style.css";
   import ClickableMiniMap from "./components/ClickableMiniMap.svelte";
+  import MemoryListDialog from "./components/MemoryListDialog.svelte";
   import ViewportStart from "./components/ViewportStart.svelte";
   import MemoryNodeComponent from "./components/MemoryNode.svelte";
   import MiniMapMemoryNode from "./components/MiniMapMemoryNode.svelte";
   import TagEditor from "./components/TagEditor.svelte";
+  import type { Card } from "./lib/card";
   import { setCardPersistence } from "./lib/card-persistence";
   import {
     createCard,
@@ -120,6 +122,7 @@
   let savingMemory = $state(false);
   let persistenceError = $state("");
   let archiveOpen = $state(false);
+  let listOpen = $state(false);
   let archiveError = $state("");
   let archiveBusyId = $state("");
   let reorganizeSnapshot = $state.raw<MemoryNode[] | null>(null);
@@ -153,6 +156,14 @@
   function openArchive(): void {
     archiveError = "";
     archiveOpen = true;
+  }
+
+  function locateMemory(card: Card): void {
+    listOpen = false;
+    viewportStart?.center(
+      card.position.x + DEFAULT_CARD_SIZE.width / 2,
+      card.position.y + DEFAULT_CARD_SIZE.height / 2,
+    );
   }
 
   async function restoreArchived(id: string): Promise<void> {
@@ -421,6 +432,9 @@
         disabled={reorganizeSaving}
       >{reorganizeSaving ? "Saving…" : "Apply layout"}</button>
     {:else}
+      <button type="button" class="chip-button" onclick={() => (listOpen = true)} disabled={!boardReady}>
+        List
+      </button>
       <button type="button" class="chip-button" onclick={openArchive} disabled={!boardReady}>
         Archive · {archivedCards.length}
       </button>
@@ -465,6 +479,14 @@
     </div>
   {/if}
 </main>
+
+{#if listOpen}
+  <MemoryListDialog
+    cards={cards.filter((card) => !card.archived)}
+    onclose={() => (listOpen = false)}
+    onlocate={locateMemory}
+  />
+{/if}
 
 {#if newMemoryOpen}
   <dialog

@@ -298,7 +298,7 @@ select {
 .memory-dialog form {
   display: grid;
   gap: 1rem;
-  padding: 1.25rem;
+  padding: 1.25rem 1.25rem 0;
 }
 
 .memory-dialog header p,
@@ -405,7 +405,7 @@ select {
   gap: 0.5rem;
   margin-top: 0.25rem;
   border-top: 1px solid var(--hairline);
-  padding-top: 0.75rem;
+  padding-block: 0.75rem;
   background: var(--paper);
 }
 
@@ -483,7 +483,7 @@ select {
 @media (max-width: 520px) {
   .capture-cluster {
     display: grid;
-    grid-template-columns: auto auto;
+    grid-template-columns: auto;
     justify-items: end;
   }
 
@@ -506,6 +506,6 @@ select {
   }
 
   .memory-dialog form {
-    padding: 1rem;
+    padding: 1rem 1rem 0;
   }
 }
