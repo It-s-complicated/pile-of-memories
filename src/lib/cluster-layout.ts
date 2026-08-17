@@ -105,6 +105,35 @@ function clusters<T extends ClusterNode>(nodes: T[]): Map<string, T[]> {
   return result;
 }
 
+function nearestSlot(
+  target: Rect,
+  gap: number,
+  blocked: (rect: Rect) => boolean,
+): { x: number; y: number } {
+  const stepX = DEFAULT_CARD_SIZE.width + gap;
+  const stepY = DEFAULT_CARD_SIZE.height + gap;
+  for (let ring = 1; ; ring += 1) {
+    const dx = gap + (ring - 1) * stepX;
+    const dy = gap + (ring - 1) * stepY;
+    const up = target.minY - dy - DEFAULT_CARD_SIZE.height;
+    const down = target.maxY + dy;
+    const left = target.minX - dx - DEFAULT_CARD_SIZE.width;
+    const right = target.maxX + dx;
+    const slots = [
+      { x: right, y: target.minY },
+      { x: left, y: target.minY },
+      { x: target.minX, y: down },
+      { x: target.minX, y: up },
+      { x: right, y: down },
+      { x: left, y: down },
+      { x: right, y: up },
+      { x: left, y: up },
+    ];
+    const free = slots.find((slot) => !blocked(positionRect(slot)));
+    if (free) return free;
+  }
+}
+
 export function findClusterPosition(
   nodes: ClusterNode[],
   data: ClusterNode["data"],
@@ -121,24 +150,16 @@ export function findClusterPosition(
       gap: clusterGap(key, clusterKey),
       rect: bounds(clusterNodes),
     }));
-  const cardSize = size();
 
   if (exact) {
-    const exactBounds = bounds(exact);
-    for (let attempt = 0; ; attempt += 1) {
-      const candidate = {
-        x: exactBounds.maxX + CARD_GAP + (attempt % 3) * (cardSize.width + CARD_GAP),
-        y: exactBounds.minY + Math.floor(attempt / 3) * (cardSize.height + CARD_GAP),
-      };
-      const rect = positionRect(candidate);
-      if (
-        !nodes.some((node) => overlaps(nodeRect(node), positionRect(candidate))) &&
-        !otherBounds.some((other) => overlaps(rect, other.rect, other.gap))
-      ) {
-        // ponytail: legacy overlaps remain until explicit reflow; creation only guarantees its card adds no new overlap.
-        return candidate;
-      }
-    }
+    // ponytail: legacy overlaps remain until explicit reflow; creation only guarantees its card adds no new overlap.
+    return nearestSlot(
+      bounds(exact),
+      CARD_GAP,
+      (rect) =>
+        nodes.some((node) => overlaps(nodeRect(node), rect)) ||
+        otherBounds.some((other) => overlaps(rect, other.rect, other.gap)),
+    );
   }
 
   const related = [...grouped]
@@ -150,27 +171,14 @@ export function findClusterPosition(
     .filter(({ similarity }) => similarity > 0)
     .sort((a, b) => b.similarity - a.similarity || a.key.localeCompare(b.key))[0];
   const anchor = related ? bounds(related.nodes) : null;
-  const origin = anchor
-    ? { x: anchor.maxX + clusterGap(key, related.key), y: anchor.minY }
-    : fallback;
-  const allBounds = [...grouped].map(([clusterKey, clusterNodes]) => ({
-    gap: clusterGap(key, clusterKey),
-    rect: bounds(clusterNodes),
-  }));
-
-  for (let attempt = 0; ; attempt += 1) {
-    const candidate = {
-      x: origin.x + (attempt % 4) * (cardSize.width + CLUSTER_GAP),
-      y: origin.y + Math.floor(attempt / 4) * (cardSize.height + CLUSTER_GAP),
-    };
-    const rect = {
-      minX: candidate.x,
-      minY: candidate.y,
-      maxX: candidate.x + cardSize.width,
-      maxY: candidate.y + cardSize.height,
-    };
-    if (!allBounds.some((other) => overlaps(rect, other.rect, other.gap))) return candidate;
+  if (anchor) {
+    return nearestSlot(anchor, clusterGap(key, related.key), (rect) =>
+      otherBounds.some((other) => overlaps(rect, other.rect, other.gap)),
+    );
   }
+  const free = (rect: Rect) => !otherBounds.some((other) => overlaps(rect, other.rect, other.gap));
+  if (free(positionRect(fallback))) return fallback;
+  return nearestSlot(bounds(nodes), CLUSTER_GAP, free);
 }
 
 function clusterBoxes<T extends ClusterNode>(nodes: T[]): ClusterBox<T>[] {

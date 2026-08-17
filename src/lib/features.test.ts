@@ -4,6 +4,8 @@ import {
   getClusterKey,
   jaccardSimilarity,
   reflowClusters,
+  CLUSTER_GAP,
+  DEFAULT_CARD_SIZE,
 } from "./cluster-layout";
 import {
   enrichmentInputSchema,
@@ -84,13 +86,44 @@ describe("cluster placement", () => {
     });
     const related = findClusterPosition(existing, { tags: ["A", "B"], topics: [] }, { x: 0, y: 0 });
     expect(related.x).toBe(364);
+    // With the right side occupied, the card hugs its own cluster on the left instead of marching into open space.
     expect(
       findClusterPosition(
         [...existing, node("b", ["B"], [], { x: 500, y: 0 })],
         { tags: ["A"], topics: [] },
         { x: 0, y: 0 },
       ),
-    ).toEqual({ x: 1032, y: 0 });
+    ).toEqual({ x: -344, y: 0 });
+  });
+
+  it("places partially related cards adjacent to their most similar cluster on messy boards", () => {
+    const ai = [
+      node("a1", ["ai"], [], { x: 1000, y: 1000 }),
+      node("a2", ["ai"], [], { x: 1330, y: 980 }),
+      node("a3", ["ai"], [], { x: 1010, y: 1290 }),
+    ];
+    const job = [
+      node("b1", ["job"], [], { x: 1900, y: 900 }),
+      node("b2", ["job"], [], { x: 2230, y: 910 }),
+    ];
+    const position = findClusterPosition(
+      [...ai, ...job],
+      { tags: ["ai", "news"], topics: [] },
+      {
+        x: 0,
+        y: 0,
+      },
+    );
+    const aiGap = Math.max(1000 - (position.x + 320), position.x - 1650, 0);
+    const aiGapY = Math.max(980 - (position.y + 220), position.y - 1510, 0);
+    const aiDistance = Math.hypot(aiGap, aiGapY);
+    const jobDistance = Math.hypot(
+      Math.max(1900 - (position.x + 320), position.x - 2550, 0),
+      Math.max(900 - (position.y + 220), position.y - 1130, 0),
+    );
+
+    expect(aiDistance).toBeLessThanOrEqual(DEFAULT_CARD_SIZE.height + CLUSTER_GAP);
+    expect(aiDistance).toBeLessThan(jobDistance);
   });
 
   it("reflows deterministically in two dimensions while keeping exact groups together", () => {
