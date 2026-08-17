@@ -105,13 +105,33 @@ function clusters<T extends ClusterNode>(nodes: T[]): Map<string, T[]> {
   return result;
 }
 
+function overlapArea(rect: Rect, nodes: ClusterNode[]): number {
+  let area = 0;
+  for (const node of nodes) {
+    const other = nodeRect(node);
+    const x = Math.min(rect.maxX, other.maxX) - Math.max(rect.minX, other.minX);
+    const y = Math.min(rect.maxY, other.maxY) - Math.max(rect.minY, other.minY);
+    if (x > 0 && y > 0) area += x * y;
+  }
+  return area;
+}
+
+// Proximity beats a perfectly clean slot: overlap up to a CARD_GAP-deep edge strip is
+// preferable to exiling a card from its cluster; the reflow preview restores clean gaps.
+const OVERLAP_TOLERANCE = DEFAULT_CARD_SIZE.width * CARD_GAP;
+
 function nearestSlot(
   target: Rect,
   gap: number,
   blocked: (rect: Rect) => boolean,
+  maxRings = Number.POSITIVE_INFINITY,
+  nodes?: ClusterNode[],
 ): { x: number; y: number } {
   const stepX = DEFAULT_CARD_SIZE.width + gap;
   const stepY = DEFAULT_CARD_SIZE.height + gap;
+  let best: { x: number; y: number } | undefined;
+  let bestArea = Number.POSITIVE_INFINITY;
+  let bestFree = false;
   for (let ring = 1; ; ring += 1) {
     const dx = gap + (ring - 1) * stepX;
     const dy = gap + (ring - 1) * stepY;
@@ -129,8 +149,22 @@ function nearestSlot(
       { x: right, y: up },
       { x: left, y: up },
     ];
-    const free = slots.find((slot) => !blocked(positionRect(slot)));
-    if (free) return free;
+    for (const slot of slots) {
+      const rect = positionRect(slot);
+      const free = !blocked(rect);
+      if (free && !nodes) return slot;
+      if (nodes) {
+        const area = overlapArea(rect, nodes);
+        if (area < bestArea || (area === bestArea && free && !bestFree)) {
+          bestArea = area;
+          best = slot;
+          bestFree = free;
+        }
+      }
+    }
+    // ponytail: on a packed board a boxed-in cluster has no free adjacent slot; take the least-overlapping nearby slot over a distant hole.
+    if (bestFree || bestArea <= OVERLAP_TOLERANCE) return best!;
+    if (ring >= maxRings) return best ?? slots[0];
   }
 }
 
@@ -152,13 +186,14 @@ export function findClusterPosition(
     }));
 
   if (exact) {
-    // ponytail: legacy overlaps remain until explicit reflow; creation only guarantees its card adds no new overlap.
     return nearestSlot(
       bounds(exact),
       CARD_GAP,
       (rect) =>
         nodes.some((node) => overlaps(nodeRect(node), rect)) ||
         otherBounds.some((other) => overlaps(rect, other.rect, other.gap)),
+      2,
+      nodes,
     );
   }
 
@@ -172,8 +207,12 @@ export function findClusterPosition(
     .sort((a, b) => b.similarity - a.similarity || a.key.localeCompare(b.key))[0];
   const anchor = related ? bounds(related.nodes) : null;
   if (anchor) {
-    return nearestSlot(anchor, clusterGap(key, related.key), (rect) =>
-      otherBounds.some((other) => overlaps(rect, other.rect, other.gap)),
+    return nearestSlot(
+      anchor,
+      clusterGap(key, related.key),
+      (rect) => otherBounds.some((other) => overlaps(rect, other.rect, other.gap)),
+      2,
+      nodes,
     );
   }
   const free = (rect: Rect) => !otherBounds.some((other) => overlaps(rect, other.rect, other.gap));

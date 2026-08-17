@@ -96,6 +96,49 @@ describe("cluster placement", () => {
     ).toEqual({ x: -344, y: 0 });
   });
 
+  it("keeps cards next to a boxed-in cluster instead of exiling them to a distant hole", () => {
+    // A reflow-packed board leaves only CARD_GAP between clusters, so no free card-sized
+    // slot touches the cluster. Placement must prefer a nearby slot over marching outward.
+    const core = node("core", ["A"], [], { x: 1000, y: 1000 });
+    const guards = [
+      node("r", ["B"], [], { x: 1344, y: 1000 }),
+      node("l", ["C"], [], { x: 656, y: 1000 }),
+      node("u", ["D"], [], { x: 1000, y: 756 }),
+      node("d", ["E"], [], { x: 1000, y: 1244 }),
+      node("ru", ["F"], [], { x: 1344, y: 756 }),
+      node("lu", ["G"], [], { x: 656, y: 756 }),
+      node("rd", ["H"], [], { x: 1344, y: 1244 }),
+      node("ld", ["I"], [], { x: 656, y: 1244 }),
+    ];
+    const position = findClusterPosition(
+      [core, ...guards],
+      { tags: ["A"], topics: [] },
+      {
+        x: 0,
+        y: 0,
+      },
+    );
+
+    const gapX = Math.max(1000 - (position.x + DEFAULT_CARD_SIZE.width), position.x - 1320, 0);
+    const gapY = Math.max(1000 - (position.y + DEFAULT_CARD_SIZE.height), position.y - 1220, 0);
+    // one card-width plus the gap, not the 2+ ring march the old search produced
+    expect(Math.hypot(gapX, gapY)).toBeLessThanOrEqual(DEFAULT_CARD_SIZE.width + CLUSTER_GAP);
+    // and it still adds no new card overlap on top of the packed board
+    for (const placed of [core, ...guards]) {
+      const overlapX =
+        Math.min(
+          position.x + DEFAULT_CARD_SIZE.width,
+          placed.position.x + DEFAULT_CARD_SIZE.width,
+        ) - Math.max(position.x, placed.position.x);
+      const overlapY =
+        Math.min(
+          position.y + DEFAULT_CARD_SIZE.height,
+          placed.position.y + DEFAULT_CARD_SIZE.height,
+        ) - Math.max(position.y, placed.position.y);
+      expect(overlapX <= 0 || overlapY <= 0).toBe(true);
+    }
+  });
+
   it("places partially related cards adjacent to their most similar cluster on messy boards", () => {
     const ai = [
       node("a1", ["ai"], [], { x: 1000, y: 1000 }),
