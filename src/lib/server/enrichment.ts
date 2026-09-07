@@ -1,5 +1,5 @@
 import { OPENCODE_GO_API_KEY } from "$app/env/private";
-import { chat, type ChatMiddleware, type TokenUsage } from "@tanstack/ai";
+import { chat, type ChatMiddleware, type TokenUsage, generateMessageId } from "@tanstack/ai";
 import { openaiCompatible } from "@tanstack/ai-openai/compatible";
 import { z, ZodError } from "zod";
 import {
@@ -135,6 +135,7 @@ export async function enrichMemory(input: EnrichmentInput): Promise<EnrichmentEx
   try {
     const opencode = openaiCompatible({
       name: ENRICHMENT_PROVIDER,
+      defaultHeaders: { "x-opencode-session": generateMessageId() },
       baseURL: "https://opencode.ai/zen/go/v1",
       apiKey: OPENCODE_GO_API_KEY,
       models: [ENRICHMENT_MODEL],
