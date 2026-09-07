@@ -8,7 +8,6 @@
     type Viewport,
   } from "@xyflow/svelte";
   import { tick } from "svelte";
-  import { SvelteMap } from "svelte/reactivity";
   import { z } from "zod";
   import "@xyflow/svelte/dist/style.css";
   import ClickableMiniMap from "./components/ClickableMiniMap.svelte";
@@ -17,8 +16,8 @@
   import ViewportStart from "./components/ViewportStart.svelte";
   import MemoryNodeComponent from "./components/MemoryNode.svelte";
   import MiniMapMemoryNode from "./components/MiniMapMemoryNode.svelte";
-  import TagEditor from "./components/TagEditor.svelte";
-  import type { Card } from "./lib/card";
+  import CaptureDialog from "./components/CaptureDialog.svelte";
+  import type { Card, CardInput } from "./lib/card";
   import { setCardPersistence } from "./lib/card-persistence";
   import {
     createCard,
@@ -28,11 +27,8 @@
     updateCardPositions,
   } from "./lib/cards.remote";
   import { DEFAULT_CARD_SIZE, findClusterPosition, reflowClusters } from "./lib/cluster-layout";
-  import { fallbackTitle } from "./lib/enrichment";
   import type { CardCreationProvenance } from "./lib/enrichment-analytics";
-  import { enrichMemory } from "./lib/enrichment.remote";
-  import { canonicalizeLabels, partitionLabels, PRIMARY_TAGS, TOPIC_TAGS } from "./lib/labels";
-  import { parseMarkdown } from "./lib/markdown";
+  import { canonicalizeLabels, PRIMARY_TAGS, TOPIC_TAGS } from "./lib/labels";
   import { cardToMemoryNode, memoryNodeToCard, type MemoryNode } from "./lib/scene";
 
   const VIEWPORT_STORAGE_KEY = "pile-of-memories-viewport";
@@ -73,16 +69,8 @@
     localStorage.setItem(VIEWPORT_STORAGE_KEY, JSON.stringify(stored));
   }
 
-  type CachedEnrichment = {
-    attemptId: string;
-    title: string;
-    tags: string[];
-    warning: string;
-  };
-
   const nodeTypes = { memory: MemoryNodeComponent } satisfies NodeTypes;
   const cardsQuery = getLiveCards();
-  const enrichmentCache = new SvelteMap<string, CachedEnrichment>();
   const MODE_STORAGE_KEY = "pile-of-memories-mode";
   function initialBrowseMode(): boolean {
     try {
@@ -130,17 +118,8 @@
   let viewportStart = $state<ViewportController>();
   let canvasWidth = $state(0);
   let canvasHeight = $state(0);
-  let newMemoryOpen = $state(false);
-  let newMemoryStep = $state<"capture" | "review">("capture");
-  let memoryTitle = $state("");
-  let memoryBody = $state("");
-  let memoryLabels = $state<string[]>([]);
-  let enrichmentWarning = $state("");
-  let creationProvenance = $state<CardCreationProvenance>();
-  let enrichmentGeneration = 0;
-  let enrichingMemory = $state(false);
+  let captureDialog = $state<CaptureDialog>();
   let boardReady = $derived(cardsQuery.current !== undefined);
-  let savingMemory = $state(false);
   let persistenceError = $state("");
   let archiveOpen = $state(false);
   let listOpen = $state(false);
@@ -153,25 +132,6 @@
 
   function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : "The board could not be saved.";
-  }
-
-  function openNewMemoryDialog(): void {
-    enrichmentGeneration += 1;
-    memoryTitle = "";
-    memoryBody = "";
-    memoryLabels = [];
-    enrichmentWarning = "";
-    creationProvenance = undefined;
-    enrichingMemory = false;
-    persistenceError = "";
-    newMemoryStep = "capture";
-    newMemoryOpen = true;
-  }
-
-  function closeNewMemoryDialog(): void {
-    enrichmentGeneration += 1;
-    enrichingMemory = false;
-    newMemoryOpen = false;
   }
 
   function openArchive(): void {
@@ -218,101 +178,37 @@
     return () => dialog.close();
   }
 
-  function focusCapture(textarea: HTMLTextAreaElement): void {
-    queueMicrotask(() => textarea.focus());
-  }
-
-  async function continueMemory(event: SubmitEvent): Promise<void> {
-    event.preventDefault();
-    const description = memoryBody.trim();
-    if (!description) return;
-
-    const generation = enrichmentGeneration;
-    enrichingMemory = true;
-    enrichmentWarning = "";
-    try {
-      let enrichment = enrichmentCache.get(description);
-      let resultSource: CardCreationProvenance["resultSource"] = "cache";
-      if (!enrichment) {
-        try {
-          const result = await enrichMemory({
-            description,
-            existingTags: tagVocabulary,
-          });
-          enrichment = { ...result, warning: "" };
-          enrichmentCache.set(description, enrichment);
-          resultSource = "ai";
-        } catch {
-          enrichment = {
-            attemptId: crypto.randomUUID(),
-            title: fallbackTitle(memoryBody),
-            tags: [],
-            warning: "AI suggestions were unavailable. You can finish this memory manually.",
-          };
-          resultSource = "fallback";
-        }
-      }
-
-      if (generation !== enrichmentGeneration || memoryBody.trim() !== description) return;
-
-      memoryTitle = enrichment.title;
-      memoryLabels = enrichment.tags;
-      enrichmentWarning = enrichment.warning;
-      creationProvenance = {
-        enrichmentAttemptId: enrichment.attemptId,
-        resultSource,
-        reviewStartedAt: new Date().toISOString(),
-      };
-      newMemoryStep = "review";
-    } finally {
-      if (generation === enrichmentGeneration) enrichingMemory = false;
-    }
-  }
-
-  async function addMemory(event: SubmitEvent): Promise<void> {
-    event.preventDefault();
-    const { tags, topics } = partitionLabels(memoryLabels);
+  async function addMemory(
+    draft: Pick<CardInput, "title" | "body" | "tags" | "topics" | "links">,
+    creation?: CardCreationProvenance,
+  ): Promise<void> {
     const openSpace = {
       x: (canvasWidth / 2 - viewport.x) / viewport.zoom - DEFAULT_CARD_SIZE.width / 2,
       y: (canvasHeight / 2 - viewport.y) / viewport.zoom - DEFAULT_CARD_SIZE.height / 2,
     };
-    const position = findClusterPosition(nodes, { tags, topics }, openSpace);
-    const links = parseMarkdown(memoryBody).links;
+    const position = findClusterPosition(nodes, draft, openSpace);
     const timestamp = new Date().toISOString();
     const node: MemoryNode = {
       id: crypto.randomUUID(),
       type: "memory",
       position,
       data: {
-        title: memoryTitle.trim() || fallbackTitle(memoryBody),
-        body: memoryBody,
+        ...draft,
         createdAt: timestamp,
         updatedAt: timestamp,
-        tags,
-        topics,
-        links,
         tagVocabulary,
       },
       focusable: true,
     };
 
-    savingMemory = true;
-    persistenceError = "";
-    try {
-      await createCard({
-        card: memoryNodeToCard(node),
-        ...(creationProvenance ? { creation: creationProvenance } : {}),
-      }).updates(cardsQuery);
-      viewportStart?.center(
-        position.x + DEFAULT_CARD_SIZE.width / 2,
-        position.y + DEFAULT_CARD_SIZE.height / 2,
-      );
-      newMemoryOpen = false;
-    } catch (error) {
-      persistenceError = getErrorMessage(error);
-    } finally {
-      savingMemory = false;
-    }
+    await createCard({
+      card: memoryNodeToCard(node),
+      ...(creation ? { creation } : {}),
+    }).updates(cardsQuery);
+    viewportStart?.center(
+      position.x + DEFAULT_CARD_SIZE.width / 2,
+      position.y + DEFAULT_CARD_SIZE.height / 2,
+    );
   }
 
   async function saveMovedCards({ nodes: movedNodes }: { nodes: MemoryNode[] }) {
@@ -484,7 +380,10 @@
       class="fab"
       aria-label="New memory"
       title="New memory"
-      onclick={openNewMemoryDialog}
+      onclick={() => {
+        persistenceError = "";
+        captureDialog?.open();
+      }}
       disabled={!boardReady || !!reorganizeSnapshot}
     >+</button>
   </div>
@@ -520,66 +419,7 @@
   />
 {/if}
 
-{#if newMemoryOpen}
-  <dialog
-    class="memory-dialog"
-    aria-labelledby="new-memory-title"
-    onclose={closeNewMemoryDialog}
-    {@attach showModal}
-  >
-    {#if newMemoryStep === "capture"}
-      <form method="dialog" onsubmit={continueMemory}>
-        <header>
-          <p>Capture</p>
-          <h2 id="new-memory-title">New Memory</h2>
-        </header>
-        <label class="memory-field">
-          <span>What do you want to remember?</span>
-          <textarea
-            bind:value={memoryBody}
-            rows="12"
-            maxlength="8000"
-            required
-            disabled={enrichingMemory}
-            {@attach focusCapture}
-          ></textarea>
-        </label>
-        <footer>
-          <button type="button" class="secondary-button" onclick={closeNewMemoryDialog}>
-            Cancel
-          </button>
-          <button type="submit" class="card-button" disabled={enrichingMemory}>
-            {enrichingMemory ? "Thinking…" : "Continue"}
-          </button>
-        </footer>
-      </form>
-    {:else}
-      <form method="dialog" onsubmit={addMemory}>
-        <header>
-          <p>Review</p>
-          <h2 id="new-memory-title">New Memory</h2>
-        </header>
-        {#if enrichmentWarning}<p class="placement-note" role="status">{enrichmentWarning}</p>{/if}
-        <label class="memory-field">
-          <span>Title</span>
-          <input bind:value={memoryTitle} maxlength="80" required />
-        </label>
-        <TagEditor id="new-memory-tags" bind:value={memoryLabels} suggestions={tagVocabulary} />
-        <label class="memory-field">
-          <span>Memory</span>
-          <textarea bind:value={memoryBody} rows="10" maxlength="8000" required></textarea>
-        </label>
-        {#if persistenceError}<p role="alert">{persistenceError}</p>{/if}
-        <footer>
-          <button type="button" class="secondary-button" onclick={() => (newMemoryStep = "capture")}>
-            Back
-          </button>
-          <button type="submit" class="card-button" disabled={savingMemory}>Create Memory</button>
-        </footer>
-      </form>
-    {/if}
-  </dialog>
-{/if}
+<CaptureDialog bind:this={captureDialog} {tagVocabulary} oncreate={addMemory} />
 
 {#if archiveOpen}
   <dialog
