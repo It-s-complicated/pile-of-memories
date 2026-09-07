@@ -107,7 +107,27 @@ describe("card change validation", () => {
     expect(deleteCardCommandSchema.safeParse({ id: CARD_ID, extra: true }).success).toBe(false);
   });
 
-  it("validates bounded position batches before database work", () => {
+  it("accepts reorganizations with more than 200 changed cards", () => {
+    const positions = Array.from({ length: 501 }, (_, index) => ({
+      id: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+      position: { x: index * 10, y: -index },
+    }));
+    expect(updateCardPositionsCommandSchema.parse({ positions }).positions).toEqual(positions);
+    expect(
+      updateCardPositionsCommandSchema.safeParse({
+        positions: [...positions, positions[0]],
+      }).success,
+    ).toBe(false);
+    expect(
+      updateCardPositionsCommandSchema.safeParse({
+        positions: positions.map((entry, index) =>
+          index === 0 ? { ...entry, position: { x: Infinity, y: 0 } } : entry,
+        ),
+      }).success,
+    ).toBe(false);
+  });
+
+  it("validates position batches before database work", () => {
     const position = { x: 1, y: 2 };
     expect(
       updateCardPositionsCommandSchema.safeParse({ positions: [{ id: CARD_ID, position }] })

@@ -10,7 +10,6 @@ export function isCardId(value: unknown): value is string {
 }
 
 const positionSchema = z.object({ x: z.number().finite(), y: z.number().finite() }).strict();
-export const CARD_POSITION_BATCH_LIMIT = 200;
 
 export const cardInputSchema = z
   .object({
@@ -132,7 +131,7 @@ const cardPositionUpdateSchema = z.object({ id: cardIdSchema, position: position
 
 export const updateCardPositionsCommandSchema = z
   .object({
-    positions: z.array(cardPositionUpdateSchema).min(1).max(CARD_POSITION_BATCH_LIMIT),
+    positions: z.array(cardPositionUpdateSchema).min(1),
   })
   .strict()
   .refine(({ positions }) => new Set(positions.map(({ id }) => id)).size === positions.length, {
