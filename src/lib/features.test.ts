@@ -2,7 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   findClusterPosition,
   getClusterKey,
-  jaccardSimilarity,
+  getClusterRegions,
   reflowClusters,
   CLUSTER_GAP,
   DEFAULT_CARD_SIZE,
@@ -72,192 +72,96 @@ describe("labels", () => {
 });
 
 describe("cluster placement", () => {
-  it("normalizes exact keys and compares combinations with Jaccard similarity", () => {
-    expect(getClusterKey({ tags: ["B", "a"], topics: ["A"] })).toBe("a\u001fb");
-    expect(jaccardSimilarity("a\u001fb", "a\u001fc")).toBe(1 / 3);
-    expect(jaccardSimilarity("a", "b")).toBe(0);
+  it("uses a stable category regardless of topic additions and label order", () => {
+    expect(getClusterKey({ tags: ["Project"], topics: ["AI"] })).toBe("project");
+    expect(getClusterKey({ tags: [" project "], topics: ["AI", "Hosting"] })).toBe("project");
+    expect(getClusterKey({ tags: ["B", "a"], topics: [] })).toBe("a");
+    expect(getClusterKey({ tags: ["a", "B"], topics: [] })).toBe("a");
+    expect(getClusterKey({ tags: [], topics: ["CSS"] })).toBe("css");
+    expect(getClusterKey({ tags: [], topics: [] })).toBe("");
   });
 
-  it("adds cards without collisions using compact, similarity-scaled gaps", () => {
-    const existing = [node("a", ["A"])];
-    expect(findClusterPosition(existing, { tags: ["a"], topics: [] }, { x: 20, y: 20 })).toEqual({
-      x: 344,
-      y: 0,
-    });
-    const related = findClusterPosition(existing, { tags: ["A", "B"], topics: [] }, { x: 0, y: 0 });
-    expect(related.x).toBe(364);
-    // With the right side occupied, the card hugs its own cluster on the left instead of marching into open space.
-    expect(
-      findClusterPosition(
-        [...existing, node("b", ["B"], [], { x: 500, y: 0 })],
-        { tags: ["A"], topics: [] },
-        { x: 0, y: 0 },
-      ),
-    ).toEqual({ x: -344, y: 0 });
-  });
-
-  it("keeps cards next to a boxed-in cluster instead of exiling them to a distant hole", () => {
-    // A reflow-packed board leaves only CARD_GAP between clusters, so no free card-sized
-    // slot touches the cluster. Placement must prefer a nearby slot over marching outward.
-    const core = node("core", ["A"], [], { x: 1000, y: 1000 });
-    const guards = [
-      node("r", ["B"], [], { x: 1344, y: 1000 }),
-      node("l", ["C"], [], { x: 656, y: 1000 }),
-      node("u", ["D"], [], { x: 1000, y: 756 }),
-      node("d", ["E"], [], { x: 1000, y: 1244 }),
-      node("ru", ["F"], [], { x: 1344, y: 756 }),
-      node("lu", ["G"], [], { x: 656, y: 756 }),
-      node("rd", ["H"], [], { x: 1344, y: 1244 }),
-      node("ld", ["I"], [], { x: 656, y: 1244 }),
+  it("places a new card without moving or overlapping existing cards", () => {
+    const existing = [
+      { ...node("a", ["Project"]), measured: { width: 320, height: 500 } },
+      node("b", ["Job"], [], { x: 344, y: 0 }),
     ];
+    const before = structuredClone(existing);
     const position = findClusterPosition(
-      [core, ...guards],
-      { tags: ["A"], topics: [] },
-      {
-        x: 0,
-        y: 0,
-      },
+      existing,
+      { tags: ["Project"], topics: ["AI"] },
+      { x: 0, y: 0 },
     );
-
-    const gapX = Math.max(1000 - (position.x + DEFAULT_CARD_SIZE.width), position.x - 1320, 0);
-    const gapY = Math.max(1000 - (position.y + DEFAULT_CARD_SIZE.height), position.y - 1220, 0);
-    // one card-width plus the gap, not the 2+ ring march the old search produced
-    expect(Math.hypot(gapX, gapY)).toBeLessThanOrEqual(DEFAULT_CARD_SIZE.width + CLUSTER_GAP);
-    // and it still adds no new card overlap on top of the packed board
-    for (const placed of [core, ...guards]) {
-      const overlapX =
-        Math.min(
-          position.x + DEFAULT_CARD_SIZE.width,
-          placed.position.x + DEFAULT_CARD_SIZE.width,
-        ) - Math.max(position.x, placed.position.x);
-      const overlapY =
-        Math.min(
-          position.y + DEFAULT_CARD_SIZE.height,
-          placed.position.y + DEFAULT_CARD_SIZE.height,
-        ) - Math.max(position.y, placed.position.y);
-      expect(overlapX <= 0 || overlapY <= 0).toBe(true);
+    expect(existing).toEqual(before);
+    for (const other of existing) {
+      const height = "measured" in other ? other.measured.height : DEFAULT_CARD_SIZE.height;
+      expect(
+        position.x + 320 <= other.position.x ||
+          other.position.x + 320 <= position.x ||
+          position.y + 220 <= other.position.y ||
+          other.position.y + height <= position.y,
+      ).toBe(true);
     }
+    expect(findClusterPosition([], { tags: [], topics: [] }, { x: 12, y: 34 })).toEqual({
+      x: 12,
+      y: 34,
+    });
   });
 
-  it("places partially related cards adjacent to their most similar cluster on messy boards", () => {
-    const ai = [
-      node("a1", ["ai"], [], { x: 1000, y: 1000 }),
-      node("a2", ["ai"], [], { x: 1330, y: 980 }),
-      node("a3", ["ai"], [], { x: 1010, y: 1290 }),
-    ];
-    const job = [
-      node("b1", ["job"], [], { x: 1900, y: 900 }),
-      node("b2", ["job"], [], { x: 2230, y: 910 }),
-    ];
-    const position = findClusterPosition(
-      [...ai, ...job],
-      { tags: ["ai", "news"], topics: [] },
-      {
-        x: 0,
-        y: 0,
-      },
-    );
-    const aiGap = Math.max(1000 - (position.x + 320), position.x - 1650, 0);
-    const aiGapY = Math.max(980 - (position.y + 220), position.y - 1510, 0);
-    const aiDistance = Math.hypot(aiGap, aiGapY);
-    const jobDistance = Math.hypot(
-      Math.max(1900 - (position.x + 320), position.x - 2550, 0),
-      Math.max(900 - (position.y + 220), position.y - 1130, 0),
-    );
-
-    expect(aiDistance).toBeLessThanOrEqual(DEFAULT_CARD_SIZE.height + CLUSTER_GAP);
-    expect(aiDistance).toBeLessThan(jobDistance);
-  });
-
-  it("reflows deterministically in two dimensions while keeping exact groups together", () => {
-    const nodes = [
-      node("d", ["A"], [], { x: 9, y: 9 }),
-      node("b", ["A"]),
-      node("a", ["A"]),
-      node("c", ["A"]),
-      node("e", ["B"]),
-    ];
-    const reflowed = reflowClusters(nodes);
-    const positions = Object.fromEntries(reflowed.map(({ id, position }) => [id, position]));
-    const reversed = Object.fromEntries(
-      reflowClusters(nodes.toReversed()).map(({ id, position }) => [id, position]),
-    );
-    const differentlyMeasured = Object.fromEntries(
-      reflowClusters(
-        nodes.map((item, index) => ({
-          ...item,
-          measured: { width: 320 + index * 20, height: 220 + index * 40 },
-        })),
-      ).map(({ id, position }) => [id, position]),
-    );
-
-    expect(reversed).toEqual(positions);
-    expect(differentlyMeasured).toEqual(positions);
-    expect(positions.b.x - positions.a.x).toBe(344);
-    expect(positions.c).toEqual({ x: positions.a.x, y: positions.a.y + 244 });
-    expect(positions.d).toEqual({ x: positions.b.x, y: positions.b.y + 244 });
-    expect(new Set(Object.values(positions).map(({ y }) => y)).size).toBeGreaterThan(1);
-  });
-
-  it("places overlapping tag sets closer than unrelated ones", () => {
-    const positions = Object.fromEntries(
-      reflowClusters([
-        node("a", ["A"]),
-        node("ab", ["A", "B"]),
-        node("b", ["B"]),
-        node("c", ["C"]),
-      ]).map(({ id, position }) => [id, position]),
-    );
-    const distance = (left: string, right: string) =>
-      Math.hypot(positions[left].x - positions[right].x, positions[left].y - positions[right].y);
-    const relatedDistances = [distance("a", "ab"), distance("ab", "b")];
-    const unrelatedDistances = [
-      distance("a", "b"),
-      distance("a", "c"),
-      distance("ab", "c"),
-      distance("b", "c"),
-    ];
-
-    expect(Math.max(...relatedDistances)).toBeLessThan(Math.min(...unrelatedDistances));
-    expect(new Set(Object.values(positions).map(({ x }) => x)).size).toBeGreaterThan(1);
-    expect(new Set(Object.values(positions).map(({ y }) => y)).size).toBeGreaterThan(1);
-  });
-
-  it("keeps a representative board compact enough to navigate at readable zoom", () => {
-    const labelSets = [
-      ["Personal development", "AI"],
-      ["Personal development", "Job"],
-      ["Job", "Personal development", "Agile"],
-      ["Job", "AI"],
-      ["AI", "Agent Skills"],
-      ["Agile"],
-      ["Web development", "AI"],
-      ["AI"],
-      ["Job", "Agile"],
-      ["Web development", "CSS"],
-      ["Web development"],
-      ["Personal development", "Job", "Web development"],
-      ["Web development", "React", "SolidJS"],
-      ["Web development", "Vue", "CSS", "Nuxt"],
-      ["Job", "Agile"],
-      ["AI"],
-      ["Project", "Atproto"],
-      ["Web development", "Job"],
-      ["Job", "Web development", "Agile"],
-      ["Personal development", "Job"],
-      ["Project", "AI"],
-    ];
-    const reflowed = reflowClusters(
-      labelSets.map((labels, index) =>
-        node(index.toString().padStart(2, "0"), labels, [], { x: 0, y: 0 }),
+  it("reflows measured cards deterministically with distinct category boundaries", () => {
+    const nodes = Array.from({ length: 15 }, (_, index) => ({
+      ...node(
+        String(index).padStart(2, "0"),
+        [index < 9 ? "Project" : "Job"],
+        [index % 2 ? "AI" : "Hosting"],
       ),
-    );
-    const minX = Math.min(...reflowed.map(({ position }) => position.x));
-    const minY = Math.min(...reflowed.map(({ position }) => position.y));
-    const maxX = Math.max(...reflowed.map(({ position }) => position.x + 320));
-    const maxY = Math.max(...reflowed.map(({ position }) => position.y + 220));
+      measured: { width: 320 + index * 3, height: 180 + index * 47 },
+    }));
+    const before = structuredClone(nodes);
+    const arranged = reflowClusters(nodes);
+    expect(nodes).toEqual(before);
+    const positions = (items: typeof arranged) =>
+      Object.fromEntries(items.map(({ id, position }) => [id, position]));
+    expect(positions(reflowClusters(nodes.toReversed()))).toEqual(positions(arranged));
+    expect(positions(reflowClusters(arranged))).toEqual(positions(arranged));
 
-    expect((maxX - minX) * (maxY - minY)).toBeLessThan(7_000_000);
+    for (const [index, left] of arranged.entries()) {
+      for (const right of arranged.slice(index + 1)) {
+        expect(
+          left.position.x + left.measured.width <= right.position.x ||
+            right.position.x + right.measured.width <= left.position.x ||
+            left.position.y + left.measured.height <= right.position.y ||
+            right.position.y + right.measured.height <= left.position.y,
+        ).toBe(true);
+      }
+    }
+    const regions = getClusterRegions(arranged);
+    expect(regions.map(({ name, count }) => ({ name, count }))).toEqual([
+      { name: "Job", count: 6 },
+      { name: "Project", count: 9 },
+    ]);
+    const [left, right] = regions;
+    expect(
+      Math.max(
+        right.x - left.x - left.width,
+        left.x - right.x - right.width,
+        right.y - left.y - left.height,
+        left.y - right.y - right.height,
+      ),
+    ).toBeGreaterThanOrEqual(CLUSTER_GAP - 76);
+    const project = arranged.filter(({ data }) => data.tags.includes("Project"));
+    expect(new Set(project.map(({ position }) => position.x)).size).toBeGreaterThan(3);
+    expect(new Set(project.map(({ position }) => position.y)).size).toBeGreaterThan(3);
+    for (const item of arranged) {
+      const region = regions.find(({ key }) => key === getClusterKey(item.data))!;
+      expect(item.position.x).toBeGreaterThan(region.x);
+      expect(item.position.y).toBeGreaterThan(region.y);
+      expect(item.position.x + item.measured.width).toBeLessThan(region.x + region.width);
+      expect(item.position.y + item.measured.height).toBeLessThan(region.y + region.height);
+    }
+    expect(reflowClusters([])).toEqual([]);
+    expect(getClusterRegions([])).toEqual([]);
+    expect(getClusterRegions([node("inbox", [])])[0].name).toBe("Inbox");
   });
 });
 

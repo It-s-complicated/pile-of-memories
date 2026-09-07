@@ -12,6 +12,7 @@
   import { z } from "zod";
   import "@xyflow/svelte/dist/style.css";
   import ClickableMiniMap from "./components/ClickableMiniMap.svelte";
+  import ClusterRegions from "./components/ClusterRegions.svelte";
   import MemoryListDialog from "./components/MemoryListDialog.svelte";
   import ViewportStart from "./components/ViewportStart.svelte";
   import MemoryNodeComponent from "./components/MemoryNode.svelte";
@@ -82,7 +83,27 @@
   const nodeTypes = { memory: MemoryNodeComponent } satisfies NodeTypes;
   const cardsQuery = getLiveCards();
   const enrichmentCache = new SvelteMap<string, CachedEnrichment>();
+  const MODE_STORAGE_KEY = "pile-of-memories-mode";
+  function initialBrowseMode(): boolean {
+    try {
+      const saved = localStorage.getItem(MODE_STORAGE_KEY);
+      if (saved === "browse" || saved === "arrange") return saved === "browse";
+    } catch {
+      // Storage can be unavailable in private browsing.
+    }
+    return window.matchMedia("(pointer: coarse)").matches;
+  }
+  let browseMode = $state(initialBrowseMode());
+  function toggleBrowseMode(): void {
+    browseMode = !browseMode;
+    try {
+      localStorage.setItem(MODE_STORAGE_KEY, browseMode ? "browse" : "arrange");
+    } catch {
+      // The mode still works for this visit.
+    }
+  }
   setCardPersistence({
+    browse: () => browseMode,
     async update(id, changes) {
       await updateCard({ id, changes });
     },
@@ -287,8 +308,6 @@
         position.y + DEFAULT_CARD_SIZE.height / 2,
       );
       newMemoryOpen = false;
-      await tick();
-      await previewReorganization();
     } catch (error) {
       persistenceError = getErrorMessage(error);
     } finally {
@@ -319,14 +338,14 @@
         return current?.x === position.x && current.y === position.y;
       })
     ) {
-      reorganizeStatus = "The board already matches tag proximity.";
+      reorganizeStatus = "The board is already organized by category.";
       return;
     }
 
     reorganizeSnapshot = nodes.map((node) => ({ ...node, position: { ...node.position } }));
     reorganizeViewport = { ...viewport };
     nodes = preview;
-    reorganizeStatus = "Previewing tag proximity. Apply or cancel.";
+    reorganizeStatus = "Previewing category groups. Apply or cancel.";
     await tick();
     await viewportStart?.fit();
   }
@@ -388,7 +407,9 @@
     {nodeTypes}
     minZoom={0.5}
     maxZoom={1.5}
-    nodesDraggable={boardReady && !reorganizeSnapshot}
+    nodesDraggable={boardReady && !browseMode && !reorganizeSnapshot}
+    elementsSelectable={!browseMode && !reorganizeSnapshot}
+    panOnDrag={true}
     deleteKey={[]}
     onnodedragstop={saveMovedCards}
     onmoveend={saveViewport}
@@ -397,6 +418,7 @@
       <ViewportStart bind:this={viewportStart} stored={storedViewport} />
     {/if}
     <Background variant={BackgroundVariant.Lines} gap={56} patternColor="var(--hairline)" />
+    <ClusterRegions />
     <Controls position="top-right" showLock={false} fitViewOptions={{ maxZoom: 1 }} />
     <ClickableMiniMap
       position="bottom-left"
@@ -418,6 +440,16 @@
   </div>
 
   <div class="capture-cluster">
+    <button
+      type="button"
+      class="chip-button mode-button"
+      aria-pressed={browseMode}
+      title={browseMode
+        ? "Browse: drag anywhere to pan. Switch to Arrange to move cards."
+        : "Arrange: drag cards to move them. Switch to Browse to pan over cards."}
+      onclick={toggleBrowseMode}
+      disabled={!!reorganizeSnapshot}
+    >{browseMode ? "Browse" : "Arrange"}</button>
     {#if reorganizeSnapshot}
       <button
         type="button"

@@ -509,3 +509,19 @@ select {
     padding: 1rem 1rem 0;
   }
 }
+
+.mode-button {
+  min-height: 44px;
+}
+
+.mode-button[aria-pressed="true"] {
+  color: var(--paper);
+  background: var(--theme-ink);
+}
+
+@media (pointer: coarse) {
+  .chip-button,
+  .memory-dialog button {
+    min-height: 44px;
+  }
+}

@@ -16,6 +16,8 @@
   let { id, data }: NodeProps<MemoryNode> = $props();
   const { updateNodeData } = useSvelteFlow<MemoryNode>();
   const cardPersistence = getCardPersistence();
+  let browse = $derived(cardPersistence.browse());
+  let readOpen = $state(false);
   let parsedBody = $derived(parseMarkdown(data.body));
   let createdDate = $derived(compactDateFormatter.format(new Date(data.createdAt)));
   let updatedDate = $derived(compactDateFormatter.format(new Date(data.updatedAt)));
@@ -90,7 +92,10 @@
   }
 </script>
 
-<article class="memory-card" aria-label={`Memory: ${data.title || "Untitled memory"}`}>
+<article
+  class={["memory-card", { browsing: browse }]}
+  aria-label={`Memory: ${data.title || "Untitled memory"}`}
+>
   <header>
     <p class="card-meta">
       <time datetime={data.createdAt}>Created {createdDate}</time>
@@ -98,10 +103,12 @@
       <time datetime={data.updatedAt}>Updated {updatedDate}</time>
     </p>
     <h2>{data.title || "Untitled memory"}</h2>
-    <button type="button" class="edit-button nodrag" onclick={openEditor}>Edit</button>
+    {#if !browse}
+      <button type="button" class="edit-button nodrag" onclick={openEditor}>Edit</button>
+    {/if}
   </header>
 
-  <div class="markdown nowheel">
+  <div class={["markdown", { nowheel: !browse }]} inert={browse}>
     <MemoryMarkdown parsed={parsedBody} />
   </div>
 
@@ -117,7 +124,7 @@
   {/if}
 
   {#if data.links.length}
-    <details class="links nodrag nowheel">
+    <details class="links nodrag nowheel" inert={browse}>
       <summary>Links ({data.links.length})</summary>
       <ul>
         {#each data.links as link (link)}
@@ -126,7 +133,40 @@
       </ul>
     </details>
   {/if}
+  {#if browse}
+    <button
+      type="button"
+      class="read-card"
+      aria-label={`Read ${data.title || "Untitled memory"}`}
+      onclick={() => (readOpen = true)}
+    ></button>
+  {/if}
 </article>
+
+{#if readOpen}
+  <dialog
+    class="memory-dialog nodrag nopan nowheel"
+    aria-labelledby={`read-memory-${id}`}
+    onclose={() => (readOpen = false)}
+    {@attach showModal}
+  >
+    <form method="dialog">
+      <header><h2 id={`read-memory-${id}`}>{data.title || "Untitled memory"}</h2></header>
+      <div class="read-body"><MemoryMarkdown parsed={parsedBody} /></div>
+      <footer>
+        <button
+          type="button"
+          class="secondary-button"
+          onclick={() => {
+            readOpen = false;
+            openEditor();
+          }}
+        >Edit memory</button>
+        <button type="submit" class="card-button">Done</button>
+      </footer>
+    </form>
+  </dialog>
+{/if}
 
 {#if editOpen}
   <dialog
@@ -174,6 +214,7 @@
 
 <style>
   .memory-card {
+    position: relative;
     box-sizing: border-box;
     width: 320px;
     min-height: 180px;
@@ -184,6 +225,37 @@
     background: var(--paper);
     box-shadow: var(--shadow-slip);
     cursor: grab;
+  }
+
+  .browsing .markdown {
+    overflow: hidden;
+  }
+
+  .read-card {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: inherit;
+    background: transparent;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .read-card:focus-visible {
+    outline: 2px solid var(--theme-ink);
+    outline-offset: 3px;
+  }
+
+  .read-body {
+    overflow-wrap: anywhere;
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  .read-body :global(pre) {
+    overflow: auto;
   }
 
   .memory-card > header {
