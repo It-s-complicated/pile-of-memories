@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from "svelte";
   import { SvelteMap } from "svelte/reactivity";
   import TagEditor from "./TagEditor.svelte";
   import type { CardInput } from "../lib/card";
@@ -11,8 +12,12 @@
   let {
     tagVocabulary,
     oncreate,
+    onclose,
+    boardReady,
   }: {
     tagVocabulary: string[];
+    onclose: () => void;
+    boardReady: boolean;
     oncreate: (
       draft: Pick<CardInput, "title" | "body" | "tags" | "topics" | "links">,
       creation?: CardCreationProvenance,
@@ -27,7 +32,6 @@
   };
 
   const enrichmentCache = new SvelteMap<string, CachedEnrichment>();
-  let newMemoryOpen = $state(false);
   let newMemoryStep = $state<"capture" | "review">("capture");
   let memoryTitle = $state("");
   let memoryBody = $state("");
@@ -39,24 +43,9 @@
   let savingMemory = $state(false);
   let persistenceError = $state("");
 
-  export function open(): void {
+  onDestroy(() => {
     enrichmentGeneration += 1;
-    memoryTitle = "";
-    memoryBody = "";
-    memoryLabels = [];
-    enrichmentWarning = "";
-    creationProvenance = undefined;
-    enrichingMemory = false;
-    persistenceError = "";
-    newMemoryStep = "capture";
-    newMemoryOpen = true;
-  }
-
-  function closeNewMemoryDialog(): void {
-    enrichmentGeneration += 1;
-    enrichingMemory = false;
-    newMemoryOpen = false;
-  }
+  });
 
   function showModal(dialog: HTMLDialogElement) {
     dialog.showModal();
@@ -116,6 +105,8 @@
 
   async function addMemory(event: SubmitEvent): Promise<void> {
     event.preventDefault();
+    if (savingMemory || !boardReady) return;
+    const generation = enrichmentGeneration;
     savingMemory = true;
     persistenceError = "";
     try {
@@ -128,7 +119,7 @@
         },
         creationProvenance,
       );
-      closeNewMemoryDialog();
+      if (generation === enrichmentGeneration) onclose();
     } catch (error) {
       persistenceError = error instanceof Error ? error.message : "The board could not be saved.";
     } finally {
@@ -137,11 +128,13 @@
   }
 </script>
 
-{#if newMemoryOpen}
   <dialog
     class="memory-dialog"
     aria-labelledby="new-memory-title"
-    onclose={closeNewMemoryDialog}
+    oncancel={(event) => {
+      event.preventDefault();
+      onclose();
+    }}
     {@attach showModal}
   >
     {#if newMemoryStep === "capture"}
@@ -162,7 +155,7 @@
           ></textarea>
         </label>
         <footer>
-          <button type="button" class="secondary-button" onclick={closeNewMemoryDialog}>
+          <button type="button" class="secondary-button" onclick={onclose}>
             Cancel
           </button>
           <button type="submit" class="card-button" disabled={enrichingMemory}>
@@ -191,9 +184,10 @@
           <button type="button" class="secondary-button" onclick={() => (newMemoryStep = "capture")}>
             Back
           </button>
-          <button type="submit" class="card-button" disabled={savingMemory}>Create Memory</button>
+          <button type="submit" class="card-button" disabled={savingMemory || !boardReady}>
+            {savingMemory ? "Saving…" : boardReady ? "Create Memory" : "Loading board…"}
+          </button>
         </footer>
       </form>
     {/if}
   </dialog>
-{/if}

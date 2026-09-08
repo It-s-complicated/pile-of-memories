@@ -8,6 +8,8 @@
     type Viewport,
   } from "@xyflow/svelte";
   import { tick } from "svelte";
+  import { page } from "$app/state";
+  import { openCapture, closeCapture } from "./lib/capture-navigation";
   import * as z from "zod";
   import "@xyflow/svelte/dist/style.css";
   import ClickableMiniMap from "./components/ClickableMiniMap.svelte";
@@ -118,7 +120,9 @@
   let viewportStart = $state<ViewportController>();
   let canvasWidth = $state(0);
   let canvasHeight = $state(0);
-  let captureDialog = $state<CaptureDialog>();
+  let captureOpen = $derived(
+    (page.shallow?.url ?? page.url).searchParams.get("action") === "new-memory",
+  );
   let boardReady = $derived(cardsQuery.current !== undefined);
   let persistenceError = $state("");
   let archiveOpen = $state(false);
@@ -182,6 +186,7 @@
     draft: Pick<CardInput, "title" | "body" | "tags" | "topics" | "links">,
     creation?: CardCreationProvenance,
   ): Promise<void> {
+    if (!boardReady) throw new Error("The board is still loading. Please try again shortly.");
     const openSpace = {
       x: (canvasWidth / 2 - viewport.x) / viewport.zoom - DEFAULT_CARD_SIZE.width / 2,
       y: (canvasHeight / 2 - viewport.y) / viewport.zoom - DEFAULT_CARD_SIZE.height / 2,
@@ -382,9 +387,9 @@
       title="New memory"
       onclick={() => {
         persistenceError = "";
-        captureDialog?.open();
+        void openCapture();
       }}
-      disabled={!boardReady || !!reorganizeSnapshot}
+      disabled={!!reorganizeSnapshot}
     >+</button>
   </div>
 
@@ -419,7 +424,9 @@
   />
 {/if}
 
-<CaptureDialog bind:this={captureDialog} {tagVocabulary} oncreate={addMemory} />
+{#if captureOpen}
+  <CaptureDialog {tagVocabulary} {boardReady} oncreate={addMemory} onclose={closeCapture} />
+{/if}
 
 {#if archiveOpen}
   <dialog

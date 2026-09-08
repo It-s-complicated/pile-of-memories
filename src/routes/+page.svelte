@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { onMount } from "svelte";
+  import { page } from "$app/state";
+  import { initializeCaptureHistory } from "#lib/capture-navigation.js";
   import App from "../App.svelte";
   import { authClient } from "#lib/auth-client.js";
 
@@ -6,10 +9,18 @@
   let working = $state(false);
   let authError = $state("");
 
+  onMount(() => {
+    void initializeCaptureHistory();
+  });
+
   async function signIn(): Promise<void> {
     working = true;
     authError = "";
-    const result = await authClient.signIn.social({ provider: "github", callbackURL: "/" });
+    const url = page.shallow?.url ?? page.url;
+    const result = await authClient.signIn.social({
+      provider: "github",
+      callbackURL: url.pathname + url.search + url.hash,
+    });
     if (result.error) {
       authError = result.error.message ?? "GitHub sign-in failed.";
       working = false;

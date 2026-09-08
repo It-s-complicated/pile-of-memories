@@ -44,6 +44,16 @@ single shared dataset without ownership columns.
 
 ## Deployment
 
+The web app manifest supports home-screen installation and a **New memory** shortcut at
+`/?action=new-memory`. The + button uses the same URL with shallow navigation; browser Back closes
+capture and Forward reopens it. Direct launches return to the board on Back, and GitHub sign-in
+preserves the capture URL. Reloading or closing capture discards its unsaved draft.
+
+Install the deployed HTTPS site from the browser's install/add-to-home-screen menu. Manifest
+shortcuts depend on the platform (supported on Android, not as custom long-press actions on iOS).
+An iOS Shortcut can open the capture URL instead. This step adds no service worker or offline cache;
+opening the app and saving memories still require a connection.
+
 Live queries require the configured Node adapter, a persistent runtime, unbuffered SSE, and responses
 with `Cache-Control: no-store`. Each active card stream uses Postgres.js's automatically reconnecting
 dedicated listener; SvelteKit owns client connection sharing, reconnects, and stream cancellation.

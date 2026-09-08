@@ -1,0 +1,22 @@
+{
+  "id": "/",
+  "name": "Pile of Memories",
+  "short_name": "Memories",
+  "description": "A private spatial board for capturing and connecting memories.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#edefeb",
+  "theme_color": "#edefeb",
+  "icons": [
+    { "src": "/app-icon.png", "sizes": "1254x1254", "type": "image/png", "purpose": "any" }
+  ],
+  "shortcuts": [
+    {
+      "name": "New memory",
+      "short_name": "New memory",
+      "description": "Capture a new memory",
+      "url": "/?action=new-memory"
+    }
+  ]
+}
