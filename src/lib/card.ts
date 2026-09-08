@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { cardCreationProvenanceSchema } from "./enrichment-analytics";
 import { labelsSchema, partitionLabels } from "./labels";
 import { httpUrlSchema, parseMarkdown } from "./markdown";

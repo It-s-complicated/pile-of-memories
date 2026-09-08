@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 
 export const PRIMARY_TAGS = ["Web development", "Job", "Personal development", "Project"] as const;
 export const TOPIC_TAGS = [

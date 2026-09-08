@@ -8,7 +8,7 @@
     type Viewport,
   } from "@xyflow/svelte";
   import { tick } from "svelte";
-  import { z } from "zod";
+  import * as z from "zod";
   import "@xyflow/svelte/dist/style.css";
   import ClickableMiniMap from "./components/ClickableMiniMap.svelte";
   import ClusterRegions from "./components/ClusterRegions.svelte";

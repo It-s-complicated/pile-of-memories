@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { canonicalizeLabels } from "./labels";
 
 export const ENRICHMENT_ERROR_CODES = [

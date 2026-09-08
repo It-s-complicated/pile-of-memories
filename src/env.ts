@@ -1,5 +1,5 @@
 import { defineEnvVars } from "@sveltejs/kit/env";
-import { z } from "zod";
+import * as z from "zod";
 
 export const variables = defineEnvVars({
   ANALYTICS_FINGERPRINT_KEY: { schema: z.string() },

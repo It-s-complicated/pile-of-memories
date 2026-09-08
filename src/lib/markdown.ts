@@ -1,5 +1,5 @@
 import { Lexer, marked, type Token, type TokensList } from "marked";
-import { z } from "zod";
+import * as z from "zod";
 
 export type ParsedMarkdown = { tokens: Token[]; links: string[] };
 

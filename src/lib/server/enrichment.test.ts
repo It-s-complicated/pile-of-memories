@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { z } from "zod";
+import * as z from "zod";
 import { classifyEnrichmentError } from "./enrichment";
 
 describe("enrichment error analytics", () => {

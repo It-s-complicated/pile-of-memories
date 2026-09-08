@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { canonicalizeLabels, labelSchema } from "./labels";
 
 export const enrichmentInputSchema = z

@@ -1,6 +1,6 @@
 import { ANALYTICS_FINGERPRINT_KEY } from "$app/env/private";
 import { createHmac } from "node:crypto";
-import { z } from "zod";
+import * as z from "zod";
 import type { Card } from "#lib/card.js";
 import {
   normalizeAnalyticsTags,
