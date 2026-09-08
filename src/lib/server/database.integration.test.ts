@@ -130,7 +130,9 @@ describeIntegration("PostgreSQL card integration", () => {
     const snapshots = streamCardSnapshots(listCards, controller.signal);
 
     expect(await nextSnapshot(snapshots)).toEqual([]);
+    const subscribed = nextSnapshot(snapshots);
     await waitForListenerCount(1);
+    expect(await subscribed).toEqual([]);
 
     await insertCard(input(FIRST_ID));
     expect(await nextSnapshot(snapshots)).toMatchObject([{ id: FIRST_ID, title: "Card 1" }]);

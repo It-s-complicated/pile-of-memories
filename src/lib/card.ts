@@ -34,7 +34,12 @@ export const cardInputSchema = z
   }));
 
 export type CardInput = z.infer<typeof cardInputSchema>;
-export type Card = CardInput & { createdAt: string; updatedAt: string };
+export const cardSchema = z.object({
+  ...cardInputSchema.in.shape,
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+});
+export type Card = z.infer<typeof cardSchema>;
 
 export const memoryListSettingsSchema = z
   .object({

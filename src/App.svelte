@@ -7,7 +7,9 @@
     type NodeTypes,
     type Viewport,
   } from "@xyflow/svelte";
-  import { tick } from "svelte";
+  import { onMount, tick, untrack } from "svelte";
+  import { useLiveQuery } from "@tanstack/svelte-db";
+  import { createCardCollection, openCardCache } from "./lib/card-collection";
   import { page } from "$app/state";
   import { openCapture, closeCapture } from "./lib/capture-navigation";
   import * as z from "zod";
@@ -32,6 +34,8 @@
   import type { CardCreationProvenance } from "./lib/enrichment-analytics";
   import { canonicalizeLabels, PRIMARY_TAGS, TOPIC_TAGS } from "./lib/labels";
   import { cardToMemoryNode, memoryNodeToCard, type MemoryNode } from "./lib/scene";
+
+  let { userId }: { userId: string } = $props();
 
   const VIEWPORT_STORAGE_KEY = "pile-of-memories-viewport";
   const storedViewportSchema = z.object({
@@ -73,6 +77,80 @@
 
   const nodeTypes = { memory: MemoryNodeComponent } satisfies NodeTypes;
   const cardsQuery = getLiveCards();
+  let board = $state.raw<Awaited<ReturnType<typeof createCardCollection>>>();
+  let cacheWarning = $state("");
+  let stopped = false;
+  let closeCache: (() => Promise<void>) | undefined;
+  let opening: Promise<void>;
+  let cacheToClear: Awaited<ReturnType<typeof createCardCollection>> | undefined;
+  const localCards = useLiveQuery((q) => board ? q.from({ card: board.collection }) : undefined);
+
+  onMount(() => {
+    opening = (async () => {
+      try {
+        const cache = await openCardCache(userId);
+        cacheToClear = cache;
+        closeCache = () => cache.close();
+        if (!stopped) board = cache;
+      } catch {
+        if (stopped) return;
+        cacheWarning = "Local storage unavailable. Changes still save to the server.";
+        const memory = await createCardCollection();
+        cacheToClear = memory;
+        closeCache = () => memory.collection.cleanup();
+        if (!stopped) board = memory;
+      }
+    })();
+    return () => {
+      stopped = true;
+      void opening.then(() => closeCache?.()).catch(console.error);
+    };
+  });
+
+  async function cacheResult(write: Promise<void> | undefined): Promise<void> {
+    try {
+      await write;
+    } catch {
+      cacheWarning = "Could not update the local cache. Server saves are unaffected.";
+    }
+  }
+
+  function syncCards() {
+    const snapshot = cardsQuery.current;
+    const target = board;
+    if (snapshot && target && !stopped) {
+      untrack(() => void cacheResult(target.replace(snapshot)));
+    }
+  }
+
+  export async function clearCache(): Promise<void> {
+    stopped = true;
+    await opening;
+    await cacheToClear?.replace([]);
+  }
+
+  function requireOnline(): void {
+    if (stopped) throw new Error("The board is closed. Sign in again to save changes.");
+    if (!navigator.onLine) throw new Error("Connect to the internet to save changes.");
+  }
+
+  async function saveCard(id: string, changes: Parameters<typeof updateCard>[0]["changes"]) {
+    requireOnline();
+    const card = await updateCard({ id, changes });
+    if (!stopped) await cacheResult(board?.upsert([card]));
+  }
+
+  async function removeCard(id: string) {
+    requireOnline();
+    await deleteCard({ id });
+    if (!stopped) await cacheResult(board?.remove(id));
+  }
+
+  async function savePositions(positions: Parameters<typeof updateCardPositions>[0]["positions"]) {
+    requireOnline();
+    const cards = await updateCardPositions({ positions });
+    if (!stopped) await cacheResult(board?.upsert(cards));
+  }
   const MODE_STORAGE_KEY = "pile-of-memories-mode";
   function initialBrowseMode(): boolean {
     try {
@@ -95,14 +173,14 @@
   setCardPersistence({
     browse: () => browseMode,
     async update(id, changes) {
-      await updateCard({ id, changes });
+      await saveCard(id, changes);
     },
     async delete(id) {
-      await deleteCard({ id });
+      await removeCard(id);
     },
   });
 
-  let cards = $derived(cardsQuery.current ?? []);
+  let cards = $derived(localCards.data ?? []);
   let tagVocabulary = $derived(
     canonicalizeLabels([
       ...PRIMARY_TAGS,
@@ -123,7 +201,7 @@
   let captureOpen = $derived(
     (page.shallow?.url ?? page.url).searchParams.get("action") === "new-memory",
   );
-  let boardReady = $derived(cardsQuery.current !== undefined);
+  let boardReady = $derived(localCards.isReady && (cards.length > 0 || cardsQuery.ready));
   let persistenceError = $state("");
   let archiveOpen = $state(false);
   let listOpen = $state(false);
@@ -155,7 +233,7 @@
     archiveBusyId = id;
     archiveError = "";
     try {
-      await updateCard({ id, changes: { archived: false } });
+      await saveCard(id, { archived: false });
     } catch (error) {
       archiveError = getErrorMessage(error);
     } finally {
@@ -169,7 +247,7 @@
     archiveBusyId = id;
     archiveError = "";
     try {
-      await deleteCard({ id });
+      await removeCard(id);
     } catch (error) {
       archiveError = getErrorMessage(error);
     } finally {
@@ -186,7 +264,8 @@
     draft: Pick<CardInput, "title" | "body" | "tags" | "topics" | "links">,
     creation?: CardCreationProvenance,
   ): Promise<void> {
-    if (!boardReady) throw new Error("The board is still loading. Please try again shortly.");
+    requireOnline();
+    if (!boardReady || !cardsQuery.ready) throw new Error("The board is still loading. Please try again shortly.");
     const openSpace = {
       x: (canvasWidth / 2 - viewport.x) / viewport.zoom - DEFAULT_CARD_SIZE.width / 2,
       y: (canvasHeight / 2 - viewport.y) / viewport.zoom - DEFAULT_CARD_SIZE.height / 2,
@@ -206,10 +285,11 @@
       focusable: true,
     };
 
-    await createCard({
+    const saved = await createCard({
       card: memoryNodeToCard(node),
       ...(creation ? { creation } : {}),
-    }).updates(cardsQuery);
+    });
+    if (!stopped) await cacheResult(board?.upsert([saved]));
     viewportStart?.center(
       position.x + DEFAULT_CARD_SIZE.width / 2,
       position.y + DEFAULT_CARD_SIZE.height / 2,
@@ -220,12 +300,11 @@
     persistenceError = "";
     reorganizeStatus = "";
     try {
-      await updateCardPositions({
-        positions: movedNodes.map(({ id, position }) => ({ id, position })),
-      });
+      await savePositions(movedNodes.map(({ id, position }) => ({ id, position })));
     } catch (error) {
       persistenceError = getErrorMessage(error);
-      void cardsQuery.reconnect();
+      nodes = cards.filter((card) => !card.archived).map((card) => cardToMemoryNode(card, tagVocabulary));
+      void cardsQuery.reconnect().catch(() => {});
     }
   }
 
@@ -275,7 +354,7 @@
     reorganizeSaving = true;
     persistenceError = "";
     try {
-      await updateCardPositions({ positions });
+      await savePositions(positions);
       reorganizeSnapshot = null;
       reorganizeViewport = undefined;
       reorganizeStatus = "";
@@ -289,7 +368,8 @@
       persistenceError = getErrorMessage(error);
       await tick();
       if (previousViewport) await viewportStart?.restore(previousViewport);
-      void cardsQuery.reconnect();
+      nodes = cards.filter((card) => !card.archived).map((card) => cardToMemoryNode(card, tagVocabulary));
+      void cardsQuery.reconnect().catch(() => {});
     } finally {
       reorganizeSaving = false;
     }
@@ -299,6 +379,7 @@
 <main
   class="canvas"
   aria-label="Memory board"
+  {@attach syncCards}
   bind:clientWidth={canvasWidth}
   bind:clientHeight={canvasHeight}
 >
@@ -401,6 +482,8 @@
     <p class="status-pill" role="alert">Database unavailable</p>
   {:else if !boardReady}
     <p class="status-pill" role="status">Loading board…</p>
+  {:else if cacheWarning}
+    <p class="status-pill" role="status">{cacheWarning}</p>
   {:else if !cardsQuery.connected}
     <p class="status-pill" role="status">
       Live updates paused.
@@ -425,7 +508,7 @@
 {/if}
 
 {#if captureOpen}
-  <CaptureDialog {tagVocabulary} {boardReady} oncreate={addMemory} onclose={closeCapture} />
+  <CaptureDialog {tagVocabulary} boardReady={boardReady && cardsQuery.ready} oncreate={addMemory} onclose={closeCapture} />
 {/if}
 
 {#if archiveOpen}

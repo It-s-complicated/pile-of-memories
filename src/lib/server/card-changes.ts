@@ -23,6 +23,9 @@ export async function* streamCardSnapshots<T>(
   signal.addEventListener("abort", notify);
 
   try {
+    if (signal.aborted) return;
+    yield await readSnapshot();
+
     const listener = await sql.listen(CARD_CHANGE_CHANNEL, notify, () => {
       if (connected) notify();
       connected = true;
@@ -30,6 +33,7 @@ export async function* streamCardSnapshots<T>(
 
     try {
       if (signal.aborted) return;
+      // Reconcile changes made between the first read and subscribing.
       yield await readSnapshot();
 
       while (!signal.aborted) {

@@ -1,16 +1,26 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { invalidateAll } from "$app/navigation";
+  import type { PageData } from "./$types";
   import { page } from "$app/state";
   import { initializeCaptureHistory } from "#lib/capture-navigation.js";
   import App from "../App.svelte";
   import { authClient } from "#lib/auth-client.js";
 
-  const session = authClient.useSession();
+  let { data }: { data: PageData } = $props();
+  let board = $state<App>();
+  let signedOut = $state(false);
   let working = $state(false);
   let authError = $state("");
 
   onMount(() => {
     void initializeCaptureHistory();
+    const channel = new BroadcastChannel("pile-of-memories-auth");
+    channel.onmessage = () => {
+      signedOut = true;
+      void invalidateAll();
+    };
+    return () => channel.close();
   });
 
   async function signIn(): Promise<void> {
@@ -30,20 +40,32 @@
   async function signOut(): Promise<void> {
     working = true;
     authError = "";
-    const result = await authClient.signOut();
-    if (result.error) authError = result.error.message ?? "Sign-out failed.";
-    working = false;
+    try {
+      const result = await authClient.signOut();
+      if (result.error) throw new Error(result.error.message ?? "Sign-out failed.");
+      const channel = new BroadcastChannel("pile-of-memories-auth");
+      channel.postMessage("signed-out");
+      channel.close();
+      try {
+        await board?.clearCache();
+      } finally {
+        signedOut = true;
+        await invalidateAll();
+      }
+    } catch (error) {
+      authError = error instanceof Error ? error.message : "Sign-out failed.";
+    } finally {
+      working = false;
+    }
   }
 </script>
 
 <svelte:head><title>Pile of Memories</title></svelte:head>
 
-{#if $session.isPending}
-  <main class="access-screen" aria-busy="true">
-    <p class="catalog-label" role="status">Opening private collection…</p>
-  </main>
-{:else if $session.data}
-  <App />
+{#if data.userId && !signedOut}
+  {#key data.userId}
+    <App userId={data.userId} bind:this={board} />
+  {/key}
   <button class="chip-button sign-out" type="button" onclick={signOut} disabled={working}>
     {working ? "Closing…" : "Sign out"}
   </button>
@@ -59,9 +81,9 @@
       <button class="card-button login-button" type="button" onclick={signIn} disabled={working}>
         {working ? "Redirecting…" : "Continue with GitHub"}
       </button>
-      {#if authError || $session.error}
+      {#if authError}
         <p class="access-error" role="alert">
-          {authError || $session.error?.message || "Authentication failed."}
+          {authError}
         </p>
       {/if}
       <p class="catalog-label access-note">No other GitHub account can access this board.</p>

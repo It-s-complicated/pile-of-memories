@@ -1,4 +1,4 @@
-import { command, getRequestEvent, query, requested } from "$app/server";
+import { command, getRequestEvent, query } from "$app/server";
 import { error } from "@sveltejs/kit";
 import {
   createCardRequestSchema,
@@ -55,7 +55,6 @@ export const createCard = command(createCardRequestSchema, async (input) => {
     }
   }
 
-  await requested(getLiveCards, 1).reconnectAll();
   return card;
 });
 
