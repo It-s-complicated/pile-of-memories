@@ -44,7 +44,7 @@
     "packageManager": [
       {
         "name": "pnpm",
-        "version": "11.9.0",
+        "version": "12.3.4",
         "onFail": "download"
       },
       {
@@ -55,7 +55,7 @@
   "engines": {
     "node": ">=24"
   },
-  "packageManager": "pnpm@11.9.0",
+  "packageManager": "pnpm@12.3.4",
   "allowScripts": {
     "file:../../lightningcss@1.32.0/node_modules/lightningcss": true,
     "file:../../browser-fs-access@0.29.1/node_modules/browser-fs-access": true
