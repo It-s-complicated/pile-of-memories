@@ -16,7 +16,8 @@
       "name": "New memory",
       "short_name": "New memory",
       "description": "Capture a new memory",
-      "url": "/?action=new-memory"
+      "url": "/?action=new-memory",
+      "icons": [{ "src": "/shortcut-new-memory.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
 }
