@@ -23,21 +23,16 @@
   import CaptureDialog from "./components/CaptureDialog.svelte";
   import type { Card, CardInput } from "./lib/card";
   import { setCardPersistence } from "./lib/card-persistence";
-  import {
-    createCard,
-    deleteCard,
-    getLiveCards,
-    updateCard,
-    updateCardPositions,
-  } from "./lib/cards.remote";
+  import type { BoardBackend, EnrichmentPlugin } from "./lib/board-backend";
   import { DEFAULT_CARD_SIZE, findClusterPosition, reflowClusters } from "./lib/cluster-layout";
   import type { CardCreationProvenance } from "./lib/enrichment-analytics";
   import { canonicalizeLabels, PRIMARY_TAGS, TOPIC_TAGS } from "./lib/labels";
   import { cardToMemoryNode, memoryNodeToCard, type MemoryNode } from "./lib/scene";
 
-  let { userId }: { userId: string } = $props();
+  let { userId, backend, enrichMemory }: { userId: string; backend: BoardBackend; enrichMemory?: EnrichmentPlugin } = $props();
+  const { createCard, updateCard, updateCardPositions, deleteCard } = untrack(() => backend);
 
-  const VIEWPORT_STORAGE_KEY = "pile-of-memories-viewport";
+  const VIEWPORT_STORAGE_KEY = `pile-of-memories-viewport-${untrack(() => userId)}`;
   const storedViewportSchema = z.object({
     cx: z.number(),
     cy: z.number(),
@@ -76,7 +71,7 @@
   }
 
   const nodeTypes = { memory: MemoryNodeComponent } satisfies NodeTypes;
-  const cardsQuery = getLiveCards();
+  const cardsQuery = untrack(() => backend.getLiveCards());
   let board = $state.raw<Awaited<ReturnType<typeof createCardCollection>>>();
   let cacheWarning = $state("");
   let stopped = false;
@@ -88,6 +83,13 @@
   onMount(() => {
     opening = (async () => {
       try {
+        if (!backend.cache) {
+          const memory = await createCardCollection();
+          cacheToClear = memory;
+          closeCache = () => memory.collection.cleanup();
+          if (!stopped) board = memory;
+          return;
+        }
         const cache = await openCardCache(userId);
         cacheToClear = cache;
         closeCache = () => cache.close();
@@ -131,7 +133,7 @@
 
   function requireOnline(): void {
     if (stopped) throw new Error("The board is closed. Sign in again to save changes.");
-    if (!navigator.onLine) throw new Error("Connect to the internet to save changes.");
+    if (backend.online && !navigator.onLine) throw new Error("Connect to the internet to save changes.");
   }
 
   async function saveCard(id: string, changes: Parameters<typeof updateCard>[0]["changes"]) {
@@ -508,7 +510,7 @@
 {/if}
 
 {#if captureOpen}
-  <CaptureDialog {tagVocabulary} boardReady={boardReady && cardsQuery.ready} oncreate={addMemory} onclose={closeCapture} />
+  <CaptureDialog {enrichMemory} {tagVocabulary} boardReady={boardReady && cardsQuery.ready} oncreate={addMemory} onclose={closeCapture} />
 {/if}
 
 {#if archiveOpen}

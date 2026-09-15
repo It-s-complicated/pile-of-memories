@@ -5,16 +5,18 @@
   import type { CardInput } from "../lib/card";
   import { fallbackTitle } from "../lib/enrichment";
   import type { CardCreationProvenance } from "../lib/enrichment-analytics";
-  import { enrichMemory } from "../lib/enrichment.remote";
+  import type { EnrichmentPlugin } from "../lib/board-backend";
   import { partitionLabels } from "../lib/labels";
   import { parseMarkdown } from "../lib/markdown";
 
   let {
+    enrichMemory,
     tagVocabulary,
     oncreate,
     onclose,
     boardReady,
   }: {
+    enrichMemory?: EnrichmentPlugin;
     tagVocabulary: string[];
     onclose: () => void;
     boardReady: boolean;
@@ -60,6 +62,14 @@
     event.preventDefault();
     const description = memoryBody.trim();
     if (!description) return;
+
+    if (!enrichMemory) {
+      memoryTitle = fallbackTitle(memoryBody);
+      memoryLabels = [];
+      creationProvenance = undefined;
+      newMemoryStep = "review";
+      return;
+    }
 
     const generation = enrichmentGeneration;
     enrichingMemory = true;

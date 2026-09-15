@@ -17,6 +17,13 @@ collection backed by SQLite in the browser's origin-private file system (OPFS). 
 The guided creation and placement idea is captured in [GUIDED_MEMORY_PLACEMENT.md](GUIDED_MEMORY_PLACEMENT.md).
 The database schema is described in [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md).
 
+## AT Protocol / client-core prototype
+
+Run `vp run dev:core` for a standalone browser board with optional private AT Protocol
+storage. `vp run build:core` produces static files in `dist/core`. See the
+[prototype guide](ATPROTO_PROTOTYPE.md) for PDS requirements, plugin boundaries,
+and limitations. Normal development commands retain the hosted app.
+
 ## Development
 
 ```sh

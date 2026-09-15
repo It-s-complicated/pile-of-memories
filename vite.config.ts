@@ -1,5 +1,8 @@
+import staticAdapter from "@sveltejs/adapter-static";
 import adapter from "@sveltejs/adapter-netlify";
 import { defineConfig, lazyPlugins } from "vite-plus";
+
+const core = process.env.POM_PROFILE === "core";
 
 export default defineConfig({
   staged: {
@@ -13,8 +16,11 @@ export default defineConfig({
   plugins: lazyPlugins(async () => {
     const { sveltekit } = await import("@sveltejs/kit/vite");
     return sveltekit({
-      adapter: adapter(),
-      experimental: { remoteFunctions: true },
+      adapter: core
+        ? staticAdapter({ pages: "dist/core", assets: "dist/core", fallback: "index.html" })
+        : adapter(),
+      ...(core ? { files: { src: "src/core", appTemplate: "src/app.html" } } : {}),
+      experimental: { remoteFunctions: !core },
       compilerOptions: { experimental: { async: true } },
     });
   }),

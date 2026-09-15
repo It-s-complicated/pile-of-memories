@@ -7,6 +7,11 @@
   import App from "../App.svelte";
   import { authClient } from "#lib/auth-client.js";
 
+  import * as postgres from "#lib/cards.remote.js";
+  import { enrichMemory } from "#lib/enrichment.remote.js";
+  import BoardLauncher from "../components/BoardLauncher.svelte";
+
+  let mounted = $state(false);
   let { data }: { data: PageData } = $props();
   let board = $state<App>();
   let signedOut = $state(false);
@@ -14,6 +19,7 @@
   let authError = $state("");
 
   onMount(() => {
+    mounted = true;
     void initializeCaptureHistory();
     const channel = new BroadcastChannel("pile-of-memories-auth");
     channel.onmessage = () => {
@@ -64,7 +70,13 @@
 
 {#if data.userId && !signedOut}
   {#key data.userId}
-    <App userId={data.userId} bind:this={board} />
+    {#if mounted}
+      {#if page.url.searchParams.get("storage") === "atproto"}
+        <BoardLauncher {enrichMemory} />
+      {:else}
+        <App userId={data.userId} backend={{ ...postgres, online: true, cache: true }} {enrichMemory} bind:this={board} />
+      {/if}
+    {/if}
   {/key}
   <button class="chip-button sign-out" type="button" onclick={signOut} disabled={working}>
     {working ? "Closing…" : "Sign out"}
