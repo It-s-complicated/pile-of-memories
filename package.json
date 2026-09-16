@@ -22,7 +22,6 @@
     "@humanspeak/svelte-markdown": "~1.9.1",
     "@tanstack/ai": "^0.54.0",
     "@tanstack/ai-openai": "^0.22.6",
-    "@tanstack/browser-db-sqlite-persistence": "^0.2.23",
     "@tanstack/svelte-db": "^0.4.1",
     "@xyflow/svelte": "^1.6.6",
     "airspace": "^0.1.4",

@@ -16,7 +16,6 @@ peerDependencyRules:
     vite: "*"
     vitest: "*"
 allowBuilds:
-  "@journeyapps/wa-sqlite": false
   agent-browser: true
   core-js: false
   esbuild: true

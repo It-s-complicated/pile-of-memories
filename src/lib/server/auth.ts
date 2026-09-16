@@ -1,72 +1,108 @@
-import { APPROVED_ATPROTO_DID, AUTH_SECRET } from "$app/env/private";
+import {
+  APPROVED_ATPROTO_DID,
+  AUTH_SECRET,
+  AUTH_ORIGIN,
+  CONTEXT,
+  DEPLOY_PRIME_URL,
+} from "$app/env/private";
 import type { Cookies } from "@sveltejs/kit";
-import { createHmac, timingSafeEqual } from "node:crypto";
-import { createOAuth, type NodeSavedSession, type OAuth } from "airspace/oauth";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import * as z from "zod";
+import {
+  createOAuth,
+  type NodeSavedSession,
+  type NodeSavedState,
+  type OAuth,
+} from "airspace/oauth";
 
-// ponytail: in-memory DPoP-bound OAuth sessions keyed by DID; a server restart
-// signs everyone out. Use a durable store when multi-user uptime matters.
-const sessions = new Map<string, NodeSavedSession>();
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
+export const SESSION_COOKIE = "pom_session";
+const MAX_COOKIE_LENGTH = 3800;
+const entrySchema = z.object({ key: z.string(), expiresAt: z.number().int(), value: z.unknown() });
 
-const sessionStore = {
-  async get(did: string) {
-    return sessions.get(did);
-  },
-  async set(did: string, session: NodeSavedSession) {
-    sessions.set(did, session);
-  },
-  async del(did: string) {
-    sessions.delete(did);
-  },
-};
+function authOrigin(): string {
+  if (CONTEXT === "deploy-preview" || CONTEXT === "branch-deploy") {
+    if (!DEPLOY_PRIME_URL)
+      throw new Error("Netlify previews require DEPLOY_PRIME_URL at build time.");
+    return DEPLOY_PRIME_URL;
+  }
+  return AUTH_ORIGIN;
+}
 
-let oauthPromise: Promise<OAuth> | undefined;
-export function getOAuth(url: URL): Promise<OAuth> {
-  return (oauthPromise ??= createOAuth({
-    baseUrl: url.origin,
+function encryptionKey() {
+  return createHash("sha256").update(AUTH_SECRET).update("\0").update(authOrigin()).digest();
+}
+
+function readCookie(name: string, value: string | undefined) {
+  if (!value || value.length > MAX_COOKIE_LENGTH) return null;
+  try {
+    const bytes = Buffer.from(value, "base64url");
+    const decipher = createDecipheriv("aes-256-gcm", encryptionKey(), bytes.subarray(0, 12));
+    decipher.setAAD(Buffer.from(name));
+    decipher.setAuthTag(bytes.subarray(12, 28));
+    const plaintext = Buffer.concat([decipher.update(bytes.subarray(28)), decipher.final()]);
+    const entry = entrySchema.parse(JSON.parse(plaintext.toString("utf8")));
+    return entry.expiresAt > Date.now() ? entry : null;
+  } catch {
+    return null;
+  }
+}
+
+function oauthStore<T>(cookies: Cookies, name: string, maxAge: number, path: string) {
+  return {
+    async get(key: string): Promise<T | undefined> {
+      const entry = readCookie(name, cookies.get(name));
+      // The authenticated ciphertext was written by this app; OAuth validates its own data.
+      return entry?.key === key ? (entry.value as T) : undefined;
+    },
+    async set(key: string, value: T) {
+      const iv = randomBytes(12);
+      const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv);
+      cipher.setAAD(Buffer.from(name));
+      const plaintext = JSON.stringify({ key, value, expiresAt: Date.now() + maxAge * 1000 });
+      const ciphertext = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+      const sealed = Buffer.concat([iv, cipher.getAuthTag(), ciphertext]).toString("base64url");
+      // ponytail: one bounded cookie per store; use server storage if OAuth payloads outgrow it.
+      if (sealed.length > MAX_COOKIE_LENGTH)
+        throw new Error("OAuth data exceeds the cookie size limit.");
+      cookies.set(name, sealed, {
+        path,
+        httpOnly: true,
+        sameSite: "lax",
+        secure: authOrigin().startsWith("https:"),
+        maxAge,
+      });
+    },
+    async del(key: string) {
+      if (readCookie(name, cookies.get(name))?.key === key) cookies.delete(name, { path });
+    },
+  };
+}
+
+export function getOAuth(cookies: Cookies, url: URL): Promise<OAuth> {
+  const origin = authOrigin();
+  if (url.origin !== origin) throw new Error("Use the configured AUTH_ORIGIN to sign in.");
+  return createOAuth({
+    baseUrl: origin,
     redirectPath: "/auth/callback",
     name: "Pile of Memories",
     // Identity only; board cards live in the browser's private Airspace space.
     // Server-side space writes would need scopesFor({ spaces: { workspace } })
     // and published lexicons.
     scopes: ["atproto"],
-    stores: { session: sessionStore },
-  }));
-}
-
-export const SESSION_COOKIE = "pom_session";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
-
-function signature(did: string): string {
-  return createHmac("sha256", AUTH_SECRET).update(did).digest("base64url");
-}
-
-export function setSessionCookie(cookies: Cookies, did: string, url: URL): void {
-  cookies.set(SESSION_COOKIE, `${did}|${signature(did)}`, {
-    path: "/",
-    httpOnly: true,
-    sameSite: "lax",
-    secure: url.protocol === "https:",
-    maxAge: COOKIE_MAX_AGE,
+    stores: {
+      session: oauthStore<NodeSavedSession>(cookies, SESSION_COOKIE, COOKIE_MAX_AGE, "/"),
+      // ponytail: one pending login per browser; starting another replaces its callback state.
+      state: oauthStore<NodeSavedState>(cookies, "pom_oauth_state", 60 * 10, "/auth"),
+    },
   });
 }
 
 export function verifySessionCookie(value: string | undefined): string | null {
-  if (!value || !APPROVED_ATPROTO_DID) return null;
-  const separator = value.lastIndexOf("|");
-  if (separator < 0) return null;
-  const did = value.slice(0, separator);
-  const given = value.slice(separator + 1);
-  const expected = signature(did);
-  if (
-    given.length !== expected.length ||
-    !timingSafeEqual(Buffer.from(given), Buffer.from(expected))
-  ) {
-    return null;
-  }
-  return did === APPROVED_ATPROTO_DID ? did : null;
+  const entry = readCookie(SESSION_COOKIE, value);
+  return entry && APPROVED_ATPROTO_DID && entry.key === APPROVED_ATPROTO_DID ? entry.key : null;
 }
 
-export async function destroySession(did: string, url: URL): Promise<void> {
-  sessions.delete(did);
-  await (await getOAuth(url)).revoke(did);
+export async function destroySession(did: string, cookies: Cookies, url: URL): Promise<void> {
+  await (await getOAuth(cookies, url)).revoke(did);
 }

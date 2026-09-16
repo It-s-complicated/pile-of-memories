@@ -1,8 +1,7 @@
 import { createCollection, type SyncConfig } from "@tanstack/svelte-db";
-import type { PersistedCollectionPersistence } from "@tanstack/browser-db-sqlite-persistence";
 import { cardSchema, type Card } from "./card";
 
-export async function createCardCollection(persistence?: PersistedCollectionPersistence) {
+export async function createCardCollection() {
   let sync!: Parameters<SyncConfig<Card, string>["sync"]>[0];
   const options = {
     id: "cards",
@@ -10,22 +9,11 @@ export async function createCardCollection(persistence?: PersistedCollectionPers
     sync: {
       sync(controls: typeof sync) {
         sync = controls;
-        // Cached rows are usable before the first server snapshot arrives.
         controls.markReady();
       },
     },
   };
-  const config = persistence
-    ? (await import("@tanstack/browser-db-sqlite-persistence")).persistedCollectionOptions<
-        Card,
-        string
-      >({
-        ...options,
-        persistence,
-        schemaVersion: 1,
-      })
-    : options;
-  const collection = createCollection<Card, string>(config);
+  const collection = createCollection<Card, string>(options);
   try {
     await collection.preload();
     cardSchema.array().parse([...collection.values()]);
@@ -66,30 +54,4 @@ export async function createCardCollection(persistence?: PersistedCollectionPers
       await sync.commit();
     },
   };
-}
-
-export async function openCardCache(userId: string) {
-  const sqlite = await import("@tanstack/browser-db-sqlite-persistence");
-  const name = `pile-of-memories-${encodeURIComponent(userId)}`;
-  const database = await sqlite.openBrowserWASQLiteOPFSDatabase({
-    databaseName: `${name}.sqlite`,
-  });
-  const coordinator = new sqlite.BrowserCollectionCoordinator({ dbName: name });
-  try {
-    const board = await createCardCollection(
-      sqlite.createBrowserWASQLitePersistence({ database, coordinator }),
-    );
-    return {
-      ...board,
-      async close() {
-        await board.collection.cleanup();
-        coordinator.dispose();
-        await database.close?.();
-      },
-    };
-  } catch (error) {
-    coordinator.dispose();
-    await database.close?.();
-    throw error;
-  }
 }

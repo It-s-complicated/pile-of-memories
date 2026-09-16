@@ -9,7 +9,7 @@
   } from "@xyflow/svelte";
   import { onMount, tick, untrack } from "svelte";
   import { useLiveQuery } from "@tanstack/svelte-db";
-  import { createCardCollection, openCardCache } from "./lib/card-collection";
+  import { createCardCollection } from "./lib/card-collection";
   import { page } from "$app/state";
   import { openCapture, closeCapture } from "./lib/capture-navigation";
   import * as z from "zod";
@@ -83,37 +83,18 @@
   let board = $state.raw<Awaited<ReturnType<typeof createCardCollection>>>();
   let cacheWarning = $state("");
   let stopped = false;
-  let closeCache: (() => Promise<void>) | undefined;
-  let opening: Promise<void>;
-  let cacheToClear: Awaited<ReturnType<typeof createCardCollection>> | undefined;
   const localCards = useLiveQuery((q) => board ? q.from({ card: board.collection }) : undefined);
 
   onMount(() => {
-    opening = (async () => {
-      try {
-        if (!backend.cache) {
-          const memory = await createCardCollection();
-          cacheToClear = memory;
-          closeCache = () => memory.collection.cleanup();
-          if (!stopped) board = memory;
-          return;
-        }
-        const cache = await openCardCache(userId);
-        cacheToClear = cache;
-        closeCache = () => cache.close();
-        if (!stopped) board = cache;
-      } catch {
-        if (stopped) return;
-        cacheWarning = "Local storage unavailable. Changes still save to the server.";
-        const memory = await createCardCollection();
-        cacheToClear = memory;
-        closeCache = () => memory.collection.cleanup();
-        if (!stopped) board = memory;
-      }
-    })();
+    const opening = createCardCollection();
+    void opening.then((memory) => {
+      if (!stopped) board = memory;
+    }).catch(() => {
+      cacheWarning = "Could not open the board. Please reload.";
+    });
     return () => {
       stopped = true;
-      void opening.then(() => closeCache?.()).catch(console.error);
+      void opening.then((memory) => memory.collection.cleanup()).catch(console.error);
     };
   });
 
@@ -121,7 +102,7 @@
     try {
       await write;
     } catch {
-      cacheWarning = "Could not update the local cache. Server saves are unaffected.";
+      cacheWarning = "Saved, but could not update the board view. Please reload.";
     }
   }
 
@@ -131,12 +112,6 @@
     if (snapshot && target && !stopped) {
       untrack(() => void cacheResult(target.replace(snapshot)));
     }
-  }
-
-  export async function clearCache(): Promise<void> {
-    stopped = true;
-    await opening;
-    await cacheToClear?.replace([]);
   }
 
   function requireOnline(): void {
@@ -553,10 +528,10 @@
     <p class="status-pill" role="status">{reorganizeStatus}</p>
   {:else if boardQuery.error && !boardReady}
     <p class="status-pill" role="alert">Database unavailable</p>
-  {:else if !boardReady}
-    <p class="status-pill" role="status">Loading board…</p>
   {:else if cacheWarning}
     <p class="status-pill" role="status">{cacheWarning}</p>
+  {:else if !boardReady}
+    <p class="status-pill" role="status">Loading board…</p>
   {:else if !boardQuery.connected}
     <p class="status-pill" role="status">
       Live updates paused.

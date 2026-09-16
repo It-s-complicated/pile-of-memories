@@ -9,7 +9,7 @@ export const POST: RequestHandler = async (event) => {
   if (!handle) redirect(303, "/?auth_error=handle");
   let destination = "/?auth_error=sign-in";
   try {
-    destination = (await (await getOAuth(event.url)).authorize(handle)).toString();
+    destination = (await (await getOAuth(event.cookies, event.url)).authorize(handle)).toString();
   } catch {
     // Unknown handle or identity resolution failure.
   }

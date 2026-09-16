@@ -19,7 +19,6 @@ import {
 export type EnrichmentPlugin = (input: EnrichmentInput) => Promise<EnrichmentResponse>;
 export type BoardBackend = {
   online: boolean;
-  cache: boolean;
   createCard(input: z.input<typeof createCardRequestSchema>): Promise<Card>;
   updateCard(input: z.input<typeof updateCardCommandSchema>): Promise<Card>;
   updateCardPositions(input: z.input<typeof updateCardPositionsCommandSchema>): Promise<Card[]>;
@@ -136,7 +135,6 @@ export function createSnapshotBackend(
   }
   return {
     online: storage.online,
-    cache: false,
     async refresh() {
       return run(async () => changed(await read()));
     },

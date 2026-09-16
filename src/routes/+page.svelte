@@ -19,6 +19,7 @@
   let { data }: { data: PageData } = $props();
   let signedOut = $state(false);
   let working = $state(false);
+  let signOutError = $state("");
   let authError = $derived(
     AUTH_ERRORS[page.url.searchParams.get("auth_error") ?? ""] ?? "",
   );
@@ -36,13 +37,17 @@
 
   async function signOut(): Promise<void> {
     working = true;
+    signOutError = "";
     try {
-      await fetch("/auth/sign-out", { method: "POST" });
+      const response = await fetch("/auth/sign-out", { method: "POST" });
+      if (!response.ok) throw new Error("Could not sign out. Please try again.");
       const channel = new BroadcastChannel("pile-of-memories-auth");
       channel.postMessage("signed-out");
       channel.close();
       signedOut = true;
       await invalidateAll();
+    } catch {
+      signOutError = "Could not sign out. Please try again.";
     } finally {
       working = false;
     }
@@ -60,7 +65,7 @@
   <button class="chip-button sign-out" type="button" onclick={signOut} disabled={working}>
     {working ? "Closing…" : "Sign out"}
   </button>
-  {#if authError}<p class="status-pill" role="alert">{authError}</p>{/if}
+  {#if signOutError || authError}<p class="status-pill" role="alert">{signOutError || authError}</p>{/if}
 {:else}
   <main class="access-screen">
     <section class="access-slip" aria-labelledby="access-title">
