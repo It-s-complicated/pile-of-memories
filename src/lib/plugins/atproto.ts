@@ -58,11 +58,13 @@ export async function connectAtproto(
     async read() {
       await requirePrivateSpace();
       const record = await client.workspace.boards.get();
-      return record ? boardSnapshotSchema.parse(JSON.parse(record.value.snapshot)) : [];
+      return record
+        ? boardSnapshotSchema.parse(JSON.parse(record.value.snapshot))
+        : boardSnapshotSchema.parse([]);
     },
-    async write(cards) {
+    async write(board) {
       await requirePrivateSpace();
-      const snapshot = JSON.stringify(boardSnapshotSchema.parse(cards));
+      const snapshot = JSON.stringify(boardSnapshotSchema.parse(board));
       if (new TextEncoder().encode(snapshot).length > 200_000) {
         throw new Error(
           "This prototype board exceeds 200 KB. Split storage into per-card records before adding more.",

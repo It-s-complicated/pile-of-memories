@@ -33,6 +33,7 @@ export type MemoryData = {
   topics: string[];
   links: string[];
   tagVocabulary: string[];
+  topicVocabulary: string[];
 };
 export type MemoryNode = Node<MemoryData, "memory">;
 function getPrimaryTagHue(tag: string): number | undefined {
@@ -57,14 +58,18 @@ export function getTopicTagColor(topic: string): string {
 
 /** Drawer-index colors for the minimap: one segment per known primary tag. */
 export function getMinimapColors(tags: string[]): string[] {
-  const colors = tags.flatMap((tag) => {
+  const colors = tags.map((tag) => {
     const hue = getPrimaryTagHue(tag);
-    return hue === undefined ? [] : [`oklch(0.62 0.1 ${hue})`];
+    return hue === undefined ? "var(--theme-ink)" : `oklch(0.62 0.1 ${hue})`;
   });
   return colors.length > 0 ? colors : ["color-mix(in oklch, var(--muted) 45%, var(--paper))"];
 }
 
-export function cardToMemoryNode(card: Card, tagVocabulary: string[] = []): MemoryNode {
+export function cardToMemoryNode(
+  card: Card,
+  tagVocabulary: string[] = [],
+  topicVocabulary: string[] = [],
+): MemoryNode {
   return {
     id: card.id,
     type: "memory",
@@ -78,6 +83,7 @@ export function cardToMemoryNode(card: Card, tagVocabulary: string[] = []): Memo
       topics: card.topics,
       links: card.links,
       tagVocabulary,
+      topicVocabulary,
     },
     focusable: true,
   };

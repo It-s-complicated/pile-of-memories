@@ -2,13 +2,12 @@
   import { onMount } from "svelte";
   import App from "../App.svelte";
   import { initializeCaptureHistory } from "../lib/capture-navigation";
-  import { browserStorage, createSnapshotBackend, type BoardBackend, type EnrichmentPlugin, type SnapshotStorage } from "../lib/board-backend";
-  import type { Card } from "../lib/card";
+  import { browserStorage, createSnapshotBackend, type BoardBackend, type BoardSnapshot, type EnrichmentPlugin, type SnapshotStorage } from "../lib/board-backend";
 
   let { enrichMemory }: { enrichMemory?: EnrichmentPlugin } = $props();
   let backend = $state.raw<BoardBackend>();
   let storageId = $state("");
-  let snapshot = $state.raw<Card[]>();
+  let snapshot = $state.raw<BoardSnapshot>();
   let service = $state("");
   let identifier = $state("");
   let password = $state("");
@@ -24,7 +23,7 @@
     storageId = storage.id;
     backend = {
       ...operations,
-      getLiveCards: () => ({
+      getLiveBoard: () => ({
         get current() { return snapshot; },
         get ready() { return snapshot !== undefined; },
         connected: true,
@@ -54,7 +53,7 @@
   }
 
   async function refresh() {
-    try { await backend?.getLiveCards().reconnect(); }
+    try { await backend?.getLiveBoard().reconnect(); }
     catch { message = "Could not reload the board. Check your connection and try again."; }
   }
 </script>

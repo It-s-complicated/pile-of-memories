@@ -29,8 +29,8 @@ describe("card creation validation", () => {
     expect(parseCardInput(validCard)).toEqual({
       ...validCard,
       title: "Capture this",
-      tags: ["Job"],
-      topics: ["Concept", "CSS"],
+      tags: ["Job", "Concept"],
+      topics: ["CSS"],
       links: ["https://example.com/docs"],
     });
   });
@@ -76,8 +76,8 @@ describe("card change validation", () => {
     ).toEqual({
       title: "Updated",
       body: "Visit https://example.org.",
-      tags: ["Personal development"],
-      topics: ["Svelte", "CSS"],
+      tags: ["Personal development", "Svelte"],
+      topics: ["CSS"],
       links: ["https://example.org"],
       archived: true,
     });

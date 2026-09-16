@@ -10,88 +10,66 @@ Core loop:
 - enrich description-first capture with editable AI title and tag suggestions
 - read Markdown cards and edit their title, text, tags, and derived links in one dialog
 
-Memory cards are Svelte Flow nodes persisted in PostgreSQL. TanStack DB keeps a reactive client
-collection backed by SQLite in the browser's origin-private file system (OPFS). SvelteKit
-`query.live` streams complete, authoritative snapshots after PostgreSQL `LISTEN/NOTIFY` invalidations.
+Memory cards are Svelte Flow nodes. The board is one whole-snapshot record of memories, tags, and
+topics stored in your own AT Protocol account: a private Airspace space on a spaces-enabled PDS,
+written from the browser with an app-password session. There is no server database. Sign in through
+AT Protocol OAuth (gating AI enrichment), then connect the board to your PDS.
 
 The guided creation and placement idea is captured in [GUIDED_MEMORY_PLACEMENT.md](GUIDED_MEMORY_PLACEMENT.md).
-The database schema is described in [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md).
-
-## AT Protocol / client-core prototype
-
-Run `vp run dev:core` for a standalone browser board with optional private AT Protocol
-storage. `vp run build:core` produces static files in `dist/core`. See the
-[prototype guide](ATPROTO_PROTOTYPE.md) for PDS requirements, plugin boundaries,
-and limitations. Normal development commands retain the hosted app.
+Board storage requirements and limitations are described in [ATPROTO_PROTOTYPE.md](ATPROTO_PROTOTYPE.md).
 
 ## Development
 
 ```sh
 vp install
-DATABASE_CONNECTION_STRING='postgresql://…' vp run db:migrate
 vp dev
 ```
 
-Set `DATABASE_CONNECTION_STRING` in `.env`. If it uses transaction pooling, set
-`DATABASE_LISTEN_CONNECTION_STRING` to a session-mode URL for live updates. Set
+Set `APP_URL`, `APPROVED_ATPROTO_DID`, and `AUTH_SECRET` in `.env`. Set
 `OPENCODE_GO_API_KEY` to enable DeepSeek V4 Flash title and tag suggestions through OpenCode Go.
+
+Run `vp run dev:core` for a standalone browser board without the hosted auth shell; `vp run
+build:core` produces static files in `dist/core`.
 
 ## Authentication
 
-The board uses Better Auth with GitHub and admits one account. Configure `BETTER_AUTH_SECRET`,
-`BETTER_AUTH_URL`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and the approved account's stable
-numeric GitHub ID in `APPROVED_GITHUB_PROVIDER_ID`. The GitHub OAuth callback is:
+The board signs in through AT Protocol (Bluesky) and admits one account. Configure `APP_URL` (the
+public origin), `AUTH_SECRET`, and the approved account's DID in `APPROVED_ATPROTO_DID`. Sign-in
+redirects to the account's own PDS; the callback is:
 
 ```text
-<BETTER_AUTH_URL>/api/auth/callback/github
+<APP_URL>/auth/callback
 ```
 
-Every card and enrichment remote function requires the approved session. The board itself remains a
-single shared dataset without ownership columns.
+The OAuth client metadata is served at `<APP_URL>/oauth-client-metadata.json`, which the PDS
+fetches during authorization. OAuth sessions (DPoP-bound, keyed by DID) are kept in server memory
+and require signing in again after a server restart. The OAuth grant is identity-only (`atproto`
+scope); board data never flows through the app server.
 
-The page reuses the server-validated user instead of making another client session request. Browser
-caches are scoped by user and only opened after authentication. Signing out clears cached card rows
-and closes the board in other open tabs. Cached cards are private data stored on this device.
+The enrichment remote function requires the approved session. Card storage is authorized by your
+PDS credentials instead.
 
-## Browser cache
+## Board storage
 
-On repeat visits, cached cards and the saved viewport appear while the server snapshot loads. The
-server reads the first snapshot before opening its PostgreSQL listener, then reads again after
-subscribing to cover changes in between. Server snapshots reconcile edits and deletions into the
-local collection; successful write responses also update it immediately.
+The board is one JSON snapshot (memories, positions, tags, and topics) written as the `self` record of
+`app.pileofmemories.prototype.board` inside the private
+`app.pileofmemories.prototype.workspace` space of your own PDS. The browser holds an
+app-password session in memory; reloading the page requires reconnecting. PDS requirements,
+the snapshot size cap, and the one-editor-at-a-time limitation are in
+[ATPROTO_PROTOTYPE.md](ATPROTO_PROTOTYPE.md). Use **Reload board** to pull changes saved from
+another device.
 
-Writes always require a connection and validated server access. There is no offline write queue.
-Dragging and layout previews stay in Svelte Flow until saved; failed moves revert to confirmed cards.
-If OPFS is unavailable, the app uses an in-memory collection and reports that caching is unavailable.
-Multiple tabs coordinate SQLite access through TanStack's browser coordinator.
-
-SQLite runs in a bundled worker with WASM; HTTPS (or localhost) is required. The unused PowerSync
-extension download in `@journeyapps/wa-sqlite`'s install script is deliberately disabled. Bump
-`schemaVersion` in `src/lib/card-collection.ts` when the cached card shape changes to reset and
-refresh the local replica. Browser storage can be evicted; PostgreSQL remains the source of truth.
+Use **Export** to download a versioned JSON backup. **Import** accepts that same format, validates
+the full snapshot, and replaces the current board after confirmation. New tags and topics can be
+created directly in the memory editor and remain in the stored vocabulary even when unused.
 
 ## Deployment
 
 The web app manifest supports home-screen installation and a **New memory** shortcut at
 `/?action=new-memory`. The + button uses the same URL with shallow navigation; browser Back closes
-capture and Forward reopens it. Direct launches return to the board on Back, and GitHub sign-in
-preserves the capture URL. Reloading or closing capture discards its unsaved draft.
+capture and Forward reopens it. Direct launches return to the board on Back. Reloading or closing
+capture discards its unsaved draft.
 
-Install the deployed HTTPS site from the browser's install/add-to-home-screen menu. Manifest
-shortcuts depend on the platform (supported on Android, not as custom long-press actions on iOS).
-An iOS Shortcut can open the capture URL instead. There is no service worker or offline app shell;
-opening the app, authenticating, and saving memories still require a connection. The SQLite cache
-speeds up card loading after authentication.
-
-Live queries require the configured Node adapter, a persistent runtime, unbuffered SSE, and responses
-with `Cache-Control: no-store`. Each active card stream uses Postgres.js's automatically reconnecting
-dedicated listener; SvelteKit owns client connection sharing, reconnects, and stream cancellation.
-
-Run the database integration check with:
-
-```sh
-DATABASE_INTEGRATION_TEST=1 \
-DATABASE_CONNECTION_STRING='postgresql://…' \
-DATABASE_LISTEN_CONNECTION_STRING='postgresql://…' \
-vp test src/lib/server/database.integration.test.ts
-```
+Install the deployed HTTPS site from the browser's install/add-to-home-screen menu. There is no
+service worker or offline app shell; opening the app, connecting to your PDS, and saving memories
+require a connection.

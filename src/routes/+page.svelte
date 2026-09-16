@@ -4,19 +4,24 @@
   import type { PageData } from "./$types";
   import { page } from "$app/state";
   import { initializeCaptureHistory } from "#lib/capture-navigation.js";
-  import App from "../App.svelte";
-  import { authClient } from "#lib/auth-client.js";
 
-  import * as postgres from "#lib/cards.remote.js";
   import { enrichMemory } from "#lib/enrichment.remote.js";
   import BoardLauncher from "../components/BoardLauncher.svelte";
 
+  const AUTH_ERRORS: Record<string, string> = {
+    handle: "Enter your handle or DID first.",
+    "sign-in": "Could not start sign-in. Check the handle and try again.",
+    callback: "Sign-in was rejected. Please try again.",
+    denied: "This AT Protocol account is not approved for this board.",
+  };
+
   let mounted = $state(false);
   let { data }: { data: PageData } = $props();
-  let board = $state<App>();
   let signedOut = $state(false);
   let working = $state(false);
-  let authError = $state("");
+  let authError = $derived(
+    AUTH_ERRORS[page.url.searchParams.get("auth_error") ?? ""] ?? "",
+  );
 
   onMount(() => {
     mounted = true;
@@ -29,37 +34,15 @@
     return () => channel.close();
   });
 
-  async function signIn(): Promise<void> {
-    working = true;
-    authError = "";
-    const url = page.shallow?.url ?? page.url;
-    const result = await authClient.signIn.social({
-      provider: "github",
-      callbackURL: url.pathname + url.search + url.hash,
-    });
-    if (result.error) {
-      authError = result.error.message ?? "GitHub sign-in failed.";
-      working = false;
-    }
-  }
-
   async function signOut(): Promise<void> {
     working = true;
-    authError = "";
     try {
-      const result = await authClient.signOut();
-      if (result.error) throw new Error(result.error.message ?? "Sign-out failed.");
+      await fetch("/auth/sign-out", { method: "POST" });
       const channel = new BroadcastChannel("pile-of-memories-auth");
       channel.postMessage("signed-out");
       channel.close();
-      try {
-        await board?.clearCache();
-      } finally {
-        signedOut = true;
-        await invalidateAll();
-      }
-    } catch (error) {
-      authError = error instanceof Error ? error.message : "Sign-out failed.";
+      signedOut = true;
+      await invalidateAll();
     } finally {
       working = false;
     }
@@ -68,14 +51,10 @@
 
 <svelte:head><title>Pile of Memories</title></svelte:head>
 
-{#if data.userId && !signedOut}
-  {#key data.userId}
+{#if data.did && !signedOut}
+  {#key data.did}
     {#if mounted}
-      {#if page.url.searchParams.get("storage") === "atproto"}
-        <BoardLauncher {enrichMemory} />
-      {:else}
-        <App userId={data.userId} backend={{ ...postgres, online: true, cache: true }} {enrichMemory} bind:this={board} />
-      {/if}
+      <BoardLauncher {enrichMemory} />
     {/if}
   {/key}
   <button class="chip-button sign-out" type="button" onclick={signOut} disabled={working}>
@@ -88,17 +67,23 @@
       <p class="catalog-label">Private collection · owner access</p>
       <h1 id="access-title">Pile of Memories</h1>
       <p class="access-copy">
-        This drawer belongs to one collector. Continue with the approved GitHub account to open it.
+        This drawer belongs to one collector. Sign in with your AT Protocol account to open it.
       </p>
-      <button class="card-button login-button" type="button" onclick={signIn} disabled={working}>
-        {working ? "Redirecting…" : "Continue with GitHub"}
-      </button>
+      <form class="sign-in-form" method="POST" action="/auth/sign-in">
+        <input
+          name="handle"
+          placeholder="you.bsky.social or did:plc:…"
+          autocomplete="username"
+          required
+        />
+        <button class="card-button login-button" type="submit">Continue with AT Protocol</button>
+      </form>
       {#if authError}
         <p class="access-error" role="alert">
           {authError}
         </p>
       {/if}
-      <p class="catalog-label access-note">No other GitHub account can access this board.</p>
+      <p class="catalog-label access-note">No other account can access this board.</p>
     </section>
   </main>
 {/if}
@@ -163,6 +148,23 @@
   .login-button {
     width: 100%;
     min-height: 2.8rem;
+  }
+
+  .sign-in-form {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .sign-in-form input {
+    width: 100%;
+    min-height: 2.8rem;
+    padding: 0 0.9rem;
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    background: var(--sheet);
+    color: var(--text);
+    font: inherit;
+    box-sizing: border-box;
   }
 
   .access-note {

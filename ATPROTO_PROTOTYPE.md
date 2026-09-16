@@ -1,6 +1,13 @@
-# Client core + AT Protocol prototype
+# Client core + AT Protocol storage
 
 Branch: `prototype/client-core-airspace`.
+
+## Hosted profile
+
+The hosted application no longer runs a database. After signing in via AT Protocol, the board
+opens through `BoardLauncher`: choose a private AT Protocol space on a spaces-enabled PDS
+(app password goes directly from the browser to that PDS) or local browser storage. The only
+server remotes left are identity gating (OAuth session cookie) and AI enrichment.
 
 ## Run it
 
@@ -18,13 +25,14 @@ server. Capture still has an editable title/tags review, but no AI request or
 "AI unavailable" message. Local storage is the durable source; Web Locks serialize
 writes across tabs and storage events refresh other tabs. Use HTTPS or localhost
 (Web Locks and UUID generation need a secure context). Clearing site data deletes
-the browser pile. No import from the existing private board happens automatically.
+the browser pile. Use the board's import action to restore a JSON export from the former
+database-backed app.
 
-The default `vp dev` / `vp build` still run the hosted application. After GitHub
-sign-in, `/?storage=atproto` opens the same browser/PDS chooser with the current AI
-enrichment function attached. `/` retains PostgreSQL. The hosted shell is SSR;
-the Svelte Flow canvas mounts in the browser. AI needs a server for secrets, but
-SSR itself is a deployment choice, not a requirement of enrichment.
+The default `vp dev` / `vp build` run the hosted application. After signing in via AT
+Protocol, the board opens through the same browser/PDS chooser with the current AI enrichment
+function attached. The hosted shell is SSR; the Svelte Flow canvas mounts in
+the browser. AI needs a server for secrets, but SSR itself is a deployment choice, not a requirement
+of enrichment.
 
 ## Private AT Protocol storage
 
@@ -42,8 +50,8 @@ Airspace 0.1.3 provides the AT Protocol client and lexicon helpers. The adapter:
 - stores the board in the private `app.pileofmemories.prototype.workspace` space,
   as the `self` record of `app.pileofmemories.prototype.board`;
 - validates snapshots and edits with the existing Zod schemas;
-- saves one JSON snapshot per write, preserving fractional canvas coordinates and
-  keeping multi-card layout changes in one record write.
+- saves memories, tags, and topics in one JSON snapshot per write, preserving fractional canvas
+  coordinates, unused label vocabulary, and atomic multi-card layout changes.
 
 The namespace is experimental. Replace it with a reverse-domain namespace you
 own and publish the lexicons before treating this as an interoperable app schema.
@@ -63,12 +71,13 @@ also do not appear on the public firehose; use **Reload board** to refresh.
 ## The plugin boundary
 
 `src/lib/board-backend.ts` defines the small storage contract used by `App.svelte`.
-It has two actual implementations: existing PostgreSQL remote functions and a
-snapshot backend used by browser storage and AT Protocol.
+It has one implementation shape for real board data — the snapshot backend used by browser
+storage and AT Protocol — plus the shared `boardSnapshotSchema`. The hosted route no longer
+supplies remote card functions.
 
 `EnrichmentPlugin` is a function passed through `App` to `CaptureDialog`. The core
 imports no remote functions. The hosted route supplies `enrichMemory` from the
-existing server implementation. No plugin registry, dynamic package loader, or
+server implementation. No plugin registry, dynamic package loader, or
 plugin permissions system is needed for this experiment. These are trusted,
 build-time integrations.
 
@@ -76,13 +85,8 @@ build-time integrations.
 the hosted auth hook, server load, and required environment schema. The static
 artifact is `dist/core`; Netlify's hosted artifact remains `build`.
 
-The current enrichment implementation still uses PostgreSQL for GitHub sessions
-and analytics in the hosted profile. Choosing AT Protocol replaces **memory card
-storage**; it does not yet remove that hosted plugin's auth/analytics database.
-To remove PostgreSQL entirely from an AI-enabled deployment, the next slice is
-AT Protocol session verification on the enrichment endpoint and an optional
-analytics sink. The static AT Protocol core already has no PostgreSQL dependency
-at runtime. Installed server dependencies remain shared in this prototype repo.
+The hosted OAuth session store is an in-memory Map: a server restart signs the user out.
+There is no analytics database; AI enrichment failures surface directly in the UI.
 
 ## Verification
 
@@ -98,14 +102,8 @@ vp run build:core
 vp run prepare
 ```
 
-Verified: 55 tests pass (3 database integration tests skipped), `vp check`,
-Svelte checks, and both production builds pass. A browser test against the static
-artifact confirmed capture, reload persistence, and capture while offline.
-
-Tests cover CRUD, durable-write failure, atomic layout rejection, corrupt stored
-data, private-space rejection and the snapshot size cap. AT Protocol adapter
-tests stub the PDS boundary; a real spaces-enabled PDS/account is still required
-for an end-to-end session/read/write test. No existing PostgreSQL data is migrated.
+Verified: 52 tests pass, `vp check`, Svelte checks, and both production builds pass. A browser
+test against the static artifact confirmed capture, reload persistence, and capture while offline.
 
 ## Sources checked
 

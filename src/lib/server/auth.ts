@@ -1,67 +1,72 @@
-import {
-  APPROVED_GITHUB_PROVIDER_ID,
-  BETTER_AUTH_SECRET,
-  BETTER_AUTH_URL,
-  DATABASE_CONNECTION_STRING,
-  GITHUB_CLIENT_ID,
-  GITHUB_CLIENT_SECRET,
-} from "$app/env/private";
-import { betterAuth } from "better-auth";
-import { APIError } from "better-auth/api";
-import { Pool } from "pg";
-import { isApprovedGitHubAccount } from "./auth-policy";
+import { APP_URL, APPROVED_ATPROTO_DID, AUTH_SECRET } from "$app/env/private";
+import type { Cookies } from "@sveltejs/kit";
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { createOAuth, type NodeSavedSession, type OAuth } from "airspace/oauth";
 
-const pool = new Pool({
-  connectionString: DATABASE_CONNECTION_STRING,
-  max: 2,
-  ssl: { rejectUnauthorized: false },
-});
+// ponytail: in-memory DPoP-bound OAuth sessions keyed by DID; a server restart
+// signs everyone out. Use a durable store when multi-user uptime matters.
+const sessions = new Map<string, NodeSavedSession>();
 
-export const auth = betterAuth({
-  appName: "Pile of Memories",
-  baseURL: BETTER_AUTH_URL,
-  secret: BETTER_AUTH_SECRET,
-  database: pool,
-  socialProviders: {
-    github: {
-      clientId: GITHUB_CLIENT_ID,
-      clientSecret: GITHUB_CLIENT_SECRET,
-    },
+const sessionStore = {
+  async get(did: string) {
+    return sessions.get(did);
   },
-  account: {
-    encryptOAuthTokens: true,
-    accountLinking: { enabled: false },
+  async set(did: string, session: NodeSavedSession) {
+    sessions.set(did, session);
   },
-  databaseHooks: {
-    account: {
-      create: {
-        async before(account) {
-          if (
-            !isApprovedGitHubAccount(
-              account.providerId,
-              account.accountId,
-              APPROVED_GITHUB_PROVIDER_ID,
-            )
-          ) {
-            throw new APIError("FORBIDDEN", {
-              message: "This GitHub account is not approved for this board.",
-            });
-          }
-          return { data: account };
-        },
-      },
-    },
+  async del(did: string) {
+    sessions.delete(did);
   },
-});
+};
 
-export async function isApprovedUser(userId: string): Promise<boolean> {
-  if (!APPROVED_GITHUB_PROVIDER_ID) return false;
-  const result = await pool.query(
-    `SELECT 1 FROM account
-     WHERE "userId" = $1 AND "providerId" = 'github' AND "accountId" = $2`,
-    [userId, APPROVED_GITHUB_PROVIDER_ID],
-  );
-  return result.rowCount === 1;
+let oauthPromise: Promise<OAuth> | undefined;
+export function getOAuth(): Promise<OAuth> {
+  return (oauthPromise ??= createOAuth({
+    baseUrl: APP_URL,
+    redirectPath: "/auth/callback",
+    name: "Pile of Memories",
+    // Identity only; board cards live in the browser's private Airspace space.
+    // Server-side space writes would need scopesFor({ spaces: { workspace } })
+    // and published lexicons.
+    scopes: ["atproto"],
+    stores: { session: sessionStore },
+  }));
 }
 
-export type AuthSession = typeof auth.$Infer.Session;
+export const SESSION_COOKIE = "pom_session";
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
+
+function signature(did: string): string {
+  return createHmac("sha256", AUTH_SECRET).update(did).digest("base64url");
+}
+
+export function setSessionCookie(cookies: Cookies, did: string): void {
+  cookies.set(SESSION_COOKIE, `${did}|${signature(did)}`, {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: APP_URL.startsWith("https:"),
+    maxAge: COOKIE_MAX_AGE,
+  });
+}
+
+export function verifySessionCookie(value: string | undefined): string | null {
+  if (!value || !APPROVED_ATPROTO_DID) return null;
+  const separator = value.lastIndexOf("|");
+  if (separator < 0) return null;
+  const did = value.slice(0, separator);
+  const given = value.slice(separator + 1);
+  const expected = signature(did);
+  if (
+    given.length !== expected.length ||
+    !timingSafeEqual(Buffer.from(given), Buffer.from(expected))
+  ) {
+    return null;
+  }
+  return did === APPROVED_ATPROTO_DID ? did : null;
+}
+
+export async function destroySession(did: string): Promise<void> {
+  sessions.delete(did);
+  await (await getOAuth()).revoke(did);
+}

@@ -1,14 +1,13 @@
 <script lang="ts">
-  import { canonicalizeLabels, MAX_LABEL_LENGTH, PRIMARY_TAGS } from "#lib/labels.js";
+  import { canonicalizeLabels, MAX_LABEL_LENGTH } from "#lib/labels.js";
   import { getPrimaryTagAccent, getTopicTagColor } from "#lib/scene.js";
-
-  const primaryTagKeys = new Set(PRIMARY_TAGS.map((tag) => tag.toLowerCase()));
 
   interface Props {
     id: string;
     label?: string;
     value?: string[];
     suggestions?: string[];
+    primary?: boolean;
   }
 
   let {
@@ -16,6 +15,7 @@
     label = "Tags",
     value = $bindable([]),
     suggestions = [],
+    primary = false,
   }: Props = $props();
   let input = $state("");
   let availableSuggestions = $derived(
@@ -52,7 +52,6 @@
   {#if value.length}
     <ul aria-label="Selected tags">
       {#each value as tag (tag.toLowerCase())}
-        {@const primary = primaryTagKeys.has(tag.toLowerCase())}
         <li
           class:primary
           style:--tag-color={primary ? getPrimaryTagAccent(tag) : getTopicTagColor(tag)}

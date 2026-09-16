@@ -1,5 +1,6 @@
 import { expect, it, vi } from "vite-plus/test";
 import type { Card } from "../card";
+import { boardSnapshotSchema } from "../board-backend";
 
 const pds = vi.hoisted(() => ({
   supported: vi.fn(),
@@ -36,7 +37,7 @@ it("refuses unsupported or public spaces and only writes bounded, validated priv
   pds.info.mockResolvedValue({ read: "member-list", write: "member-list" });
   pds.get.mockResolvedValue(null);
   const storage = await connectAtproto(settings);
-  expect(await storage.read()).toEqual([]);
+  expect(await storage.read()).toEqual(boardSnapshotSchema.parse([]));
   const card: Card = {
     id: crypto.randomUUID(),
     title: "Test",
@@ -49,18 +50,30 @@ it("refuses unsupported or public spaces and only writes bounded, validated priv
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
-  await storage.write([card]);
+  const board = boardSnapshotSchema.parse({
+    memories: [card],
+    tags: ["Custom area"],
+    topics: ["Custom topic"],
+  });
+  await storage.write(board);
   expect(pds.put).toHaveBeenCalledTimes(1);
-  expect(JSON.parse(pds.put.mock.calls[0][0].snapshot)).toEqual([card]);
-  pds.get.mockResolvedValue({ value: { snapshot: JSON.stringify([card]) } });
-  expect(await storage.read()).toEqual([card]);
-  await expect(storage.write([{ ...card, body: "x".repeat(200_000) }])).rejects.toThrow("200 KB");
+  expect(JSON.parse(pds.put.mock.calls[0][0].snapshot)).toEqual(board);
+  pds.get.mockResolvedValue({ value: { snapshot: JSON.stringify(board) } });
+  expect(await storage.read()).toEqual(board);
+  await expect(
+    storage.write({ ...board, memories: [{ ...card, body: "x".repeat(200_000) }] }),
+  ).rejects.toThrow("200 KB");
   pds.get.mockResolvedValue({ value: { snapshot: "invalid" } });
   await expect(storage.read()).rejects.toThrow();
   pds.info.mockResolvedValue({ read: "public", write: "member-list" });
-  await expect(storage.write([card])).rejects.toThrow("not private");
+  await expect(storage.write(board)).rejects.toThrow("not private");
   expect(pds.put).toHaveBeenCalledTimes(1);
   await expect(connectAtproto({ ...settings, service: "http://pds.example.com" })).rejects.toThrow(
     "HTTPS",
   );
+});
+
+it("loads the real airspace entry, including the lazily imported password session", async () => {
+  const actual = await import("airspace");
+  expect(typeof actual.passwordSession).toBe("function");
 });

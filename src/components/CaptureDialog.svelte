@@ -12,12 +12,14 @@
   let {
     enrichMemory,
     tagVocabulary,
+    topicVocabulary,
     oncreate,
     onclose,
     boardReady,
   }: {
     enrichMemory?: EnrichmentPlugin;
     tagVocabulary: string[];
+    topicVocabulary: string[];
     onclose: () => void;
     boardReady: boolean;
     oncreate: (
@@ -37,7 +39,8 @@
   let newMemoryStep = $state<"capture" | "review">("capture");
   let memoryTitle = $state("");
   let memoryBody = $state("");
-  let memoryLabels = $state<string[]>([]);
+  let memoryTags = $state<string[]>([]);
+  let memoryTopics = $state<string[]>([]);
   let enrichmentWarning = $state("");
   let creationProvenance = $state<CardCreationProvenance>();
   let enrichmentGeneration = 0;
@@ -65,7 +68,8 @@
 
     if (!enrichMemory) {
       memoryTitle = fallbackTitle(memoryBody);
-      memoryLabels = [];
+      memoryTags = [];
+      memoryTopics = [];
       creationProvenance = undefined;
       newMemoryStep = "review";
       return;
@@ -81,7 +85,7 @@
         try {
           const result = await enrichMemory({
             description,
-            existingTags: tagVocabulary,
+            existingTags: [...tagVocabulary, ...topicVocabulary],
           });
           enrichment = { ...result, warning: "" };
           enrichmentCache.set(description, enrichment);
@@ -100,7 +104,10 @@
       if (generation !== enrichmentGeneration || memoryBody.trim() !== description) return;
 
       memoryTitle = enrichment.title;
-      memoryLabels = enrichment.tags;
+      ({ tags: memoryTags, topics: memoryTopics } = partitionLabels(
+        enrichment.tags,
+        tagVocabulary,
+      ));
       enrichmentWarning = enrichment.warning;
       creationProvenance = {
         enrichmentAttemptId: enrichment.attemptId,
@@ -124,7 +131,8 @@
         {
           title: memoryTitle.trim() || fallbackTitle(memoryBody),
           body: memoryBody,
-          ...partitionLabels(memoryLabels),
+          tags: memoryTags,
+          topics: memoryTopics,
           links: parseMarkdown(memoryBody).links,
         },
         creationProvenance,
@@ -184,7 +192,18 @@
           <span>Title</span>
           <input bind:value={memoryTitle} maxlength="80" required />
         </label>
-        <TagEditor id="new-memory-tags" bind:value={memoryLabels} suggestions={tagVocabulary} />
+        <TagEditor
+          id="new-memory-tags"
+          bind:value={memoryTags}
+          suggestions={tagVocabulary}
+          primary
+        />
+        <TagEditor
+          id="new-memory-topics"
+          label="Topics"
+          bind:value={memoryTopics}
+          suggestions={topicVocabulary}
+        />
         <label class="memory-field">
           <span>Memory</span>
           <textarea bind:value={memoryBody} rows="10" maxlength="8000" required></textarea>

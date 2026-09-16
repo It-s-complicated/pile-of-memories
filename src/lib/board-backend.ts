@@ -1,4 +1,4 @@
-import type { z } from "zod";
+import * as z from "zod";
 import {
   cardSchema,
   createCardRequestSchema,
@@ -8,6 +8,13 @@ import {
   type Card,
 } from "./card";
 import type { EnrichmentInput, EnrichmentResponse } from "./enrichment";
+import {
+  canonicalizeLabels,
+  labelsSchema,
+  normalizeLabelGroups,
+  PRIMARY_TAGS,
+  TOPIC_TAGS,
+} from "./labels";
 
 export type EnrichmentPlugin = (input: EnrichmentInput) => Promise<EnrichmentResponse>;
 export type BoardBackend = {
@@ -17,8 +24,9 @@ export type BoardBackend = {
   updateCard(input: z.input<typeof updateCardCommandSchema>): Promise<Card>;
   updateCardPositions(input: z.input<typeof updateCardPositionsCommandSchema>): Promise<Card[]>;
   deleteCard(input: z.input<typeof deleteCardCommandSchema>): Promise<void>;
-  getLiveCards(): {
-    readonly current: Card[] | undefined;
+  replaceBoard(input: unknown): Promise<BoardSnapshot>;
+  getLiveBoard(): {
+    readonly current: BoardSnapshot | undefined;
     readonly ready: boolean;
     readonly connected: boolean;
     readonly error: unknown;
@@ -26,22 +34,77 @@ export type BoardBackend = {
   };
 };
 
-export const boardSnapshotSchema = cardSchema
+const memoriesSchema = cardSchema
   .array()
   .refine(
     (cards) => new Set(cards.map(({ id }) => id)).size === cards.length,
     "Duplicate card IDs",
   );
 
+const storedBoardSchema = z
+  .object({
+    memories: memoriesSchema,
+    tags: labelsSchema,
+    topics: labelsSchema,
+  })
+  .strict()
+  .transform(({ memories, tags, topics }) => {
+    const labels = normalizeLabelGroups(
+      canonicalizeLabels([...tags, ...memories.flatMap((card) => card.tags)]),
+      canonicalizeLabels([...topics, ...memories.flatMap((card) => card.topics)]),
+    );
+    return { memories, ...labels };
+  });
+
+export const boardSnapshotSchema = z.preprocess(
+  (value) =>
+    Array.isArray(value)
+      ? { memories: value, tags: [...PRIMARY_TAGS], topics: [...TOPIC_TAGS] }
+      : value,
+  storedBoardSchema,
+);
+export type BoardSnapshot = z.infer<typeof boardSnapshotSchema>;
+
+export const boardExportSchema = z
+  .object({
+    version: z.literal(1),
+    exportedAt: z.iso.datetime(),
+    memories: memoriesSchema,
+    tags: labelsSchema,
+    topics: labelsSchema,
+  })
+  .strict()
+  .transform(({ version, exportedAt, ...snapshot }) => ({
+    version,
+    exportedAt,
+    ...boardSnapshotSchema.parse(snapshot),
+  }));
+
+export function createBoardExport(snapshot: BoardSnapshot, exportedAt = new Date().toISOString()) {
+  return boardExportSchema.parse({ version: 1, exportedAt, ...snapshot });
+}
+
+export function parseBoardImport(value: unknown): BoardSnapshot {
+  const {
+    version: _version,
+    exportedAt: _exportedAt,
+    ...snapshot
+  } = boardExportSchema.parse(value);
+  return snapshot;
+}
+
 export type SnapshotStorage = {
   id: string;
   online: boolean;
   read(): Promise<unknown>;
-  write(cards: Card[]): Promise<void>;
+  write(snapshot: BoardSnapshot): Promise<void>;
 };
 
 // ponytail: whole-board snapshots suit small piles; use per-card records when size matters.
-export function createSnapshotBackend(storage: SnapshotStorage, changed: (cards: Card[]) => void) {
+export function createSnapshotBackend(
+  storage: SnapshotStorage,
+  changed: (snapshot: BoardSnapshot) => void,
+) {
   if (!navigator.locks)
     throw new Error("Open this app over HTTPS or localhost to save memories safely.");
   let pending = Promise.resolve();
@@ -56,11 +119,11 @@ export function createSnapshotBackend(storage: SnapshotStorage, changed: (cards:
   async function read() {
     return boardSnapshotSchema.parse(await storage.read());
   }
-  function mutate<T>(change: (cards: Card[]) => T): Promise<T> {
+  function mutate<T>(change: (snapshot: BoardSnapshot) => T): Promise<T> {
     return run(async () => {
-      const cards = await read();
-      const result = change(cards);
-      const validated = boardSnapshotSchema.parse(cards);
+      const snapshot = await read();
+      const result = change(snapshot);
+      const validated = boardSnapshotSchema.parse(snapshot);
       await storage.write(validated);
       changed(validated); // A failed durable write must never look saved.
       return result;
@@ -79,7 +142,8 @@ export function createSnapshotBackend(storage: SnapshotStorage, changed: (cards:
     },
     createCard(input: z.input<typeof createCardRequestSchema>) {
       const { card } = createCardRequestSchema.parse(input);
-      return mutate((cards) => {
+      return mutate((snapshot) => {
+        const cards = snapshot.memories;
         if (cards.some(({ id }) => id === card.id)) throw new Error("Card already exists.");
         const now = new Date().toISOString();
         const saved = { ...card, createdAt: now, updatedAt: now };
@@ -89,22 +153,36 @@ export function createSnapshotBackend(storage: SnapshotStorage, changed: (cards:
     },
     updateCard(input: z.input<typeof updateCardCommandSchema>) {
       const { id, changes } = updateCardCommandSchema.parse(input);
-      return mutate((cards) =>
-        Object.assign(find(cards, id), changes, { updatedAt: new Date().toISOString() }),
+      return mutate((snapshot) =>
+        Object.assign(find(snapshot.memories, id), changes, {
+          updatedAt: new Date().toISOString(),
+        }),
       );
     },
     updateCardPositions(input: z.input<typeof updateCardPositionsCommandSchema>) {
       const { positions } = updateCardPositionsCommandSchema.parse(input);
-      return mutate((cards) =>
+      return mutate((snapshot) =>
         positions.map(({ id, position }) =>
-          Object.assign(find(cards, id), { position, updatedAt: new Date().toISOString() }),
+          Object.assign(find(snapshot.memories, id), {
+            position,
+            updatedAt: new Date().toISOString(),
+          }),
         ),
       );
     },
     deleteCard(input: z.input<typeof deleteCardCommandSchema>) {
       const { id } = deleteCardCommandSchema.parse(input);
-      return mutate((cards) => {
+      return mutate((snapshot) => {
+        const cards = snapshot.memories;
         cards.splice(cards.indexOf(find(cards, id)), 1);
+      });
+    },
+    replaceBoard(input: unknown) {
+      return run(async () => {
+        const snapshot = parseBoardImport(input);
+        await storage.write(snapshot);
+        changed(snapshot);
+        return snapshot;
       });
     },
   };
