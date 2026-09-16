@@ -25,7 +25,7 @@ vp install
 vp dev
 ```
 
-Set `APP_URL`, `APPROVED_ATPROTO_DID`, and `AUTH_SECRET` in `.env`. Set
+Set `APPROVED_ATPROTO_DID` and `AUTH_SECRET` in `.env`. Set
 `OPENCODE_GO_API_KEY` to enable DeepSeek V4 Flash title and tag suggestions through OpenCode Go.
 
 Run `vp run dev:core` for a standalone browser board without the hosted auth shell; `vp run
@@ -33,15 +33,15 @@ build:core` produces static files in `dist/core`.
 
 ## Authentication
 
-The board signs in through AT Protocol (Bluesky) and admits one account. Configure `APP_URL` (the
-public origin), `AUTH_SECRET`, and the approved account's DID in `APPROVED_ATPROTO_DID`. Sign-in
-redirects to the account's own PDS; the callback is:
+The board signs in through AT Protocol (Bluesky) and admits one account. Configure `AUTH_SECRET`
+and the approved account's DID in `APPROVED_ATPROTO_DID`. Sign-in redirects to the account's own
+PDS; the callback uses the request's public origin:
 
 ```text
-<APP_URL>/auth/callback
+<origin>/auth/callback
 ```
 
-The OAuth client metadata is served at `<APP_URL>/oauth-client-metadata.json`, which the PDS
+The OAuth client metadata is served at `<origin>/oauth-client-metadata.json`, which the PDS
 fetches during authorization. OAuth sessions (DPoP-bound, keyed by DID) are kept in server memory
 and require signing in again after a server restart. The OAuth grant is identity-only (`atproto`
 scope); board data never flows through the app server.

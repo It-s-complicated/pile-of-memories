@@ -1,4 +1,4 @@
-import { APP_URL, APPROVED_ATPROTO_DID, AUTH_SECRET } from "$app/env/private";
+import { APPROVED_ATPROTO_DID, AUTH_SECRET } from "$app/env/private";
 import type { Cookies } from "@sveltejs/kit";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { createOAuth, type NodeSavedSession, type OAuth } from "airspace/oauth";
@@ -20,9 +20,9 @@ const sessionStore = {
 };
 
 let oauthPromise: Promise<OAuth> | undefined;
-export function getOAuth(): Promise<OAuth> {
+export function getOAuth(url: URL): Promise<OAuth> {
   return (oauthPromise ??= createOAuth({
-    baseUrl: APP_URL,
+    baseUrl: url.origin,
     redirectPath: "/auth/callback",
     name: "Pile of Memories",
     // Identity only; board cards live in the browser's private Airspace space.
@@ -40,12 +40,12 @@ function signature(did: string): string {
   return createHmac("sha256", AUTH_SECRET).update(did).digest("base64url");
 }
 
-export function setSessionCookie(cookies: Cookies, did: string): void {
+export function setSessionCookie(cookies: Cookies, did: string, url: URL): void {
   cookies.set(SESSION_COOKIE, `${did}|${signature(did)}`, {
     path: "/",
     httpOnly: true,
     sameSite: "lax",
-    secure: APP_URL.startsWith("https:"),
+    secure: url.protocol === "https:",
     maxAge: COOKIE_MAX_AGE,
   });
 }
@@ -66,7 +66,7 @@ export function verifySessionCookie(value: string | undefined): string | null {
   return did === APPROVED_ATPROTO_DID ? did : null;
 }
 
-export async function destroySession(did: string): Promise<void> {
+export async function destroySession(did: string, url: URL): Promise<void> {
   sessions.delete(did);
-  await (await getOAuth()).revoke(did);
+  await (await getOAuth(url)).revoke(did);
 }

@@ -4,7 +4,7 @@ import type { RequestHandler } from "./$types";
 
 export const POST: RequestHandler = async (event) => {
   const did = verifySessionCookie(event.cookies.get(SESSION_COOKIE));
-  if (did) await destroySession(did);
+  if (did) await destroySession(did, event.url);
   event.cookies.delete(SESSION_COOKIE, { path: "/" });
   redirect(303, "/");
 };

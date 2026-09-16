@@ -6,15 +6,15 @@ import type { RequestHandler } from "./$types";
 export const GET: RequestHandler = async (event) => {
   let did: string | null = null;
   try {
-    did = (await (await getOAuth()).callback(event.url.searchParams)).did;
+    did = (await (await getOAuth(event.url)).callback(event.url.searchParams)).did;
   } catch {
     // Bad state, expired request, or rejected code.
   }
   if (!did) redirect(303, "/?auth_error=callback");
   if (did !== APPROVED_ATPROTO_DID) {
-    await destroySession(did);
+    await destroySession(did, event.url);
     redirect(303, "/?auth_error=denied");
   }
-  setSessionCookie(event.cookies, did);
+  setSessionCookie(event.cookies, did, event.url);
   redirect(303, "/");
 };
