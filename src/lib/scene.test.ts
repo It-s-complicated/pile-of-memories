@@ -13,6 +13,7 @@ describe("board", () => {
     expect(getMinimapColors(["job", "web development", "unknown"])).toEqual([
       "oklch(0.62 0.1 145)",
       "oklch(0.62 0.1 255)",
+      "var(--theme-ink)",
     ]);
     expect(getMinimapColors([])).toEqual(["color-mix(in oklch, var(--muted) 45%, var(--paper))"]);
   });

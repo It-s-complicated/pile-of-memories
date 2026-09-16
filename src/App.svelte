@@ -24,20 +24,23 @@
   import type { Card, CardInput } from "./lib/card";
   import { setCardPersistence } from "./lib/card-persistence";
   import {
-    createCard,
-    deleteCard,
-    getLiveCards,
-    updateCard,
-    updateCardPositions,
-  } from "./lib/cards.remote";
+    createBoardExport,
+    parseBoardImport,
+    type BoardBackend,
+    type BoardSnapshot,
+    type EnrichmentPlugin,
+  } from "./lib/board-backend";
   import { DEFAULT_CARD_SIZE, findClusterPosition, reflowClusters } from "./lib/cluster-layout";
   import type { CardCreationProvenance } from "./lib/enrichment-analytics";
-  import { canonicalizeLabels, PRIMARY_TAGS, TOPIC_TAGS } from "./lib/labels";
+  import { PRIMARY_TAGS, TOPIC_TAGS } from "./lib/labels";
   import { cardToMemoryNode, memoryNodeToCard, type MemoryNode } from "./lib/scene";
 
-  let { userId }: { userId: string } = $props();
+  let { userId, backend, enrichMemory }: { userId: string; backend: BoardBackend; enrichMemory?: EnrichmentPlugin } = $props();
+  const { createCard, updateCard, updateCardPositions, deleteCard, replaceBoard } = untrack(
+    () => backend,
+  );
 
-  const VIEWPORT_STORAGE_KEY = "pile-of-memories-viewport";
+  const VIEWPORT_STORAGE_KEY = `pile-of-memories-viewport-${untrack(() => userId)}`;
   const storedViewportSchema = z.object({
     cx: z.number(),
     cy: z.number(),
@@ -76,7 +79,7 @@
   }
 
   const nodeTypes = { memory: MemoryNodeComponent } satisfies NodeTypes;
-  const cardsQuery = getLiveCards();
+  const boardQuery = untrack(() => backend.getLiveBoard());
   let board = $state.raw<Awaited<ReturnType<typeof createCardCollection>>>();
   let cacheWarning = $state("");
   let stopped = false;
@@ -88,6 +91,13 @@
   onMount(() => {
     opening = (async () => {
       try {
+        if (!backend.cache) {
+          const memory = await createCardCollection();
+          cacheToClear = memory;
+          closeCache = () => memory.collection.cleanup();
+          if (!stopped) board = memory;
+          return;
+        }
         const cache = await openCardCache(userId);
         cacheToClear = cache;
         closeCache = () => cache.close();
@@ -116,7 +126,7 @@
   }
 
   function syncCards() {
-    const snapshot = cardsQuery.current;
+    const snapshot = boardQuery.current?.memories;
     const target = board;
     if (snapshot && target && !stopped) {
       untrack(() => void cacheResult(target.replace(snapshot)));
@@ -131,7 +141,7 @@
 
   function requireOnline(): void {
     if (stopped) throw new Error("The board is closed. Sign in again to save changes.");
-    if (!navigator.onLine) throw new Error("Connect to the internet to save changes.");
+    if (backend.online && !navigator.onLine) throw new Error("Connect to the internet to save changes.");
   }
 
   async function saveCard(id: string, changes: Parameters<typeof updateCard>[0]["changes"]) {
@@ -181,17 +191,12 @@
   });
 
   let cards = $derived(localCards.data ?? []);
-  let tagVocabulary = $derived(
-    canonicalizeLabels([
-      ...PRIMARY_TAGS,
-      ...TOPIC_TAGS,
-      ...cards.flatMap((card) => [...card.tags, ...card.topics]),
-    ]),
-  );
+  let tagVocabulary = $derived(boardQuery.current?.tags ?? [...PRIMARY_TAGS]);
+  let topicVocabulary = $derived(boardQuery.current?.topics ?? [...TOPIC_TAGS]);
   let nodes = $derived<MemoryNode[]>(
     cards
       .filter((card) => !card.archived)
-      .map((card) => cardToMemoryNode(card, tagVocabulary)),
+      .map((card) => cardToMemoryNode(card, tagVocabulary, topicVocabulary)),
   );
   let archivedCards = $derived(cards.filter((card) => card.archived));
   let viewport = $state<Viewport>({ x: 32, y: 32, zoom: 1 });
@@ -201,7 +206,7 @@
   let captureOpen = $derived(
     (page.shallow?.url ?? page.url).searchParams.get("action") === "new-memory",
   );
-  let boardReady = $derived(localCards.isReady && (cards.length > 0 || cardsQuery.ready));
+  let boardReady = $derived(localCards.isReady && (cards.length > 0 || boardQuery.ready));
   let persistenceError = $state("");
   let archiveOpen = $state(false);
   let listOpen = $state(false);
@@ -214,6 +219,55 @@
 
   function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : "The board could not be saved.";
+  }
+
+  function exportBoard(): void {
+    const snapshot = boardQuery.current;
+    if (!snapshot) return;
+    const exported = createBoardExport(snapshot);
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(exported, null, 2)], { type: "application/json" }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `pile-of-memories-${exported.exportedAt.slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function importBoard(event: Event & { currentTarget: HTMLInputElement }): Promise<void> {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+    persistenceError = "";
+    let contents: unknown;
+    let imported: BoardSnapshot;
+    try {
+      contents = JSON.parse(await file.text());
+      imported = parseBoardImport(contents);
+    } catch (error) {
+      persistenceError =
+        error instanceof SyntaxError
+          ? "That import file is not valid JSON."
+          : "That file is not a valid Pile of Memories export.";
+      input.value = "";
+      return;
+    }
+    try {
+      if (
+        !confirm(
+          `Replace this board with ${imported.memories.length} imported ${imported.memories.length === 1 ? "memory" : "memories"}?`,
+        )
+      )
+        return;
+      requireOnline();
+      const saved = await replaceBoard(contents);
+      await cacheResult(board?.replace(saved.memories));
+    } catch (error) {
+      persistenceError = getErrorMessage(error);
+    } finally {
+      input.value = "";
+    }
   }
 
   function openArchive(): void {
@@ -265,7 +319,8 @@
     creation?: CardCreationProvenance,
   ): Promise<void> {
     requireOnline();
-    if (!boardReady || !cardsQuery.ready) throw new Error("The board is still loading. Please try again shortly.");
+    if (!boardReady || !boardQuery.ready)
+      throw new Error("The board is still loading. Please try again shortly.");
     const openSpace = {
       x: (canvasWidth / 2 - viewport.x) / viewport.zoom - DEFAULT_CARD_SIZE.width / 2,
       y: (canvasHeight / 2 - viewport.y) / viewport.zoom - DEFAULT_CARD_SIZE.height / 2,
@@ -281,6 +336,7 @@
         createdAt: timestamp,
         updatedAt: timestamp,
         tagVocabulary,
+        topicVocabulary,
       },
       focusable: true,
     };
@@ -303,8 +359,10 @@
       await savePositions(movedNodes.map(({ id, position }) => ({ id, position })));
     } catch (error) {
       persistenceError = getErrorMessage(error);
-      nodes = cards.filter((card) => !card.archived).map((card) => cardToMemoryNode(card, tagVocabulary));
-      void cardsQuery.reconnect().catch(() => {});
+      nodes = cards
+        .filter((card) => !card.archived)
+        .map((card) => cardToMemoryNode(card, tagVocabulary, topicVocabulary));
+      void boardQuery.reconnect().catch(() => {});
     }
   }
 
@@ -368,8 +426,10 @@
       persistenceError = getErrorMessage(error);
       await tick();
       if (previousViewport) await viewportStart?.restore(previousViewport);
-      nodes = cards.filter((card) => !card.archived).map((card) => cardToMemoryNode(card, tagVocabulary));
-      void cardsQuery.reconnect().catch(() => {});
+      nodes = cards
+        .filter((card) => !card.archived)
+        .map((card) => cardToMemoryNode(card, tagVocabulary, topicVocabulary));
+      void boardQuery.reconnect().catch(() => {});
     } finally {
       reorganizeSaving = false;
     }
@@ -449,6 +509,19 @@
       <button type="button" class="chip-button" onclick={() => (listOpen = true)} disabled={!boardReady}>
         List
       </button>
+      <label class="chip-button import-button" aria-disabled={!boardReady}>
+        Import
+        <input
+          class="import-input"
+          type="file"
+          accept="application/json,.json"
+          onchange={importBoard}
+          disabled={!boardReady}
+        />
+      </label>
+      <button type="button" class="chip-button" onclick={exportBoard} disabled={!boardReady}>
+        Export
+      </button>
       <button type="button" class="chip-button" onclick={openArchive} disabled={!boardReady}>
         Archive · {archivedCards.length}
       </button>
@@ -478,16 +551,16 @@
     <p class="status-pill" role="alert">{persistenceError}</p>
   {:else if reorganizeStatus}
     <p class="status-pill" role="status">{reorganizeStatus}</p>
-  {:else if cardsQuery.error && !boardReady}
+  {:else if boardQuery.error && !boardReady}
     <p class="status-pill" role="alert">Database unavailable</p>
   {:else if !boardReady}
     <p class="status-pill" role="status">Loading board…</p>
   {:else if cacheWarning}
     <p class="status-pill" role="status">{cacheWarning}</p>
-  {:else if !cardsQuery.connected}
+  {:else if !boardQuery.connected}
     <p class="status-pill" role="status">
       Live updates paused.
-      <button type="button" onclick={() => cardsQuery.reconnect()}>Reconnect</button>
+      <button type="button" onclick={() => boardQuery.reconnect()}>Reconnect</button>
     </p>
   {/if}
 
@@ -508,7 +581,14 @@
 {/if}
 
 {#if captureOpen}
-  <CaptureDialog {tagVocabulary} boardReady={boardReady && cardsQuery.ready} oncreate={addMemory} onclose={closeCapture} />
+  <CaptureDialog
+    {enrichMemory}
+    {tagVocabulary}
+    {topicVocabulary}
+    boardReady={boardReady && boardQuery.ready}
+    oncreate={addMemory}
+    onclose={closeCapture}
+  />
 {/if}
 
 {#if archiveOpen}
@@ -566,5 +646,22 @@
   .empty-hint {
     display: grid;
     gap: 0.4rem;
+  }
+
+  .import-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .import-button {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .import-button:focus-within {
+    outline: 2px solid var(--theme-ink);
+    outline-offset: 2px;
   }
 </style>

@@ -68,6 +68,10 @@ describe("labels", () => {
       tags: ["Job", "Project"],
       topics: ["css", "new topic"],
     });
+    expect(partitionLabels(["custom area", "CSS"], ["Custom area"])).toEqual({
+      tags: ["custom area"],
+      topics: ["CSS"],
+    });
   });
 });
 

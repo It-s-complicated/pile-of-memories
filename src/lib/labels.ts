@@ -29,12 +29,28 @@ export function canonicalizeLabels(labels: string[]): string[] {
   });
 }
 
-export function partitionLabels(labels: string[]): { tags: string[]; topics: string[] } {
+export function normalizeLabelGroups(
+  tags: string[],
+  topics: string[],
+): { tags: string[]; topics: string[] } {
+  const normalizedTags = canonicalizeLabels(tags);
+  const tagKeys = new Set(normalizedTags.map((tag) => tag.toLowerCase()));
+  return {
+    tags: normalizedTags,
+    topics: canonicalizeLabels(topics).filter((topic) => !tagKeys.has(topic.toLowerCase())),
+  };
+}
+
+export function partitionLabels(
+  labels: string[],
+  primaryLabels: readonly string[] = PRIMARY_TAGS,
+): { tags: string[]; topics: string[] } {
   const tags: string[] = [];
   const topics: string[] = [];
+  const primary = new Set(primaryLabels.map((label) => label.toLowerCase()));
 
   for (const label of canonicalizeLabels(labels)) {
-    (primaryTags.has(label.toLowerCase()) ? tags : topics).push(label);
+    (primary.has(label.toLowerCase()) ? tags : topics).push(label);
   }
 
   return { tags, topics };

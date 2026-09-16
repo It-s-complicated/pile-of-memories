@@ -1,6 +1,6 @@
 import * as z from "zod";
 import { cardCreationProvenanceSchema } from "./enrichment-analytics";
-import { labelsSchema, partitionLabels } from "./labels";
+import { labelsSchema, normalizeLabelGroups } from "./labels";
 import { httpUrlSchema, parseMarkdown } from "./markdown";
 
 export const cardIdSchema = z.uuidv4();
@@ -29,7 +29,7 @@ export const cardInputSchema = z
   })
   .transform((value) => ({
     ...value,
-    ...partitionLabels([...value.tags, ...value.topics]),
+    ...normalizeLabelGroups(value.tags, value.topics),
     links: parseMarkdown(value.body).links,
   }));
 
@@ -111,7 +111,7 @@ export const cardChangesSchema = z
   .transform(({ tags, topics, links: _links, ...value }) => ({
     ...value,
     ...(value.body === undefined ? {} : { links: parseMarkdown(value.body).links }),
-    ...(tags && topics ? partitionLabels([...tags, ...topics]) : {}),
+    ...(tags && topics ? normalizeLabelGroups(tags, topics) : {}),
   }));
 
 export type CardChanges = z.infer<typeof cardChangesSchema>;

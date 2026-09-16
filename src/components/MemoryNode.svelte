@@ -7,7 +7,6 @@
 <script lang="ts">
   import { type NodeProps, useSvelteFlow } from "@xyflow/svelte";
   import { getCardPersistence } from "#lib/card-persistence.js";
-  import { partitionLabels } from "#lib/labels.js";
   import { parseMarkdown } from "#lib/markdown.js";
   import { getPrimaryTagAccent, getTopicTagColor, type MemoryNode } from "#lib/scene.js";
   import MemoryMarkdown from "./MemoryMarkdown.svelte";
@@ -24,7 +23,8 @@
   let editOpen = $state(false);
   let editTitle = $state("");
   let editBody = $state("");
-  let editLabels = $state<string[]>([]);
+  let editTags = $state<string[]>([]);
+  let editTopics = $state<string[]>([]);
   let saving = $state(false);
   let saveError = $state("");
 
@@ -36,7 +36,8 @@
   function openEditor(): void {
     editTitle = data.title;
     editBody = data.body;
-    editLabels = [...data.tags, ...data.topics];
+    editTags = [...data.tags];
+    editTopics = [...data.topics];
     saveError = "";
     editOpen = true;
   }
@@ -45,9 +46,8 @@
     event.preventDefault();
     const title = editTitle.trim() || "Untitled memory";
     const body = editBody;
-    const { tags, topics } = partitionLabels(editLabels);
     const links = parseMarkdown(body).links;
-    const changes = { title, body, tags, topics, links };
+    const changes = { title, body, tags: editTags, topics: editTopics, links };
 
     saving = true;
     saveError = "";
@@ -191,8 +191,15 @@
       </label>
       <TagEditor
         id={`edit-memory-tags-${id}`}
-        bind:value={editLabels}
+        bind:value={editTags}
         suggestions={data.tagVocabulary}
+        primary
+      />
+      <TagEditor
+        id={`edit-memory-topics-${id}`}
+        label="Topics"
+        bind:value={editTopics}
+        suggestions={data.topicVocabulary}
       />
 
       {#if saveError}<p class="save-error" role="alert">{saveError}</p>{/if}
