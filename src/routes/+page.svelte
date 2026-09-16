@@ -66,9 +66,12 @@
   {#key data.userId}
     <App userId={data.userId} bind:this={board} />
   {/key}
-  <button class="chip-button sign-out" type="button" onclick={signOut} disabled={working}>
-    {working ? "Closing…" : "Sign out"}
-  </button>
+  <div class="account-actions">
+    <button class="chip-button" type="button" onclick={signOut} disabled={working}>
+      {working ? "Closing…" : "Sign out"}
+    </button>
+    <a class="chip-button" href="/export" download data-sveltekit-reload>Export memories</a>
+  </div>
   {#if authError}<p class="status-pill" role="alert">{authError}</p>{/if}
 {:else}
   <main class="access-screen">
@@ -164,7 +167,9 @@
     font-size: 0.85rem;
   }
 
-  .sign-out {
+  .account-actions {
+    display: flex;
+    gap: 0.5rem;
     position: fixed;
     z-index: 7;
     top: 4.3rem;

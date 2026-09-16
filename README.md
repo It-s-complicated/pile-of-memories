@@ -17,6 +17,19 @@ collection backed by SQLite in the browser's origin-private file system (OPFS). 
 The guided creation and placement idea is captured in [GUIDED_MEMORY_PLACEMENT.md](GUIDED_MEMORY_PLACEMENT.md).
 The database schema is described in [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md).
 
+## Export
+
+Choose **Export memories** next to **Sign out** to download a versioned JSON file of all
+saved memories, including archived ones, Markdown bodies, IDs, canvas positions, timestamps,
+links, and assigned tags/topics. The file also includes the complete hardcoded tag and topic
+vocabularies plus any custom labels used by memories, even when the board is filtered.
+The download reads PostgreSQL and requires the approved session and a working connection.
+Save edits and apply layout previews before exporting.
+
+Browser preferences (viewport, browse/arrange mode, and list settings), unsaved drafts,
+AI enrichment analytics, and authentication records are not included. This is a data export;
+there is no import/restore flow yet.
+
 ## Development
 
 ```sh
