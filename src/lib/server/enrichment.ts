@@ -14,7 +14,7 @@ import {
 } from "#lib/enrichment-analytics.js";
 
 export const ENRICHMENT_PROVIDER = "opencode-go";
-export const ENRICHMENT_MODEL = "mimo-v2.5";
+export const ENRICHMENT_MODEL = "gpt-5.6-luna";
 export const ENRICHMENT_PROMPT_VERSION = "memory-enrichment-v1";
 const PROVIDER_TIMEOUT_MS = 55_000;
 
@@ -146,7 +146,7 @@ export async function enrichMemory(input: EnrichmentInput): Promise<EnrichmentEx
       stream: false,
       abortController,
       middleware: [analyticsMiddleware],
-      modelOptions: { response_format: { type: "json_object" } },
+      modelOptions: { response_format: { type: "json_object" }, reasoning_effort: "medium" },
       systemPrompts: [
         'Return only a JSON object with the keys "title" and "tags". Create a concise title and 1-5 useful labels for a private memory. Reuse the provided board vocabulary when meaningful. Introduce a short new label only when necessary.',
       ],
