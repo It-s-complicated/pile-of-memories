@@ -5,8 +5,11 @@ import type { RequestHandler } from "./$types";
 
 export const GET: RequestHandler = async (event) => {
   let did: string | null = null;
+  let state: string | null = null;
   try {
-    did = (await (await getOAuth(event.cookies, event.url)).callback(event.url.searchParams)).did;
+    ({ did, state } = await (
+      await getOAuth(event.cookies, event.url)
+    ).callback(event.url.searchParams));
   } catch {
     // Bad state, expired request, or rejected code.
   }
@@ -15,5 +18,5 @@ export const GET: RequestHandler = async (event) => {
     await destroySession(did, event.cookies, event.url);
     redirect(303, "/?auth_error=denied");
   }
-  redirect(303, "/");
+  redirect(303, state === "airspace" ? "/?storage=airspace" : "/");
 };

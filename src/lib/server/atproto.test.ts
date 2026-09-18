@@ -1,8 +1,10 @@
 import { expect, it, vi } from "vite-plus/test";
+import type { OAuthSession } from "airspace/oauth";
 import type { Card } from "../card";
 import { boardSnapshotSchema } from "../board-backend";
 
 const pds = vi.hoisted(() => ({
+  client: vi.fn(),
   supported: vi.fn(),
   info: vi.fn(),
   ensure: vi.fn(),
@@ -11,23 +13,21 @@ const pds = vi.hoisted(() => ({
 }));
 vi.mock("airspace", async (original) => ({
   ...(await original<typeof import("airspace")>()),
-  passwordSession: async () => ({ did: "did:plc:test" }),
-  createAirspace: () => ({
-    workspace: {
-      supported: pds.supported,
-      manage: { info: pds.info, ensure: pds.ensure },
-      boards: { get: pds.get, put: pds.put },
-    },
-  }),
+  createAirspace: (options: unknown) => {
+    pds.client(options);
+    return {
+      workspace: {
+        supported: pds.supported,
+        manage: { info: pds.info, ensure: pds.ensure },
+        boards: { get: pds.get, put: pds.put },
+      },
+    };
+  },
 }));
 import { connectAtproto } from "./atproto";
 
 it("refuses unsupported or public spaces and only writes bounded, validated private snapshots", async () => {
-  const settings = {
-    service: "https://pds.example.com",
-    identifier: "test.example",
-    password: "test-only",
-  };
+  const settings = { did: "did:plc:test" } as unknown as OAuthSession;
   pds.supported.mockResolvedValue(false);
   await expect(connectAtproto(settings)).rejects.toThrow("does not support");
   expect(pds.ensure).not.toHaveBeenCalled();
@@ -37,6 +37,9 @@ it("refuses unsupported or public spaces and only writes bounded, validated priv
   pds.info.mockResolvedValue({ read: "member-list", write: "member-list" });
   pds.get.mockResolvedValue(null);
   const storage = await connectAtproto(settings);
+  expect(pds.client).toHaveBeenLastCalledWith(
+    expect.objectContaining({ identity: settings.did, session: settings }),
+  );
   expect(await storage.read()).toEqual(boardSnapshotSchema.parse([]));
   const card: Card = {
     id: crypto.randomUUID(),
@@ -68,12 +71,4 @@ it("refuses unsupported or public spaces and only writes bounded, validated priv
   pds.info.mockResolvedValue({ read: "public", write: "member-list" });
   await expect(storage.write(board)).rejects.toThrow("not private");
   expect(pds.put).toHaveBeenCalledTimes(1);
-  await expect(connectAtproto({ ...settings, service: "http://pds.example.com" })).rejects.toThrow(
-    "HTTPS",
-  );
-});
-
-it("loads the real airspace entry, including the lazily imported password session", async () => {
-  const actual = await import("airspace");
-  expect(typeof actual.passwordSession).toBe("function");
 });

@@ -1,6 +1,7 @@
 import type { Cookies } from "@sveltejs/kit";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { createOAuth, NodeSavedSession, NodeSavedState } from "airspace/oauth";
+import { storageScopes } from "../airspace-model";
 import { getOAuth, destroySession, verifySessionCookie, SESSION_COOKIE } from "./auth";
 
 const mocks = vi.hoisted(() => ({
@@ -65,6 +66,15 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("cookie-backed OAuth", () => {
+  it("declares the private workspace scopes in OAuth metadata", async () => {
+    await getOAuth(browser().cookies, origin);
+    expect(mocks.createOAuth.mock.lastCall![0].scopes).toEqual(storageScopes);
+    expect(storageScopes).toContain(
+      "space:app.pileofmemories.prototype.workspace?skey=self&manage=create",
+    );
+    expect(storageScopes.some((scope) => scope.startsWith("repo:"))).toBe(false);
+  });
+
   it("uses Netlify preview and branch origins instead of inherited production configuration", async () => {
     for (const context of ["deploy-preview", "branch-deploy"]) {
       mocks.context = context;

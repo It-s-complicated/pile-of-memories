@@ -4,18 +4,18 @@
   import { initializeCaptureHistory } from "../lib/capture-navigation";
   import { browserStorage, createSnapshotBackend, type BoardBackend, type BoardSnapshot, type EnrichmentPlugin, type SnapshotStorage } from "../lib/board-backend";
 
-  let { enrichMemory }: { enrichMemory?: EnrichmentPlugin } = $props();
+  let { enrichMemory, connectAirspace }: { enrichMemory?: EnrichmentPlugin; connectAirspace?: () => Promise<SnapshotStorage | undefined> } = $props();
   let backend = $state.raw<BoardBackend>();
   let storageId = $state("");
   let snapshot = $state.raw<BoardSnapshot>();
-  let service = $state("");
-  let identifier = $state("");
-  let password = $state("");
   let busy = $state(false);
   let message = $state("");
   let remote = $state(false);
 
-  onMount(() => { void initializeCaptureHistory(); });
+  onMount(() => {
+    void initializeCaptureHistory();
+    remote = !!connectAirspace && new URL(window.location.href).searchParams.get("storage") === "airspace";
+  });
 
   async function open(storage: SnapshotStorage) {
     const operations = createSnapshotBackend(storage, (cards) => { snapshot = cards; });
@@ -39,15 +39,14 @@
     message = "";
     try {
       if (remote) {
-        const { connectAtproto } = await import("../lib/plugins/atproto");
-        await open(await connectAtproto({ service, identifier, password }));
+        const storage = await connectAirspace?.();
+        if (storage) await open(storage);
       } else {
         await open(browserStorage());
       }
     } catch (error) {
       message = error instanceof Error ? error.message : "Could not open this board. Please try again.";
     } finally {
-      password = "";
       busy = false;
     }
   }
@@ -76,15 +75,12 @@
           <span>Storage</span>
           <select bind:value={remote} disabled={busy}>
             <option value={false}>This browser</option>
-            <option value={true}>Private AT Protocol space</option>
+            {#if connectAirspace}<option value={true}>Airspace · private AT Protocol space</option>{/if}
           </select>
         </label>
         {#if remote}
           <p>Requires a PDS with experimental private spaces. Use one editor at a time; reload to see changes from another device.</p>
-          <label class="memory-field"><span>PDS URL</span><input type="url" bind:value={service} placeholder="https://pds.example.com" required disabled={busy} /></label>
-          <label class="memory-field"><span>Handle or DID</span><input bind:value={identifier} autocomplete="username" required disabled={busy} /></label>
-          <label class="memory-field"><span>App password</span><input type="password" bind:value={password} autocomplete="off" required disabled={busy} /></label>
-          <p>Your session stays in memory. Reconnect after reloading the page. Records stay in the private space.</p>
+          <p>Uses your signed-in account and discovers its PDS automatically. You may be asked to approve board storage permissions.</p>
         {:else}
           <p>Works without an account or connection. Memories stay in this browser; clearing site data deletes them.</p>
         {/if}

@@ -6,6 +6,7 @@
   import { initializeCaptureHistory } from "#lib/capture-navigation.js";
 
   import { enrichMemory } from "#lib/enrichment.remote.js";
+  import { connectAtproto } from "#lib/plugins/atproto.js";
   import BoardLauncher from "../components/BoardLauncher.svelte";
 
   const AUTH_ERRORS: Record<string, string> = {
@@ -59,7 +60,7 @@
 {#if data.did && !signedOut}
   {#key data.did}
     {#if mounted}
-      <BoardLauncher {enrichMemory} />
+      <BoardLauncher {enrichMemory} connectAirspace={connectAtproto} />
     {/if}
   {/key}
   <button class="chip-button sign-out" type="button" onclick={signOut} disabled={working}>

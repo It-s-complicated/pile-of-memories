@@ -15,6 +15,8 @@ import {
   type OAuth,
 } from "airspace/oauth";
 
+import { storageScopes } from "../airspace-model";
+
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
 export const SESSION_COOKIE = "pom_session";
 const MAX_COOKIE_LENGTH = 3800;
@@ -86,10 +88,7 @@ export function getOAuth(cookies: Cookies, url: URL): Promise<OAuth> {
     baseUrl: origin,
     redirectPath: "/auth/callback",
     name: "Pile of Memories",
-    // Identity only; board cards live in the browser's private Airspace space.
-    // Server-side space writes would need scopesFor({ spaces: { workspace } })
-    // and published lexicons.
-    scopes: ["atproto"],
+    scopes: storageScopes,
     stores: {
       session: oauthStore<NodeSavedSession>(cookies, SESSION_COOKIE, COOKIE_MAX_AGE, "/"),
       // ponytail: one pending login per browser; starting another replaces its callback state.
