@@ -139,6 +139,8 @@ export async function enrichMemory(input: EnrichmentInput): Promise<EnrichmentEx
       baseURL: "https://opencode.ai/zen/go/v1",
       apiKey: OPENCODE_GO_API_KEY,
       models: [ENRICHMENT_MODEL],
+      // ponytail: gpt-5.6-luna 503s on go chat/completions; go responses works
+      api: "responses",
     });
 
     const result = await chat({
@@ -146,14 +148,16 @@ export async function enrichMemory(input: EnrichmentInput): Promise<EnrichmentEx
       stream: false,
       abortController,
       middleware: [analyticsMiddleware],
-      modelOptions: { response_format: { type: "json_object" }, reasoning_effort: "medium" },
+      modelOptions: { text: { format: { type: "json_object" } }, reasoning: { effort: "medium" } },
       systemPrompts: [
         'Return only a JSON object with the keys "title" and "tags". Create a concise title and 1-5 useful labels for a private memory. Reuse the provided board vocabulary when meaningful. Introduce a short new label only when necessary.',
       ],
       messages: [
         {
           role: "user",
-          content: `Board vocabulary: ${JSON.stringify(input.existingTags)}\n\nMemory:\n${input.description}`,
+          // ponytail: the go proxy only checks the input (not instructions) for the
+          // word "json" when text.format is json_object, so restate it in the input
+          content: `Respond in JSON. Board vocabulary: ${JSON.stringify(input.existingTags)}\n\nMemory:\n${input.description}`,
         },
       ],
     });
