@@ -21,6 +21,7 @@ function getSql(): ReturnType<typeof postgres> {
 
 type CardRow = {
   id: string;
+  kind: Card["kind"];
   title: string;
   body: string;
   x: number;
@@ -36,6 +37,7 @@ type CardRow = {
 function toCard(row: CardRow): Card {
   return {
     id: row.id,
+    kind: row.kind,
     title: row.title,
     body: row.body,
     position: { x: row.x, y: row.y },
@@ -63,9 +65,9 @@ export async function listCards(): Promise<Card[]> {
 export async function insertCard(card: CardInput): Promise<Card> {
   const sql = getSql();
   const [row] = await sql<CardRow[]>`
-    INSERT INTO cards (id, title, body, x, y, tags, topics, links, archived)
+    INSERT INTO cards (id, kind, title, body, x, y, tags, topics, links, archived)
     VALUES (
-      ${card.id}, ${card.title}, ${card.body}, ${card.position.x}, ${card.position.y},
+      ${card.id}, ${card.kind}, ${card.title}, ${card.body}, ${card.position.x}, ${card.position.y},
       ${card.tags}, ${card.topics}, ${card.links}, ${card.archived}
     )
     ON CONFLICT (id) DO NOTHING
@@ -82,6 +84,7 @@ export async function updateCard(id: string, changes: CardChanges): Promise<Card
   const values: Record<string, string | number | boolean | string[] | Date> = {};
 
   if (
+    changes.kind !== undefined ||
     changes.title !== undefined ||
     changes.body !== undefined ||
     changes.tags !== undefined ||
@@ -91,6 +94,7 @@ export async function updateCard(id: string, changes: CardChanges): Promise<Card
   }
 
   if (changes.title !== undefined) values.title = changes.title;
+  if (changes.kind !== undefined) values.kind = changes.kind;
   if (changes.body !== undefined) values.body = changes.body;
   if (changes.position !== undefined) {
     values.x = changes.position.x;

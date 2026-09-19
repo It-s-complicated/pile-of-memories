@@ -5,6 +5,7 @@ import type { Card } from "./card";
 it("reconciles server snapshots, confirmed writes and deletions without accepting invalid cards", async () => {
   const board = await createCardCollection();
   const card: Card = {
+    kind: "memory",
     id: "00000000-0000-4000-8000-000000000001",
     title: "Memory",
     body: "Body",

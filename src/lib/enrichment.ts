@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { cardKindSchema } from "./card";
 import { canonicalizeLabels, labelSchema } from "./labels";
 
 export const enrichmentInputSchema = z
@@ -10,6 +11,7 @@ export const enrichmentInputSchema = z
 
 export const enrichmentOutputSchema = z
   .object({
+    kind: cardKindSchema,
     title: z.string().trim().min(1).max(80),
     tags: z.array(labelSchema).max(5).transform(canonicalizeLabels),
   })

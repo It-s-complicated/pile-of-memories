@@ -2,7 +2,7 @@
   import { onDestroy } from "svelte";
   import { SvelteMap } from "svelte/reactivity";
   import TagEditor from "./TagEditor.svelte";
-  import type { CardInput } from "../lib/card";
+  import { cardKindLabels, type CardInput, type CardKind } from "../lib/card";
   import { createCard } from "../lib/cards.remote";
   import { fallbackTitle } from "../lib/enrichment";
   import type { CardCreationProvenance } from "../lib/enrichment-analytics";
@@ -20,12 +20,13 @@
     onclose: () => void;
     boardReady: boolean;
     oncreate: (
-      draft: Pick<CardInput, "title" | "body" | "tags" | "topics" | "links">,
+      draft: Pick<CardInput, "title" | "body" | "tags" | "topics" | "links" | "kind">,
       creation?: CardCreationProvenance,
     ) => Promise<void>;
   } = $props();
 
   type CachedEnrichment = {
+    kind: CardKind;
     attemptId: string;
     title: string;
     tags: string[];
@@ -35,6 +36,7 @@
   const enrichmentCache = new SvelteMap<string, CachedEnrichment>();
   let newMemoryStep = $state<"capture" | "review">("capture");
   let memoryTitle = $state("");
+  let memoryKind = $state<CardKind>("note");
   let memoryBody = $state("");
   let memoryLabels = $state<string[]>([]);
   let enrichmentWarning = $state("");
@@ -79,6 +81,7 @@
         resultSource = "ai";
       } catch {
         enrichment = {
+          kind: "note",
           attemptId: crypto.randomUUID(),
           title: fallbackTitle(memoryBody),
           tags: [],
@@ -91,6 +94,7 @@
     if (generation !== enrichmentGeneration || memoryBody.trim() !== description) return;
 
     memoryTitle = enrichment.title;
+    memoryKind = enrichment.kind;
     memoryLabels = enrichment.tags;
     enrichmentWarning = enrichment.warning;
     creationProvenance = {
@@ -110,6 +114,7 @@
       await oncreate(
         {
           title: memoryTitle.trim() || fallbackTitle(memoryBody),
+          kind: memoryKind,
           body: memoryBody,
           ...partitionLabels(memoryLabels),
           links: parseMarkdown(memoryBody).links,
@@ -166,6 +171,14 @@
         </header>
         {#if enrichmentWarning}<p class="placement-note" role="status">{enrichmentWarning}</p>{/if}
         <label class="memory-field">
+          <span>Card type</span>
+          <select bind:value={memoryKind}>
+            {#each Object.entries(cardKindLabels) as [kind, label] (kind)}
+              <option value={kind}>{label}</option>
+            {/each}
+          </select>
+        </label>
+        <label class="memory-field">
           <span>Title</span>
           <input bind:value={memoryTitle} maxlength="80" required />
         </label>
@@ -180,7 +193,7 @@
             Back
           </button>
           <button type="submit" class="card-button" disabled={saving || !boardReady}>
-            {saving ? "Saving…" : boardReady ? "Create Memory" : "Loading board…"}
+            {saving ? "Saving…" : boardReady ? "Create card" : "Loading board…"}
           </button>
         </footer>
       </form>

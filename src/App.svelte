@@ -255,7 +255,7 @@
   }
 
   async function addMemory(
-    draft: Pick<CardInput, "title" | "body" | "tags" | "topics" | "links">,
+    draft: Pick<CardInput, "title" | "body" | "tags" | "topics" | "links" | "kind">,
     creation?: CardCreationProvenance,
   ): Promise<void> {
     requireOnline();

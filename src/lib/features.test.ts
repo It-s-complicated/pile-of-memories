@@ -173,7 +173,10 @@ describe("AI contracts", () => {
     expect(enrichmentInputSchema.safeParse({ description: "", existingTags: [] }).success).toBe(
       false,
     );
-    expect(enrichmentOutputSchema.parse({ title: " Title ", tags: ["CSS", "css"] })).toEqual({
+    expect(
+      enrichmentOutputSchema.parse({ kind: "note", title: " Title ", tags: ["CSS", "css"] }),
+    ).toEqual({
+      kind: "note",
       title: "Title",
       tags: ["CSS"],
     });
@@ -181,7 +184,10 @@ describe("AI contracts", () => {
 
   it("validates correlated enrichment responses", () => {
     const attemptId = "00000000-0000-4000-8000-000000000001";
-    expect(enrichmentResponseSchema.parse({ attemptId, title: "Title", tags: ["CSS"] })).toEqual({
+    expect(
+      enrichmentResponseSchema.parse({ kind: "idea", attemptId, title: "Title", tags: ["CSS"] }),
+    ).toEqual({
+      kind: "idea",
       attemptId,
       title: "Title",
       tags: ["CSS"],

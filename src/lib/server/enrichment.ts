@@ -18,7 +18,7 @@ import { LABEL_MODEL, selectMemoryLabels } from "./label-selection";
 const TITLE_MODEL = "gpt-5.6-luna";
 export const ENRICHMENT_PROVIDER = "opencode-go+typesafe";
 export const ENRICHMENT_MODEL = `${TITLE_MODEL}+${LABEL_MODEL}`;
-export const ENRICHMENT_PROMPT_VERSION = "memory-enrichment-v2";
+export const ENRICHMENT_PROMPT_VERSION = "memory-enrichment-v3";
 const PROVIDER_TIMEOUT_MS = 55_000;
 
 export type EnrichmentExecution = {
@@ -163,7 +163,7 @@ export async function enrichMemory(input: EnrichmentInput): Promise<EnrichmentEx
     ]);
 
     const title = enrichmentOutputSchema.pick({ title: true }).parse(JSON.parse(result));
-    const output = enrichmentOutputSchema.parse({ ...title, tags: labels.tags });
+    const output = enrichmentOutputSchema.parse({ ...title, tags: labels.tags, kind: labels.kind });
     const titleUsage = reportedUsageSchema.parse(usage ?? {});
     return {
       output,

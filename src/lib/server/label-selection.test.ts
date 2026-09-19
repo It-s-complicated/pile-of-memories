@@ -3,11 +3,14 @@ import { selectMemoryLabels } from "./label-selection";
 
 afterEach(() => vi.unstubAllGlobals());
 
-function mockAnswers(probabilities: number[]) {
+function mockAnswers(probabilities: number[], kind: string = "note") {
   const response = {
-    answers: Object.fromEntries(
-      probabilities.map((noul, index) => [`label_${index}`, { type: "noul", noul }]),
-    ),
+    answers: {
+      kind: { type: "choice", choice: kind },
+      ...Object.fromEntries(
+        probabilities.map((noul, index) => [`label_${index}`, { type: "noul", noul }]),
+      ),
+    },
     usage: { input_tokens: 100, output_tokens: 10 },
   };
   const fetchMock = vi.fn().mockResolvedValue(Response.json(response));
@@ -34,6 +37,7 @@ describe("candidate label selection", () => {
     const signal = new AbortController().signal;
     const result = await selectMemoryLabels(input, signal);
     expect(result).toEqual({
+      kind: "note",
       tags: ["Project", "AI", "CSS", "Web development", "Hosting"],
       inputTokens: 100,
       outputTokens: 10,
@@ -43,7 +47,9 @@ describe("candidate label selection", () => {
     expect(request.signal).toBe(signal);
     const body = JSON.parse(request.body);
     expect(body.state).toEqual({ memory: input.description });
-    expect(Object.keys(body.questions)).toHaveLength(8);
+    expect(Object.keys(body.questions)).toHaveLength(9);
+    expect(body.questions.kind.type).toBe("choice");
+    expect(Object.keys(body.questions.kind.criteria)).toEqual(["memory", "idea", "note"]);
     expect(body.questions.label_2.instructions).toContain('"CSS"');
   });
 
@@ -68,15 +74,25 @@ describe("candidate label selection", () => {
     ).toEqual(["A"]);
   });
 
-  it("skips the request for an empty vocabulary", async () => {
-    const fetchMock = mockAnswers([]);
-    expect(
-      await selectMemoryLabels(
-        { description: "Memory", existingTags: [] },
-        new AbortController().signal,
-      ),
-    ).toEqual({ tags: [], inputTokens: 0, outputTokens: 0 });
-    expect(fetchMock).not.toHaveBeenCalled();
+  it.each(["memory", "idea", "note"])(
+    "classifies %s even with an empty vocabulary",
+    async (kind) => {
+      const fetchMock = mockAnswers([], kind);
+      expect(
+        await selectMemoryLabels(
+          { description: "Memory", existingTags: [] },
+          new AbortController().signal,
+        ),
+      ).toEqual({ kind, tags: [], inputTokens: 100, outputTokens: 10 });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("rejects an invalid classification", async () => {
+    mockAnswers([], "task");
+    await expect(
+      selectMemoryLabels({ description: "Text", existingTags: [] }, new AbortController().signal),
+    ).rejects.toThrow();
   });
 
   it.each([[], [1.1], [-0.1]])(

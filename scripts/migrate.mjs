@@ -15,6 +15,8 @@ execFileSync(
     "migrations/0002_better_auth.sql",
     "-f",
     "migrations/0003_enrichment_analytics.sql",
+    "-f",
+    "migrations/0004_card_kind.sql",
   ],
   { stdio: "inherit" },
 );

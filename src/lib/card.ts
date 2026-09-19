@@ -4,6 +4,9 @@ import { labelsSchema, partitionLabels } from "./labels";
 import { httpUrlSchema, parseMarkdown } from "./markdown";
 
 export const cardIdSchema = z.uuidv4();
+export const cardKindSchema = z.enum(["memory", "idea", "note"]);
+export type CardKind = z.infer<typeof cardKindSchema>;
+export const cardKindLabels = { memory: "Memory", idea: "Idea", note: "Note" };
 
 export function isCardId(value: unknown): value is string {
   return cardIdSchema.safeParse(value).success;
@@ -14,6 +17,7 @@ const positionSchema = z.object({ x: z.number().finite(), y: z.number().finite()
 export const cardInputSchema = z
   .object({
     id: cardIdSchema,
+    kind: cardKindSchema.default("memory"),
     title: z.string().trim().min(1),
     body: z.string(),
     position: positionSchema,
@@ -84,6 +88,7 @@ export function sortAndFilterCards(cards: Card[], settings: MemoryListSettings):
 
 export const cardChangesSchema = z
   .object({
+    kind: cardKindSchema.optional(),
     title: z.string().trim().min(1).optional(),
     body: z.string().optional(),
     position: positionSchema.optional(),

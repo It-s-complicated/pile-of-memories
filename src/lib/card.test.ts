@@ -14,6 +14,7 @@ import {
 
 const CARD_ID = "00000000-0000-4000-8000-000000000001";
 const validCard = {
+  kind: "memory" as const,
   id: CARD_ID,
   title: "  Capture this  ",
   body: "Read [the reference](https://example.com/docs).",

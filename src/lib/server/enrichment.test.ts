@@ -11,19 +11,19 @@ it("combines a generated title with only vocabulary-selected labels, including n
   vi.mocked(chat).mockResolvedValue('{"title":"A CSS note"}');
   vi.stubGlobal(
     "fetch",
-    vi.fn().mockResolvedValue(
+    vi.fn().mockImplementation(() =>
       Response.json({
-        answers: { label_0: { type: "noul", noul: 0.9 } },
+        answers: { kind: { type: "choice", choice: "note" }, label_0: { type: "noul", noul: 0.9 } },
         usage: { input_tokens: 10, output_tokens: 1 },
       }),
     ),
   );
   const result = await enrichMemory({ description: "Learning CSS grid", existingTags: ["CSS"] });
-  expect(result.output).toEqual({ title: "A CSS note", tags: ["CSS"] });
+  expect(result.output).toEqual({ kind: "note", title: "A CSS note", tags: ["CSS"] });
   expect(result.usage.providerCost).toBeNull();
   expect(
     (await enrichMemory({ description: "Learning CSS grid", existingTags: [] })).output,
-  ).toEqual({ title: "A CSS note", tags: [] });
+  ).toEqual({ kind: "note", title: "A CSS note", tags: [] });
 });
 
 it("cancels the other provider on failure so the caller can use its manual fallback", async () => {

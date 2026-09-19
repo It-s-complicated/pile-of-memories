@@ -7,7 +7,7 @@ Core loop:
 - capture rough memories and ideas quickly
 - place them spatially instead of burying them in lists
 - rearrange and cluster items as their meaning changes
-- enrich description-first capture with editable AI title and tag suggestions
+- enrich description-first capture with editable AI title, card type, and tag suggestions
 - read Markdown cards and edit their title, text, tags, and derived links in one dialog
 
 Memory cards are Svelte Flow nodes persisted in PostgreSQL. TanStack DB keeps a reactive client
@@ -16,6 +16,12 @@ collection backed by SQLite in the browser's origin-private file system (OPFS). 
 
 The guided creation and placement idea is captured in [GUIDED_MEMORY_PLACEMENT.md](GUIDED_MEMORY_PLACEMENT.md).
 The database schema is described in [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md).
+
+New cards are classified as **Memory** (a personal recollection), **Idea** (something to try or
+create), or **Note** (reference information, reminders, or tasks). TypeSafe selects the type in
+the same request as tag suggestions. Review or change it before saving, or later in the editor.
+Canvas labels and icons distinguish the types; clustering still uses tags and topics. If enrichment
+is unavailable, capture defaults to an editable Note. Existing cards remain Memories.
 
 ## Export
 
@@ -40,7 +46,8 @@ vp dev
 
 Set `DATABASE_CONNECTION_STRING` in `.env`. If it uses transaction pooling, set
 `DATABASE_LISTEN_CONNECTION_STRING` to a session-mode URL for live updates. Set
-`OPENCODE_GO_API_KEY` to enable DeepSeek V4 Flash title and tag suggestions through OpenCode Go.
+`OPENCODE_GO_API_KEY` for title suggestions through OpenCode Go and `TYPESAFE_API_KEY` for
+card classification and tag suggestions through TypeSafe.
 
 ## Authentication
 

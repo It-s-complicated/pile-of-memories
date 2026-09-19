@@ -6,6 +6,7 @@
 
 <script lang="ts">
   import { type NodeProps } from "@xyflow/svelte";
+  import { cardKindLabels, type CardKind } from "#lib/card.js";
   import { deleteCard, updateCard } from "#lib/cards.remote.js";
   import { getCardPersistence } from "#lib/card-persistence.js";
   import { enrichMemory } from "#lib/enrichment.remote.js";
@@ -24,6 +25,7 @@
   let updatedDate = $derived(compactDateFormatter.format(new Date(data.updatedAt)));
   let editOpen = $state(false);
   let editTitle = $state("");
+  let editKind = $state<CardKind>("memory");
   let editBody = $state("");
   let editLabels = $state<string[]>([]);
   let enrichmentGeneration = 0;
@@ -40,6 +42,7 @@
   function openEditor(): void {
     enrichmentGeneration += 1;
     editTitle = data.title;
+    editKind = data.kind;
     editBody = data.body;
     editLabels = [...data.tags, ...data.topics];
     enrichmentStatus = "";
@@ -67,8 +70,9 @@
       const result = await enrichMemory({ description, existingTags: data.tagVocabulary });
       if (generation !== enrichmentGeneration) return;
       editTitle = result.title;
+      editKind = result.kind;
       editLabels = result.tags;
-      enrichmentStatus = "Fresh title and tags are ready. Save to keep them.";
+      enrichmentStatus = "Fresh title, type, and tags are ready. Save to keep them.";
     } catch {
       if (generation === enrichmentGeneration) saveError = "Enrichment failed. Try again.";
     }
@@ -79,7 +83,7 @@
     const title = editTitle.trim() || "Untitled memory";
     const body = editBody;
     const { tags, topics } = partitionLabels(editLabels);
-    const changes = { title, body, tags, topics };
+    const changes = { title, body, tags, topics, kind: editKind };
 
     saveError = "";
     try {
@@ -116,9 +120,22 @@
 
 <article
   class={["memory-card", { browsing: browse }]}
-  aria-label={`Memory: ${data.title || "Untitled memory"}`}
+  aria-label={`${cardKindLabels[data.kind]}: ${data.title || "Untitled memory"}`}
 >
   <header>
+    <div class="card-kind">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        {#if data.kind === "idea"}
+          <path d="M9 18h6m-5 3h4M8 14a6 6 0 1 1 8 0c-1 1-1 2-1 2H9s0-1-1-2Z" />
+        {:else if data.kind === "note"}
+          <path d="M5 3h10l4 4v14H5ZM15 3v5h4M9 12h6m-6 4h6" />
+        {:else}
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7v5l-3 2" />
+        {/if}
+      </svg>
+      {cardKindLabels[data.kind]}
+    </div>
     <p class="card-meta">
       <time datetime={data.createdAt}>Created {createdDate}</time>
       ·
@@ -205,6 +222,14 @@
 
       <fieldset class="edit-fields" disabled={busy || enriching}>
         <label class="memory-field">
+          <span>Card type</span>
+          <select bind:value={editKind}>
+            {#each Object.entries(cardKindLabels) as [kind, label] (kind)}
+              <option value={kind}>{label}</option>
+            {/each}
+          </select>
+        </label>
+        <label class="memory-field">
           <span>Title</span>
           <input bind:value={editTitle} maxlength="80" required />
         </label>
@@ -221,7 +246,7 @@
 
       <fieldset class="debug-tools">
         <legend>Debug</legend>
-        <p>Generate a fresh title and tags from the current memory text.</p>
+        <p>Generate a fresh title, type, and tags from the current card text.</p>
         <button
           type="button"
           class="secondary-button"
@@ -312,6 +337,19 @@
 
   .card-meta time {
     letter-spacing: 0.04em;
+  }
+
+  .card-kind {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.45rem;
+    color: var(--theme-ink);
+    font-family: var(--font-label);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
   }
 
   h2 {
