@@ -148,7 +148,7 @@ importers:
         version: 0.0.6
       better-auth:
         specifier: ^1.7.5
-        version: 1.7.5(@sveltejs/kit@3.0.0-next.25(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0))(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0)(typescript@6.0.3))(pg@8.23.0)(svelte@5.57.0)(vitest@4.1.11)
+        version: 1.7.5(@sveltejs/kit@3.0.0-next.27(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0))(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0)(typescript@6.0.3))(pg@8.23.0)(svelte@5.57.0)(vitest@4.1.11)
       marked:
         specifier: ^18.0.13
         version: 18.0.13
@@ -166,11 +166,11 @@ importers:
         version: 4.6.5
     devDependencies:
       '@sveltejs/adapter-netlify':
-        specifier: 7.0.0-next.10
-        version: 7.0.0-next.10(@sveltejs/kit@3.0.0-next.25(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0))(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0)(typescript@6.0.3))
+        specifier: 7.0.0-next.11
+        version: 7.0.0-next.11(@sveltejs/kit@3.0.0-next.27(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0))(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0)(typescript@6.0.3))
       '@sveltejs/kit':
-        specifier: 3.0.0-next.25
-        version: 3.0.0-next.25(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0))(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0)(typescript@6.0.3)
+        specifier: 3.0.0-next.27
+        version: 3.0.0-next.27(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0))(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0)(typescript@6.0.3)
       '@types/node':
         specifier: ^26.6.1
         version: 26.6.1
@@ -328,9 +328,6 @@ packages:
         optional: true
       shiki:
         optional: true
-
-  '@iarna/toml@2.2.5':
-    resolution: {integrity: sha512-trnsAYxU3xnS1gPHPyU961coFyLkh4gAD/0zQ5mymY4yOZ+CYvsPqUbOFSw0aDM4y0tV7tiFxL/1XfXPNC6IPg==}
 
   '@journeyapps/wa-sqlite@1.7.2':
     resolution: {integrity: sha512-EVRMzqHtHgJBFcTGOgQ5/YlxrYFSXLFFztC5yo6+jQx2mqFR+a1kkLV4IirquiBzIonjmYXfBtvZ26fmI8r9Nw==}
@@ -770,18 +767,13 @@ packages:
     peerDependencies:
       acorn: ^8.9.0
 
-  '@sveltejs/acorn-typescript@1.0.13':
-    resolution: {integrity: sha512-wgKggnhZVL9Bfx1OaKKTrYY9BFRk6C8UAkQNUcIv1+llzYrIqy+RZm5HPKzn0NpEBvTVhTqB4kQyllZywsRBRQ==}
+  '@sveltejs/adapter-netlify@7.0.0-next.11':
+    resolution: {integrity: sha512-kDMM3oQ791j0pIdv27IxRsrfyl+ItrpBbnGZU/glVh7Hr3/VTbTBNopeP20TZgbJd+xLJKoWdLRDlzyfm1PVxA==}
     peerDependencies:
-      acorn: ^8.9.0
+      '@sveltejs/kit': ^3.0.0-next.0
 
-  '@sveltejs/adapter-netlify@7.0.0-next.10':
-    resolution: {integrity: sha512-RO4JjAHSTjEgeREXUXxCfLbRrmkFC6XxzjkeC1dg8TZ3gRWH1CpRcHWH2dGFZZUs2wK1tdKfVYm/1dSQYnDI8Q==}
-    peerDependencies:
-      '@sveltejs/kit': ^2.31.0
-
-  '@sveltejs/kit@3.0.0-next.25':
-    resolution: {integrity: sha512-3ih37NCbIQUnGzn3fPK7XA9Qn9ipA6D4+6rBfHZfpUc1ga1eLxyJmINPzV1lFlM55LaWjus88rGoUSiKeevRhw==}
+  '@sveltejs/kit@3.0.0-next.27':
+    resolution: {integrity: sha512-m2R6GvcMhiAbYVKhzRf5mzLSvcXEuy/H0Va72XvxfEl1ZglrSC/321GKYa6idDHPojuRzkyh9EB0jBZmAwf6+Q==}
     engines: {node: '>=22.17'}
     hasBin: true
     peerDependencies:
@@ -1329,11 +1321,6 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
-  acorn@8.18.0:
-    resolution: {integrity: sha512-lGq+9yr1/GuAWaVYIHRjvvySG5/4VfKIvC8EWxStPdcDh/Ka7FG3twP6v4d5BkravUilhIAsG4Qj83t02LWUPQ==}
-    engines: {node: '>=0.4.0'}
-    hasBin: true
-
   advocaat@0.0.6:
     resolution: {integrity: sha512-mZomE2RzphVc23Uaa6bupoJvO2R3Bnnq7XQnSUshX2FEYrqh6dGt46zOvYYXnDczHV1JEGM6Wuz+u8aDN3nwNA==}
 
@@ -1870,6 +1857,10 @@ packages:
     resolution: {integrity: sha512-2wcC/oGxHis/BoHkkPwldgiPSYcpZK3JU28WoMVv55yHJgcZ8rlXvuG9iZggz+sU1d4bRgIGASwyWqjxu3FM0g==}
     engines: {node: '>=18'}
 
+  smol-toml@1.8.0:
+    resolution: {integrity: sha512-kCZr2V3ch9i00x8zXRhjUNVcjG9ijES5dDudkXvUVCT5QlJNQWElSJdZqyPemffHoLNUYwOcou0Fy+ojN0uHSQ==}
+    engines: {node: '>= 18'}
+
   sorted-btree@1.8.1:
     resolution: {integrity: sha512-395+XIP+wqNn3USkFSrNz7G3Ss/MXlZEqesxvzCRFwL14h6e8LukDHdLBePn5pwbm5OQ9vGu8mDyz2lLDIqamQ==}
 
@@ -2122,8 +2113,6 @@ snapshots:
       marked: 18.0.13
       svelte: 5.57.0
 
-  '@iarna/toml@2.2.5': {}
-
   '@journeyapps/wa-sqlite@1.7.2': {}
 
   '@jridgewell/gen-mapping@0.3.13':
@@ -2352,24 +2341,18 @@ snapshots:
     dependencies:
       acorn: 8.17.0
 
-  '@sveltejs/acorn-typescript@1.0.13(acorn@8.18.0)':
+  '@sveltejs/adapter-netlify@7.0.0-next.11(@sveltejs/kit@3.0.0-next.27(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0))(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0)(typescript@6.0.3))':
     dependencies:
-      acorn: 8.18.0
-
-  '@sveltejs/adapter-netlify@7.0.0-next.10(@sveltejs/kit@3.0.0-next.25(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0))(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0)(typescript@6.0.3))':
-    dependencies:
-      '@iarna/toml': 2.2.5
       '@netlify/types': 2.8.0
-      '@sveltejs/kit': 3.0.0-next.25(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0))(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0)(typescript@6.0.3)
+      '@sveltejs/kit': 3.0.0-next.27(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0))(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0)(typescript@6.0.3)
       rolldown: 1.2.7
+      smol-toml: 1.8.0
 
-  '@sveltejs/kit@3.0.0-next.25(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0))(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0)(typescript@6.0.3)':
+  '@sveltejs/kit@3.0.0-next.27(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0))(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0)(typescript@6.0.3)':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
       '@standard-schema/spec': 1.1.0
-      '@sveltejs/acorn-typescript': 1.0.13(acorn@8.18.0)
       '@sveltejs/vite-plugin-svelte': 7.2.0(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0)
-      acorn: 8.18.0
       cookie: 2.0.1
       devalue: 5.9.2
       esm-env: 1.2.2
@@ -2796,8 +2779,6 @@ snapshots:
 
   acorn@8.17.0: {}
 
-  acorn@8.18.0: {}
-
   advocaat@0.0.6: {}
 
   agent-browser@0.38.1: {}
@@ -2816,7 +2797,7 @@ snapshots:
 
   axobject-query@4.1.0: {}
 
-  better-auth@1.7.5(@sveltejs/kit@3.0.0-next.25(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0))(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0)(typescript@6.0.3))(pg@8.23.0)(svelte@5.57.0)(vitest@4.1.11):
+  better-auth@1.7.5(@sveltejs/kit@3.0.0-next.27(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0))(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0)(typescript@6.0.3))(pg@8.23.0)(svelte@5.57.0)(vitest@4.1.11):
     dependencies:
       '@better-auth/core': 1.7.5(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1)
       '@better-auth/drizzle-adapter': 1.7.5(@better-auth/core@1.7.5(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)
@@ -2836,7 +2817,7 @@ snapshots:
       nanostores: 1.4.1
       zod: 4.6.5
     optionalDependencies:
-      '@sveltejs/kit': 3.0.0-next.25(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0))(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0)(typescript@6.0.3)
+      '@sveltejs/kit': 3.0.0-next.27(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0))(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0)(typescript@6.0.3)
       pg: 8.23.0
       svelte: 5.57.0
       vitest: 4.1.11(@types/node@26.6.1)(@vitest/browser-preview@4.1.11)(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))
@@ -3227,6 +3208,8 @@ snapshots:
       '@polka/url': 1.0.0-next.29
       mrmime: 2.0.1
       totalist: 3.0.1
+
+  smol-toml@1.8.0: {}
 
   sorted-btree@1.8.1: {}
 
