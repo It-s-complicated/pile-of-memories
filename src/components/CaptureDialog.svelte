@@ -6,7 +6,7 @@
   import { fallbackTitle } from "../lib/enrichment";
   import type { CardCreationProvenance } from "../lib/enrichment-analytics";
   import { enrichMemory } from "../lib/enrichment.remote";
-  import { partitionLabels } from "../lib/labels";
+  import { canonicalizeLabels, partitionLabels } from "../lib/labels";
   import { parseMarkdown } from "../lib/markdown";
 
   let {
@@ -61,20 +61,22 @@
     const description = memoryBody.trim();
     if (!description) return;
 
+    const existingTags = canonicalizeLabels(tagVocabulary).sort();
+    const cacheKey = JSON.stringify({ description, existingTags });
     const generation = enrichmentGeneration;
     enrichingMemory = true;
     enrichmentWarning = "";
     try {
-      let enrichment = enrichmentCache.get(description);
+      let enrichment = enrichmentCache.get(cacheKey);
       let resultSource: CardCreationProvenance["resultSource"] = "cache";
       if (!enrichment) {
         try {
           const result = await enrichMemory({
             description,
-            existingTags: tagVocabulary,
+            existingTags,
           });
           enrichment = { ...result, warning: "" };
-          enrichmentCache.set(description, enrichment);
+          enrichmentCache.set(cacheKey, enrichment);
           resultSource = "ai";
         } catch {
           enrichment = {
