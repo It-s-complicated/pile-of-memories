@@ -18,7 +18,7 @@ import { LABEL_MODEL, selectMemoryLabels } from "./label-selection";
 const TITLE_MODEL = "gpt-5.6-luna";
 export const ENRICHMENT_PROVIDER = "opencode-go+typesafe";
 export const ENRICHMENT_MODEL = `${TITLE_MODEL}+${LABEL_MODEL}`;
-export const ENRICHMENT_PROMPT_VERSION = "memory-enrichment-v3";
+export const ENRICHMENT_PROMPT_VERSION = "memory-enrichment-v7";
 const PROVIDER_TIMEOUT_MS = 55_000;
 
 export type EnrichmentExecution = {
@@ -143,27 +143,20 @@ export async function enrichMemory(input: EnrichmentInput): Promise<EnrichmentEx
         stream: false,
         abortController,
         middleware: [analyticsMiddleware],
-        modelOptions: {
-          text: { format: { type: "json_object" } },
-          reasoning: { effort: "medium" },
-        },
+        modelOptions: { reasoning: { effort: "medium" } },
         systemPrompts: [
-          'Return only a JSON object with the key "title". Create a concise title of at most 80 characters for a private memory.',
+          "Create a concise title of at most 80 characters for a private memory. Return only the title.",
         ],
-        messages: [
-          {
-            role: "user",
-            // ponytail: the go proxy only checks the input (not instructions) for the
-            // word "json" when text.format is json_object, so restate it in the input
-            content: `Respond in JSON. Memory:\n${input.description}`,
-          },
-        ],
+        messages: [{ role: "user", content: `Memory:\n${input.description}` }],
       }),
       selectMemoryLabels(input, abortController.signal),
     ]);
 
-    const title = enrichmentOutputSchema.pick({ title: true }).parse(JSON.parse(result));
-    const output = enrichmentOutputSchema.parse({ ...title, tags: labels.tags, kind: labels.kind });
+    const output = enrichmentOutputSchema.parse({
+      title: result,
+      tags: labels.tags,
+      kind: labels.kind,
+    });
     const titleUsage = reportedUsageSchema.parse(usage ?? {});
     return {
       output,

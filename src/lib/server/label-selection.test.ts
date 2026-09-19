@@ -3,12 +3,18 @@ import { selectMemoryLabels } from "./label-selection";
 
 afterEach(() => vi.unstubAllGlobals());
 
-function mockAnswers(probabilities: number[], kind: string = "note") {
+function mockAnswers(relevanceScores: number[], kind: string = "note") {
   const response = {
     answers: {
       kind: { type: "choice", choice: kind },
       ...Object.fromEntries(
-        probabilities.map((noul, index) => [`label_${index}`, { type: "noul", noul }]),
+        relevanceScores.map((relevance, index) => [
+          `label_${index}`,
+          {
+            type: "score",
+            score: relevance * 3,
+          },
+        ]),
       ),
     },
     usage: { input_tokens: 100, output_tokens: 10 },
@@ -51,10 +57,12 @@ describe("candidate label selection", () => {
     expect(body.questions.kind.type).toBe("choice");
     expect(Object.keys(body.questions.kind.criteria)).toEqual(["memory", "idea", "note"]);
     expect(body.questions.label_2.instructions).toContain('"CSS"');
+    expect(body.questions.label_2.type).toBe("score");
+    expect(body.questions.label_2.criteria).toHaveLength(4);
   });
 
-  it("allows no match and includes the threshold boundary", async () => {
-    mockAnswers([0.5, 0.79]);
+  it("allows no match and applies the 0.75 normalized score cutoff", async () => {
+    mockAnswers([0.74, 0.5]);
     expect(
       (
         await selectMemoryLabels(
@@ -63,7 +71,7 @@ describe("candidate label selection", () => {
         )
       ).tags,
     ).toEqual([]);
-    mockAnswers([0.8]);
+    mockAnswers([0.75]);
     expect(
       (
         await selectMemoryLabels(

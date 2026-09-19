@@ -55,17 +55,20 @@ export const memoryListSettingsSchema = z
       "title-asc",
       "title-desc",
     ]),
+    kinds: z.array(cardKindSchema).default([]),
     tags: labelsSchema,
   })
   .strict();
 export type MemoryListSettings = z.infer<typeof memoryListSettingsSchema>;
 
 export function sortAndFilterCards(cards: Card[], settings: MemoryListSettings): Card[] {
+  const selectedKinds = new Set(settings.kinds);
   const selectedTags = new Set(settings.tags.map((tag) => tag.toLowerCase()));
   const filtered = cards.filter(
     (card) =>
-      selectedTags.size === 0 ||
-      [...card.tags, ...card.topics].some((tag) => selectedTags.has(tag.toLowerCase())),
+      (selectedKinds.size === 0 || selectedKinds.has(card.kind)) &&
+      (selectedTags.size === 0 ||
+        [...card.tags, ...card.topics].some((tag) => selectedTags.has(tag.toLowerCase()))),
   );
 
   return filtered.toSorted((a, b) => {

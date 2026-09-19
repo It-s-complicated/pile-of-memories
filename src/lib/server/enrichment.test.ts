@@ -8,12 +8,18 @@ vi.mock("@tanstack/ai", () => ({ chat: vi.fn(), generateMessageId: () => "test" 
 afterEach(() => vi.unstubAllGlobals());
 
 it("combines a generated title with only vocabulary-selected labels, including no matches", async () => {
-  vi.mocked(chat).mockResolvedValue('{"title":"A CSS note"}');
+  vi.mocked(chat).mockResolvedValue("A CSS note");
   vi.stubGlobal(
     "fetch",
     vi.fn().mockImplementation(() =>
       Response.json({
-        answers: { kind: { type: "choice", choice: "note" }, label_0: { type: "noul", noul: 0.9 } },
+        answers: {
+          kind: { type: "choice", choice: "note" },
+          label_0: {
+            type: "score",
+            score: 2.7,
+          },
+        },
         usage: { input_tokens: 10, output_tokens: 1 },
       }),
     ),
