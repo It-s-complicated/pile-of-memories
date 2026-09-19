@@ -5,7 +5,8 @@
 </script>
 
 <script lang="ts">
-  import { type NodeProps, useSvelteFlow } from "@xyflow/svelte";
+  import { type NodeProps } from "@xyflow/svelte";
+  import { deleteCard, updateCard } from "#lib/cards.remote.js";
   import { getCardPersistence } from "#lib/card-persistence.js";
   import { enrichMemory } from "#lib/enrichment.remote.js";
   import { partitionLabels } from "#lib/labels.js";
@@ -15,7 +16,6 @@
   import TagEditor from "./TagEditor.svelte";
 
   let { id, data }: NodeProps<MemoryNode> = $props();
-  const { updateNodeData } = useSvelteFlow<MemoryNode>();
   const cardPersistence = getCardPersistence();
   let browse = $derived(cardPersistence.browse());
   let readOpen = $state(false);
@@ -27,9 +27,9 @@
   let editBody = $state("");
   let editLabels = $state<string[]>([]);
   let enrichmentGeneration = 0;
-  let enriching = $state(false);
+  let enriching = $derived(enrichMemory.pending > 0);
+  let busy = $derived(updateCard.pending > 0 || deleteCard.pending > 0);
   let enrichmentStatus = $state("");
-  let saving = $state(false);
   let saveError = $state("");
 
   function showModal(dialog: HTMLDialogElement) {
@@ -61,7 +61,6 @@
     }
 
     const generation = ++enrichmentGeneration;
-    enriching = true;
     enrichmentStatus = "";
     saveError = "";
     try {
@@ -72,8 +71,6 @@
       enrichmentStatus = "Fresh title and tags are ready. Save to keep them.";
     } catch {
       if (generation === enrichmentGeneration) saveError = "Enrichment failed. Try again.";
-    } finally {
-      if (generation === enrichmentGeneration) enriching = false;
     }
   }
 
@@ -82,32 +79,24 @@
     const title = editTitle.trim() || "Untitled memory";
     const body = editBody;
     const { tags, topics } = partitionLabels(editLabels);
-    const links = parseMarkdown(body).links;
-    const changes = { title, body, tags, topics, links };
+    const changes = { title, body, tags, topics };
 
-    saving = true;
     saveError = "";
     try {
       await cardPersistence.update(id, changes);
-      updateNodeData(id, { ...data, ...changes });
       closeEditor();
     } catch {
       saveError = "Changes not saved.";
-    } finally {
-      saving = false;
     }
   }
 
   async function archive(): Promise<void> {
-    saving = true;
     saveError = "";
     try {
       await cardPersistence.update(id, { archived: true });
       closeEditor();
     } catch {
       saveError = "Memory not archived.";
-    } finally {
-      saving = false;
     }
   }
 
@@ -115,15 +104,12 @@
     if (!confirm(`Permanently delete “${data.title || "Untitled memory"}”? This cannot be undone.`))
       return;
 
-    saving = true;
     saveError = "";
     try {
       await cardPersistence.delete(id);
       closeEditor();
     } catch {
       saveError = "Memory not deleted.";
-    } finally {
-      saving = false;
     }
   }
 </script>
@@ -217,7 +203,7 @@
         <h2 id={`edit-memory-${id}`}>{data.title || "Untitled memory"}</h2>
       </header>
 
-      <fieldset class="edit-fields" disabled={saving || enriching}>
+      <fieldset class="edit-fields" disabled={busy || enriching}>
         <label class="memory-field">
           <span>Title</span>
           <input bind:value={editTitle} maxlength="80" required />
@@ -239,7 +225,7 @@
         <button
           type="button"
           class="secondary-button"
-          disabled={saving || enriching}
+          disabled={busy || enriching}
           onclick={repeatEnrichment}
         >{enriching ? "Enriching…" : "Repeat enrichment"}</button>
       </fieldset>
@@ -247,16 +233,16 @@
       {#if enrichmentStatus}<p class="placement-note" role="status">{enrichmentStatus}</p>{/if}
       {#if saveError}<p class="save-error" role="alert">{saveError}</p>{/if}
       <footer>
-        <button type="button" class="danger-button" disabled={saving || enriching} onclick={remove}>
+        <button type="button" class="danger-button" disabled={busy || enriching} onclick={remove}>
           Delete permanently
         </button>
-        <button type="button" class="secondary-button" disabled={saving || enriching} onclick={archive}>
+        <button type="button" class="secondary-button" disabled={busy || enriching} onclick={archive}>
           Archive
         </button>
         <button type="button" class="secondary-button" onclick={closeEditor}>
           Cancel
         </button>
-        <button type="submit" class="card-button" disabled={saving || enriching}>Save</button>
+        <button type="submit" class="card-button" disabled={busy || enriching}>Save</button>
       </footer>
     </form>
   </dialog>

@@ -3,6 +3,7 @@
   import { SvelteMap } from "svelte/reactivity";
   import TagEditor from "./TagEditor.svelte";
   import type { CardInput } from "../lib/card";
+  import { createCard } from "../lib/cards.remote";
   import { fallbackTitle } from "../lib/enrichment";
   import type { CardCreationProvenance } from "../lib/enrichment-analytics";
   import { enrichMemory } from "../lib/enrichment.remote";
@@ -39,8 +40,8 @@
   let enrichmentWarning = $state("");
   let creationProvenance = $state<CardCreationProvenance>();
   let enrichmentGeneration = 0;
-  let enrichingMemory = $state(false);
-  let savingMemory = $state(false);
+  let enriching = $derived(enrichMemory.pending > 0);
+  let saving = $derived(createCard.pending > 0);
   let persistenceError = $state("");
 
   onDestroy(() => {
@@ -64,52 +65,46 @@
     const existingTags = canonicalizeLabels(tagVocabulary).sort();
     const cacheKey = JSON.stringify({ description, existingTags });
     const generation = enrichmentGeneration;
-    enrichingMemory = true;
     enrichmentWarning = "";
-    try {
-      let enrichment = enrichmentCache.get(cacheKey);
-      let resultSource: CardCreationProvenance["resultSource"] = "cache";
-      if (!enrichment) {
-        try {
-          const result = await enrichMemory({
-            description,
-            existingTags,
-          });
-          enrichment = { ...result, warning: "" };
-          enrichmentCache.set(cacheKey, enrichment);
-          resultSource = "ai";
-        } catch {
-          enrichment = {
-            attemptId: crypto.randomUUID(),
-            title: fallbackTitle(memoryBody),
-            tags: [],
-            warning: "AI suggestions were unavailable. You can finish this memory manually.",
-          };
-          resultSource = "fallback";
-        }
+    let enrichment = enrichmentCache.get(cacheKey);
+    let resultSource: CardCreationProvenance["resultSource"] = "cache";
+    if (!enrichment) {
+      try {
+        const result = await enrichMemory({
+          description,
+          existingTags,
+        });
+        enrichment = { ...result, warning: "" };
+        enrichmentCache.set(cacheKey, enrichment);
+        resultSource = "ai";
+      } catch {
+        enrichment = {
+          attemptId: crypto.randomUUID(),
+          title: fallbackTitle(memoryBody),
+          tags: [],
+          warning: "AI suggestions were unavailable. You can finish this memory manually.",
+        };
+        resultSource = "fallback";
       }
-
-      if (generation !== enrichmentGeneration || memoryBody.trim() !== description) return;
-
-      memoryTitle = enrichment.title;
-      memoryLabels = enrichment.tags;
-      enrichmentWarning = enrichment.warning;
-      creationProvenance = {
-        enrichmentAttemptId: enrichment.attemptId,
-        resultSource,
-        reviewStartedAt: new Date().toISOString(),
-      };
-      newMemoryStep = "review";
-    } finally {
-      if (generation === enrichmentGeneration) enrichingMemory = false;
     }
+
+    if (generation !== enrichmentGeneration || memoryBody.trim() !== description) return;
+
+    memoryTitle = enrichment.title;
+    memoryLabels = enrichment.tags;
+    enrichmentWarning = enrichment.warning;
+    creationProvenance = {
+      enrichmentAttemptId: enrichment.attemptId,
+      resultSource,
+      reviewStartedAt: new Date().toISOString(),
+    };
+    newMemoryStep = "review";
   }
 
   async function addMemory(event: SubmitEvent): Promise<void> {
     event.preventDefault();
-    if (savingMemory || !boardReady) return;
+    if (saving || !boardReady) return;
     const generation = enrichmentGeneration;
-    savingMemory = true;
     persistenceError = "";
     try {
       await oncreate(
@@ -124,8 +119,6 @@
       if (generation === enrichmentGeneration) onclose();
     } catch (error) {
       persistenceError = error instanceof Error ? error.message : "The board could not be saved.";
-    } finally {
-      savingMemory = false;
     }
   }
 </script>
@@ -152,7 +145,7 @@
             rows="12"
             maxlength="8000"
             required
-            disabled={enrichingMemory}
+            disabled={enriching}
             {@attach focusCapture}
           ></textarea>
         </label>
@@ -160,8 +153,8 @@
           <button type="button" class="secondary-button" onclick={onclose}>
             Cancel
           </button>
-          <button type="submit" class="card-button" disabled={enrichingMemory}>
-            {enrichingMemory ? "Thinking…" : "Continue"}
+          <button type="submit" class="card-button" disabled={enriching}>
+            {enriching ? "Thinking…" : "Continue"}
           </button>
         </footer>
       </form>
@@ -186,8 +179,8 @@
           <button type="button" class="secondary-button" onclick={() => (newMemoryStep = "capture")}>
             Back
           </button>
-          <button type="submit" class="card-button" disabled={savingMemory || !boardReady}>
-            {savingMemory ? "Saving…" : boardReady ? "Create Memory" : "Loading board…"}
+          <button type="submit" class="card-button" disabled={saving || !boardReady}>
+            {saving ? "Saving…" : boardReady ? "Create Memory" : "Loading board…"}
           </button>
         </footer>
       </form>
