@@ -1,4 +1,4 @@
-import { DATABASE_CONNECTION_STRING, DATABASE_LISTEN_CONNECTION_STRING } from "$app/env/private";
+import { DATABASE_LISTEN_CONNECTION_STRING } from "$app/env/private";
 import postgres from "postgres";
 
 const CARD_CHANGE_CHANNEL = "cards_changed";
@@ -13,10 +13,7 @@ export async function* streamCardSnapshots<T>(
   readSnapshot: () => Promise<T>,
   signal: AbortSignal,
 ): AsyncGenerator<T> {
-  const connectionString = DATABASE_LISTEN_CONNECTION_STRING || DATABASE_CONNECTION_STRING;
-  if (!connectionString) throw new Error("A database listener connection string is not set");
-
-  const sql = postgres(connectionString, { ssl: "require", max: 1 });
+  const sql = postgres(DATABASE_LISTEN_CONNECTION_STRING, { ssl: "require", max: 1 });
   let changed = deferred();
   let connected = false;
   const notify = () => changed.resolve();

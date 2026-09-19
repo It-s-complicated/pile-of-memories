@@ -7,6 +7,7 @@
 <script lang="ts">
   import { type NodeProps, useSvelteFlow } from "@xyflow/svelte";
   import { getCardPersistence } from "#lib/card-persistence.js";
+  import { enrichMemory } from "#lib/enrichment.remote.js";
   import { partitionLabels } from "#lib/labels.js";
   import { parseMarkdown } from "#lib/markdown.js";
   import { getPrimaryTagAccent, getTopicTagColor, type MemoryNode } from "#lib/scene.js";
@@ -25,6 +26,9 @@
   let editTitle = $state("");
   let editBody = $state("");
   let editLabels = $state<string[]>([]);
+  let enrichmentGeneration = 0;
+  let enriching = $state(false);
+  let enrichmentStatus = $state("");
   let saving = $state(false);
   let saveError = $state("");
 
@@ -34,11 +38,43 @@
   }
 
   function openEditor(): void {
+    enrichmentGeneration += 1;
     editTitle = data.title;
     editBody = data.body;
     editLabels = [...data.tags, ...data.topics];
+    enrichmentStatus = "";
     saveError = "";
     editOpen = true;
+  }
+
+  function closeEditor(): void {
+    enrichmentGeneration += 1;
+    enriching = false;
+    editOpen = false;
+  }
+
+  async function repeatEnrichment(): Promise<void> {
+    const description = editBody.trim();
+    if (!description) {
+      saveError = "Add memory text before repeating enrichment.";
+      return;
+    }
+
+    const generation = ++enrichmentGeneration;
+    enriching = true;
+    enrichmentStatus = "";
+    saveError = "";
+    try {
+      const result = await enrichMemory({ description, existingTags: data.tagVocabulary });
+      if (generation !== enrichmentGeneration) return;
+      editTitle = result.title;
+      editLabels = result.tags;
+      enrichmentStatus = "Fresh title and tags are ready. Save to keep them.";
+    } catch {
+      if (generation === enrichmentGeneration) saveError = "Enrichment failed. Try again.";
+    } finally {
+      if (generation === enrichmentGeneration) enriching = false;
+    }
   }
 
   async function save(event: SubmitEvent): Promise<void> {
@@ -54,7 +90,7 @@
     try {
       await cardPersistence.update(id, changes);
       updateNodeData(id, { ...data, ...changes });
-      editOpen = false;
+      closeEditor();
     } catch {
       saveError = "Changes not saved.";
     } finally {
@@ -67,7 +103,7 @@
     saveError = "";
     try {
       await cardPersistence.update(id, { archived: true });
-      editOpen = false;
+      closeEditor();
     } catch {
       saveError = "Memory not archived.";
     } finally {
@@ -83,7 +119,7 @@
     saveError = "";
     try {
       await cardPersistence.delete(id);
-      editOpen = false;
+      closeEditor();
     } catch {
       saveError = "Memory not deleted.";
     } finally {
@@ -172,7 +208,7 @@
   <dialog
     class="memory-dialog nodrag nowheel"
     aria-labelledby={`edit-memory-${id}`}
-    onclose={() => (editOpen = false)}
+    onclose={closeEditor}
     {@attach showModal}
   >
     <form method="dialog" onsubmit={save}>
@@ -181,32 +217,46 @@
         <h2 id={`edit-memory-${id}`}>{data.title || "Untitled memory"}</h2>
       </header>
 
-      <label class="memory-field">
-        <span>Title</span>
-        <input bind:value={editTitle} required />
-      </label>
-      <label class="memory-field">
-        <span>Memory</span>
-        <textarea bind:value={editBody} rows="10"></textarea>
-      </label>
-      <TagEditor
-        id={`edit-memory-tags-${id}`}
-        bind:value={editLabels}
-        suggestions={data.tagVocabulary}
-      />
+      <fieldset class="edit-fields" disabled={saving || enriching}>
+        <label class="memory-field">
+          <span>Title</span>
+          <input bind:value={editTitle} maxlength="80" required />
+        </label>
+        <label class="memory-field">
+          <span>Memory</span>
+          <textarea bind:value={editBody} rows="10" maxlength="8000" required></textarea>
+        </label>
+        <TagEditor
+          id={`edit-memory-tags-${id}`}
+          bind:value={editLabels}
+          suggestions={data.tagVocabulary}
+        />
+      </fieldset>
 
+      <fieldset class="debug-tools">
+        <legend>Debug</legend>
+        <p>Generate a fresh title and tags from the current memory text.</p>
+        <button
+          type="button"
+          class="secondary-button"
+          disabled={saving || enriching}
+          onclick={repeatEnrichment}
+        >{enriching ? "Enriching…" : "Repeat enrichment"}</button>
+      </fieldset>
+
+      {#if enrichmentStatus}<p class="placement-note" role="status">{enrichmentStatus}</p>{/if}
       {#if saveError}<p class="save-error" role="alert">{saveError}</p>{/if}
       <footer>
-        <button type="button" class="danger-button" disabled={saving} onclick={remove}>
+        <button type="button" class="danger-button" disabled={saving || enriching} onclick={remove}>
           Delete permanently
         </button>
-        <button type="button" class="secondary-button" disabled={saving} onclick={archive}>
+        <button type="button" class="secondary-button" disabled={saving || enriching} onclick={archive}>
           Archive
         </button>
-        <button type="button" class="secondary-button" onclick={() => (editOpen = false)}>
+        <button type="button" class="secondary-button" onclick={closeEditor}>
           Cancel
         </button>
-        <button type="submit" class="card-button" disabled={saving}>Save</button>
+        <button type="submit" class="card-button" disabled={saving || enriching}>Save</button>
       </footer>
     </form>
   </dialog>
@@ -397,5 +447,24 @@
   .save-error {
     margin: 0;
     color: var(--danger);
+  }
+
+  .edit-fields {
+    display: grid;
+    gap: 1rem;
+    border: 0;
+    padding: 0;
+  }
+
+  .debug-tools {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .debug-tools p {
+    flex: 1;
+    margin: 0;
+    color: var(--muted);
   }
 </style>

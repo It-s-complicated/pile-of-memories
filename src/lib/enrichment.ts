@@ -11,7 +11,7 @@ export const enrichmentInputSchema = z
 export const enrichmentOutputSchema = z
   .object({
     title: z.string().trim().min(1).max(80),
-    tags: z.array(labelSchema).min(1).max(5).transform(canonicalizeLabels),
+    tags: z.array(labelSchema).max(5).transform(canonicalizeLabels),
   })
   .strict();
 

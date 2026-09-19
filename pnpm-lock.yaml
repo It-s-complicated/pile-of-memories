@@ -143,6 +143,9 @@ importers:
       '@xyflow/svelte':
         specifier: ^1.6.6
         version: 1.6.6(svelte@5.57.0)
+      advocaat:
+        specifier: ^0.0.6
+        version: 0.0.6
       better-auth:
         specifier: ^1.7.5
         version: 1.7.5(@sveltejs/kit@3.0.0-next.25(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0))(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.1)(jiti@2.7.0)(typescript@6.0.3))(svelte@5.57.0)(typescript@6.0.3))(pg@8.23.0)(svelte@5.57.0)(vitest@4.1.11)
@@ -1330,6 +1333,9 @@ packages:
     resolution: {integrity: sha512-lGq+9yr1/GuAWaVYIHRjvvySG5/4VfKIvC8EWxStPdcDh/Ka7FG3twP6v4d5BkravUilhIAsG4Qj83t02LWUPQ==}
     engines: {node: '>=0.4.0'}
     hasBin: true
+
+  advocaat@0.0.6:
+    resolution: {integrity: sha512-mZomE2RzphVc23Uaa6bupoJvO2R3Bnnq7XQnSUshX2FEYrqh6dGt46zOvYYXnDczHV1JEGM6Wuz+u8aDN3nwNA==}
 
   agent-browser@0.38.1:
     resolution: {integrity: sha512-k58FCz0yUOCANoNkMiqJe+H2y6r6sUZazqXsWF+MYq1iRC42PjtLcBoag6SSTOD/FRQppvPDvE5HDYEhclvnhw==}
@@ -2791,6 +2797,8 @@ snapshots:
   acorn@8.17.0: {}
 
   acorn@8.18.0: {}
+
+  advocaat@0.0.6: {}
 
   agent-browser@0.38.1: {}
 
