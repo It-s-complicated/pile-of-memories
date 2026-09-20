@@ -2,7 +2,7 @@ import { expect, it } from "vite-plus/test";
 import { PRIMARY_TAGS, TOPIC_TAGS } from "../labels";
 import { selectMemoryLabels } from "./label-selection";
 
-// Opt in with TEST_LIVE_ENRICHMENT=1; uses the configured provider and synthetic text only.
+// Opt in with truthy TEST_LIVE_ENRICHMENT; uses the configured provider and synthetic text only.
 it.skipIf(!process.env.TEST_LIVE_ENRICHMENT)(
   "suggests relevant labels for short notes without forcing unrelated labels",
   async () => {
