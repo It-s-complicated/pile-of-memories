@@ -214,6 +214,7 @@
   }
 
   .memory-dialog.list-dialog form {
+    box-sizing: border-box;
     grid-template-rows: auto auto 1fr auto;
     height: 100%;
   }
@@ -322,7 +323,7 @@
 
   .memory-list {
     margin: 0;
-    border-block: 1px solid var(--hairline);
+    border-block-start: 1px solid var(--hairline);
     padding: 0;
     list-style: none;
   }
@@ -477,13 +478,13 @@
       border-radius: 0;
     }
 
-    form {
-      height: 100dvh;
-      min-height: 100%;
-    }
-
     header {
       align-items: start;
+    }
+
+    .memory-dialog.list-dialog form {
+      height: auto;
+      min-height: 100%;
     }
 
     .list-controls,
