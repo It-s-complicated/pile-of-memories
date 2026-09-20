@@ -61,8 +61,8 @@ describe("candidate label selection", () => {
     expect(body.questions.label_2.criteria).toHaveLength(4);
   });
 
-  it("allows no match and applies the 0.75 normalized score cutoff", async () => {
-    mockAnswers([0.7, 0.5]);
+  it("allows no match and applies the 0.7 normalized score cutoff", async () => {
+    mockAnswers([0.69, 0.5]);
     expect(
       (
         await selectMemoryLabels(
@@ -71,7 +71,7 @@ describe("candidate label selection", () => {
         )
       ).tags,
     ).toEqual([]);
-    mockAnswers([0.75]);
+    mockAnswers([0.7]);
     expect(
       (
         await selectMemoryLabels(

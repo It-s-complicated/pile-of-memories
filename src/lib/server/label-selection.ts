@@ -71,10 +71,12 @@ export async function selectMemoryLabels(input: EnrichmentInput, signal: AbortSi
     tags: candidates
       .map(({ id, label }) => ({
         label,
-        relevance: result.answers[id]!.score / (LABEL_RELEVANCE_LEVELS.length - 1),
+        score: result.answers[id]!.score,
       }))
-      .filter(({ relevance }) => relevance >= LABEL_RELEVANCE_THRESHOLD)
-      .sort((a, b) => b.relevance - a.relevance)
+      .filter(
+        ({ score }) => score >= LABEL_RELEVANCE_THRESHOLD * (LABEL_RELEVANCE_LEVELS.length - 1),
+      )
+      .toSorted((a, b) => b.score - a.score)
       .slice(0, 5)
       .map(({ label }) => label),
     inputTokens: result.usage.input_tokens,
