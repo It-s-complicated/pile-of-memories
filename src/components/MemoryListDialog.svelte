@@ -210,6 +210,18 @@
 <style>
   .memory-dialog.list-dialog {
     width: min(68rem, calc(100vw - 2rem));
+    height: calc(100vh - 2rem);
+  }
+
+  .memory-dialog.list-dialog form {
+    grid-template-rows: auto auto 1fr auto;
+    height: 100%;
+  }
+
+  .memory-dialog.list-dialog .memory-list,
+  .memory-dialog.list-dialog .empty-list {
+    min-height: 0;
+    overflow: auto;
   }
 
   header {
@@ -466,7 +478,7 @@
     }
 
     form {
-      grid-template-rows: auto auto 1fr auto;
+      height: 100dvh;
       min-height: 100%;
     }
 
