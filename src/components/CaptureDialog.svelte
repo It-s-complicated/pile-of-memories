@@ -64,7 +64,7 @@
     const description = memoryBody.trim();
     if (!description) return;
 
-    const existingTags = canonicalizeLabels(tagVocabulary).sort();
+    const existingTags = canonicalizeLabels(tagVocabulary).toSorted();
     const cacheKey = JSON.stringify({ description, existingTags });
     const generation = enrichmentGeneration;
     enrichmentWarning = "";
