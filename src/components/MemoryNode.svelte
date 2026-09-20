@@ -5,8 +5,11 @@
 </script>
 
 <script lang="ts">
-  import { type NodeProps, useSvelteFlow } from "@xyflow/svelte";
+  import { type NodeProps } from "@xyflow/svelte";
+  import { cardKindLabels, type CardKind } from "#lib/card.js";
+  import { deleteCard, updateCard } from "#lib/cards.remote.js";
   import { getCardPersistence } from "#lib/card-persistence.js";
+  import { enrichMemory } from "#lib/enrichment.remote.js";
   import { partitionLabels } from "#lib/labels.js";
   import { parseMarkdown } from "#lib/markdown.js";
   import { getPrimaryTagAccent, getTopicTagColor, type MemoryNode } from "#lib/scene.js";
@@ -14,7 +17,6 @@
   import TagEditor from "./TagEditor.svelte";
 
   let { id, data }: NodeProps<MemoryNode> = $props();
-  const { updateNodeData } = useSvelteFlow<MemoryNode>();
   const cardPersistence = getCardPersistence();
   let browse = $derived(cardPersistence.browse());
   let readOpen = $state(false);
@@ -23,9 +25,13 @@
   let updatedDate = $derived(compactDateFormatter.format(new Date(data.updatedAt)));
   let editOpen = $state(false);
   let editTitle = $state("");
+  let editKind = $state<CardKind>("memory");
   let editBody = $state("");
   let editLabels = $state<string[]>([]);
-  let saving = $state(false);
+  let enrichmentGeneration = 0;
+  let enriching = $derived(enrichMemory.pending > 0);
+  let busy = $derived(updateCard.pending > 0 || deleteCard.pending > 0);
+  let enrichmentStatus = $state("");
   let saveError = $state("");
 
   function showModal(dialog: HTMLDialogElement) {
@@ -34,11 +40,41 @@
   }
 
   function openEditor(): void {
+    enrichmentGeneration += 1;
     editTitle = data.title;
+    editKind = data.kind;
     editBody = data.body;
     editLabels = [...data.tags, ...data.topics];
+    enrichmentStatus = "";
     saveError = "";
     editOpen = true;
+  }
+
+  function closeEditor(): void {
+    enrichmentGeneration += 1;
+    editOpen = false;
+  }
+
+  async function repeatEnrichment(): Promise<void> {
+    const description = editBody.trim();
+    if (!description) {
+      saveError = "Add memory text before repeating enrichment.";
+      return;
+    }
+
+    const generation = ++enrichmentGeneration;
+    enrichmentStatus = "";
+    saveError = "";
+    try {
+      const result = await enrichMemory({ description, existingTags: data.tagVocabulary });
+      if (generation !== enrichmentGeneration) return;
+      editTitle = result.title;
+      editKind = result.kind;
+      editLabels = result.tags;
+      enrichmentStatus = "Fresh title, type, and tags are ready. Save to keep them.";
+    } catch {
+      if (generation === enrichmentGeneration) saveError = "Enrichment failed. Try again.";
+    }
   }
 
   async function save(event: SubmitEvent): Promise<void> {
@@ -46,32 +82,24 @@
     const title = editTitle.trim() || "Untitled memory";
     const body = editBody;
     const { tags, topics } = partitionLabels(editLabels);
-    const links = parseMarkdown(body).links;
-    const changes = { title, body, tags, topics, links };
+    const changes = { title, body, tags, topics, kind: editKind };
 
-    saving = true;
     saveError = "";
     try {
       await cardPersistence.update(id, changes);
-      updateNodeData(id, { ...data, ...changes });
-      editOpen = false;
+      closeEditor();
     } catch {
       saveError = "Changes not saved.";
-    } finally {
-      saving = false;
     }
   }
 
   async function archive(): Promise<void> {
-    saving = true;
     saveError = "";
     try {
       await cardPersistence.update(id, { archived: true });
-      editOpen = false;
+      closeEditor();
     } catch {
       saveError = "Memory not archived.";
-    } finally {
-      saving = false;
     }
   }
 
@@ -79,24 +107,34 @@
     if (!confirm(`Permanently delete “${data.title || "Untitled memory"}”? This cannot be undone.`))
       return;
 
-    saving = true;
     saveError = "";
     try {
       await cardPersistence.delete(id);
-      editOpen = false;
+      closeEditor();
     } catch {
       saveError = "Memory not deleted.";
-    } finally {
-      saving = false;
     }
   }
 </script>
 
 <article
   class={["memory-card", { browsing: browse }]}
-  aria-label={`Memory: ${data.title || "Untitled memory"}`}
+  aria-label={`${cardKindLabels[data.kind]}: ${data.title || "Untitled memory"}`}
 >
   <header>
+    <div class="card-kind">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        {#if data.kind === "idea"}
+          <path d="M9 18h6m-5 3h4M8 14a6 6 0 1 1 8 0c-1 1-1 2-1 2H9s0-1-1-2Z" />
+        {:else if data.kind === "note"}
+          <path d="M5 3h10l4 4v14H5ZM15 3v5h4M9 12h6m-6 4h6" />
+        {:else}
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7v5l-3 2" />
+        {/if}
+      </svg>
+      {cardKindLabels[data.kind]}
+    </div>
     <p class="card-meta">
       <time datetime={data.createdAt}>Created {createdDate}</time>
       ·
@@ -172,7 +210,7 @@
   <dialog
     class="memory-dialog nodrag nowheel"
     aria-labelledby={`edit-memory-${id}`}
-    onclose={() => (editOpen = false)}
+    onclose={closeEditor}
     {@attach showModal}
   >
     <form method="dialog" onsubmit={save}>
@@ -181,32 +219,54 @@
         <h2 id={`edit-memory-${id}`}>{data.title || "Untitled memory"}</h2>
       </header>
 
-      <label class="memory-field">
-        <span>Title</span>
-        <input bind:value={editTitle} required />
-      </label>
-      <label class="memory-field">
-        <span>Memory</span>
-        <textarea bind:value={editBody} rows="10"></textarea>
-      </label>
-      <TagEditor
-        id={`edit-memory-tags-${id}`}
-        bind:value={editLabels}
-        suggestions={data.tagVocabulary}
-      />
+      <fieldset class="edit-fields" disabled={busy || enriching}>
+        <label class="memory-field">
+          <span>Card type</span>
+          <select bind:value={editKind}>
+            {#each Object.entries(cardKindLabels) as [kind, label] (kind)}
+              <option value={kind}>{label}</option>
+            {/each}
+          </select>
+        </label>
+        <label class="memory-field">
+          <span>Title</span>
+          <input bind:value={editTitle} maxlength="80" required />
+        </label>
+        <label class="memory-field">
+          <span>Memory</span>
+          <textarea bind:value={editBody} rows="10" maxlength="8000" required></textarea>
+        </label>
+        <TagEditor
+          id={`edit-memory-tags-${id}`}
+          bind:value={editLabels}
+          suggestions={data.tagVocabulary}
+        />
+      </fieldset>
 
+      <fieldset class="debug-tools">
+        <legend>Debug</legend>
+        <p>Generate a fresh title, type, and tags from the current card text.</p>
+        <button
+          type="button"
+          class="secondary-button"
+          disabled={busy || enriching}
+          onclick={repeatEnrichment}
+        >{enriching ? "Enriching…" : "Repeat enrichment"}</button>
+      </fieldset>
+
+      {#if enrichmentStatus}<p class="placement-note" role="status">{enrichmentStatus}</p>{/if}
       {#if saveError}<p class="save-error" role="alert">{saveError}</p>{/if}
       <footer>
-        <button type="button" class="danger-button" disabled={saving} onclick={remove}>
+        <button type="button" class="danger-button" disabled={busy || enriching} onclick={remove}>
           Delete permanently
         </button>
-        <button type="button" class="secondary-button" disabled={saving} onclick={archive}>
+        <button type="button" class="secondary-button" disabled={busy || enriching} onclick={archive}>
           Archive
         </button>
-        <button type="button" class="secondary-button" onclick={() => (editOpen = false)}>
+        <button type="button" class="secondary-button" onclick={closeEditor}>
           Cancel
         </button>
-        <button type="submit" class="card-button" disabled={saving}>Save</button>
+        <button type="submit" class="card-button" disabled={busy || enriching}>Save</button>
       </footer>
     </form>
   </dialog>
@@ -276,6 +336,19 @@
 
   .card-meta time {
     letter-spacing: 0.04em;
+  }
+
+  .card-kind {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.45rem;
+    color: var(--theme-ink);
+    font-family: var(--font-label);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
   }
 
   h2 {
@@ -397,5 +470,24 @@
   .save-error {
     margin: 0;
     color: var(--danger);
+  }
+
+  .edit-fields {
+    display: grid;
+    gap: 1rem;
+    border: 0;
+    padding: 0;
+  }
+
+  .debug-tools {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .debug-tools p {
+    flex: 1;
+    margin: 0;
+    color: var(--muted);
   }
 </style>

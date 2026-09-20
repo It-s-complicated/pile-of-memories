@@ -206,10 +206,10 @@
   let archiveOpen = $state(false);
   let listOpen = $state(false);
   let archiveError = $state("");
-  let archiveBusyId = $state("");
+  let archiveBusy = $derived(updateCard.pending > 0 || deleteCard.pending > 0);
   let reorganizeSnapshot = $state.raw<MemoryNode[] | null>(null);
   let reorganizeViewport = $state<Viewport>();
-  let reorganizeSaving = $state(false);
+  let reorganizeSaving = $derived(updateCardPositions.pending > 0);
   let reorganizeStatus = $state("");
 
   function getErrorMessage(error: unknown): string {
@@ -230,28 +230,22 @@
   }
 
   async function restoreArchived(id: string): Promise<void> {
-    archiveBusyId = id;
     archiveError = "";
     try {
       await saveCard(id, { archived: false });
     } catch (error) {
       archiveError = getErrorMessage(error);
-    } finally {
-      archiveBusyId = "";
     }
   }
 
   async function deleteArchived(id: string, title: string): Promise<void> {
     if (!confirm(`Permanently delete “${title}”? This cannot be undone.`)) return;
 
-    archiveBusyId = id;
     archiveError = "";
     try {
       await removeCard(id);
     } catch (error) {
       archiveError = getErrorMessage(error);
-    } finally {
-      archiveBusyId = "";
     }
   }
 
@@ -261,7 +255,7 @@
   }
 
   async function addMemory(
-    draft: Pick<CardInput, "title" | "body" | "tags" | "topics" | "links">,
+    draft: Pick<CardInput, "title" | "body" | "tags" | "topics" | "links" | "kind">,
     creation?: CardCreationProvenance,
   ): Promise<void> {
     requireOnline();
@@ -351,7 +345,6 @@
       return previous?.x === position.x && previous.y === position.y ? [] : [{ id, position }];
     });
 
-    reorganizeSaving = true;
     persistenceError = "";
     try {
       await savePositions(positions);
@@ -370,8 +363,6 @@
       if (previousViewport) await viewportStart?.restore(previousViewport);
       nodes = cards.filter((card) => !card.archived).map((card) => cardToMemoryNode(card, tagVocabulary));
       void cardsQuery.reconnect().catch(() => {});
-    } finally {
-      reorganizeSaving = false;
     }
   }
 </script>
@@ -533,13 +524,13 @@
                 <button
                   type="button"
                   class="secondary-button"
-                  disabled={archiveBusyId !== ""}
+                  disabled={archiveBusy}
                   onclick={() => restoreArchived(card.id)}
                 >Restore</button>
                 <button
                   type="button"
                   class="danger-button"
-                  disabled={archiveBusyId !== ""}
+                  disabled={archiveBusy}
                   onclick={() => deleteArchived(card.id, card.title)}
                 >Delete permanently</button>
               </div>

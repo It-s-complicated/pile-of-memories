@@ -14,6 +14,7 @@ import {
 
 const CARD_ID = "00000000-0000-4000-8000-000000000001";
 const validCard = {
+  kind: "memory" as const,
   id: CARD_ID,
   title: "  Capture this  ",
   body: "Read [the reference](https://example.com/docs).",
@@ -150,6 +151,7 @@ describe("memory list", () => {
     {
       ...validCard,
       title: "Beta",
+      kind: "note" as const,
       tags: ["Job"],
       topics: [],
       createdAt: "2026-01-01T00:00:00.000Z",
@@ -177,5 +179,18 @@ describe("memory list", () => {
       "Beta",
     ]);
     expect(memoryListSettingsSchema.safeParse({ sort: "random", tags: [] }).success).toBe(false);
+  });
+
+  it("matches any selected kind and defaults to no kind filter", () => {
+    expect(
+      sortAndFilterCards(cards, { sort: "title-asc", kinds: ["note"], tags: [] }).map(
+        ({ title }) => title,
+      ),
+    ).toEqual(["Beta"]);
+    expect(
+      sortAndFilterCards(cards, { sort: "title-asc", kinds: [], tags: [] }).map(
+        ({ title }) => title,
+      ),
+    ).toEqual(["Alpha", "Beta"]);
   });
 });

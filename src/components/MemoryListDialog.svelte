@@ -4,6 +4,7 @@
 </script>
 
 <script lang="ts">
+  import { cardKindLabels } from "#lib/card.js";
   import {
     memoryListSettingsSchema,
     sortAndFilterCards,
@@ -23,6 +24,7 @@
 
   const defaultSettings = {
     sort: "updated-desc",
+    kinds: [],
     tags: [],
   } satisfies MemoryListSettings;
   let { cards, onclose, onlocate }: Props = $props();
@@ -68,6 +70,15 @@
     });
   }
 
+  function toggleKind(kind: string): void {
+    saveSettings({
+      ...settings,
+      kinds: settings.kinds.includes(kind as Card["kind"])
+        ? settings.kinds.filter((value) => value !== kind)
+        : [...settings.kinds, kind as Card["kind"]],
+    });
+  }
+
   function showModal(dialog: HTMLDialogElement) {
     dialog.showModal();
     return () => dialog.close();
@@ -99,6 +110,22 @@
         </select>
       </label>
 
+      <fieldset>
+        <legend>Filter by kind · matches any</legend>
+        <div class="tag-filters">
+          {#each Object.entries(cardKindLabels) as [kind, label] (kind)}
+            <label>
+              <input
+                type="checkbox"
+                checked={settings.kinds.includes(kind as Card["kind"])}
+                onchange={() => toggleKind(kind)}
+              />
+              <span>{label}</span>
+            </label>
+          {/each}
+        </div>
+      </fieldset>
+
       {#if availableTags.length}
         <fieldset>
           <legend>Filter by tag · matches any</legend>
@@ -119,7 +146,7 @@
               <button
                 type="button"
                 class="clear-filters"
-                onclick={() => saveSettings({ ...settings, tags: [] })}
+                onclick={() => saveSettings({ ...settings, tags: [], kinds: [] })}
               >Clear filters</button>
             {/if}
           </div>
@@ -137,6 +164,7 @@
                   <span class="memory-summary">
                     <strong>{card.title}</strong>
                     <span>
+                      <span class="memory-kind">{cardKindLabels[card.kind]}</span>
                       Updated <time datetime={card.updatedAt}>{dateFormatter.format(new Date(card.updatedAt))}</time>
                       · Created <time datetime={card.createdAt}>{dateFormatter.format(new Date(card.createdAt))}</time>
                     </span>
@@ -202,6 +230,10 @@
     display: grid;
     grid-template-columns: minmax(12rem, 0.35fr) 1fr;
     gap: 1rem;
+  }
+
+  .list-controls fieldset:nth-of-type(2) {
+    grid-column: 1 / -1;
   }
 
   .sort-control {
@@ -332,6 +364,13 @@
     font-size: 0.65rem;
     letter-spacing: 0.04em;
     color: var(--muted);
+  }
+
+  .memory-kind {
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--theme-ink);
   }
 
   .memory-tags {

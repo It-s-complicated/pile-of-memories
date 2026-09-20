@@ -25,6 +25,7 @@ const TOPIC_TAG_HUES = {
 } satisfies Record<TopicTagKey, number>;
 
 export type MemoryData = {
+  kind: Card["kind"];
   title: string;
   body: string;
   createdAt: string;
@@ -70,6 +71,7 @@ export function cardToMemoryNode(card: Card, tagVocabulary: string[] = []): Memo
     type: "memory",
     position: { ...card.position },
     data: {
+      kind: card.kind ?? "memory",
       title: card.title,
       body: card.body,
       createdAt: card.createdAt,
@@ -86,6 +88,7 @@ export function cardToMemoryNode(card: Card, tagVocabulary: string[] = []): Memo
 export function memoryNodeToCard(node: MemoryNode): CardInput {
   return {
     id: node.id,
+    kind: node.data.kind,
     title: node.data.title.trim() || "Untitled memory",
     body: node.data.body,
     position: node.position,

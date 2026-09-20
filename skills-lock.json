@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "advocaat": {
+      "source": "pithings/advocaat",
+      "sourceType": "github",
+      "skillPath": "skills/advocaat/SKILL.md",
+      "computedHash": "e6797533eadd20455c10f0ae59904d200ba9e2e3a39035f321ccc21d400423f4"
+    },
+    "typesafe-ai": {
+      "source": "typesafe-ai/skills",
+      "sourceType": "github",
+      "skillPath": "skills/typesafe-ai/SKILL.md",
+      "computedHash": "9cd84c5e535dec8dec59917c110f9c00b4a61faadb86b432ec7e41051170af12"
+    }
+  }
+}

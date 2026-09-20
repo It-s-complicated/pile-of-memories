@@ -23,6 +23,7 @@
     "@tanstack/browser-db-sqlite-persistence": "^0.2.23",
     "@tanstack/svelte-db": "^0.4.1",
     "@xyflow/svelte": "^1.6.6",
+    "advocaat": "^0.0.6",
     "better-auth": "^1.7.5",
     "marked": "^18.0.13",
     "pg": "^8.23.0",
@@ -31,8 +32,8 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@sveltejs/adapter-netlify": "7.0.0-next.10",
-    "@sveltejs/kit": "3.0.0-next.25",
+    "@sveltejs/adapter-netlify": "7.0.0-next.11",
+    "@sveltejs/kit": "3.0.0-next.27",
     "@types/node": "^26.6.1",
     "@types/pg": "^8.23.1",
     "@typescript/native-preview": "npm:typescript@7.0.2",

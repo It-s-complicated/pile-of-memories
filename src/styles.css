@@ -334,6 +334,7 @@ select {
 }
 
 .memory-field input,
+.memory-field select,
 .memory-field textarea {
   box-sizing: border-box;
   width: 100%;
@@ -345,6 +346,7 @@ select {
 }
 
 .memory-field input:focus-visible,
+.memory-field select:focus-visible,
 .memory-field textarea:focus-visible {
   outline: 2px solid color-mix(in oklch, var(--theme-ink) 55%, var(--paper));
   outline-offset: 1px;

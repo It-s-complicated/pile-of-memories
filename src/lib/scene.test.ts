@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vite-plus/test";
 import { parseCardChanges, parseCardInput } from "./card";
-import { getMinimapColors, getPrimaryTagAccent, getTopicTagColor } from "./scene";
+import {
+  cardToMemoryNode,
+  memoryNodeToCard,
+  getMinimapColors,
+  getPrimaryTagAccent,
+  getTopicTagColor,
+} from "./scene";
 
 describe("board", () => {
   it("colors labels from one OKLCH family, hue per tag", () => {
@@ -51,5 +57,22 @@ describe("card writes", () => {
     expect(parseCardChanges({ tags: ["Job"] })).toBeNull();
     expect(parseCardChanges({ archived: true })).toEqual({ archived: true });
     expect(parseCardChanges({ archived: "yes" })).toBeNull();
+  });
+
+  it("defaults legacy cards to memory and preserves each kind through canvas conversion", () => {
+    expect(parseCardInput(card)?.kind).toBe("memory");
+    for (const kind of ["memory", "idea", "note"] as const) {
+      const parsed = parseCardInput({ ...card, kind })!;
+      const node = cardToMemoryNode({
+        ...parsed,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      });
+      expect(node.type).toBe("memory");
+      expect(memoryNodeToCard(node).kind).toBe(kind);
+      expect(parseCardChanges({ kind })).toEqual({ kind });
+    }
+    expect(parseCardInput({ ...card, kind: "task" })).toBeNull();
+    expect(parseCardChanges({ kind: "task" })).toBeNull();
   });
 });

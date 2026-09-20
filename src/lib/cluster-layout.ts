@@ -12,7 +12,9 @@ type ClusterNode = {
 };
 
 function labels(values: string[]): string[] {
-  return [...new Set(values.map((value) => value.trim().toLowerCase()).filter(Boolean))].sort();
+  return Array.from(
+    new Set(values.map((value) => value.trim().toLowerCase()).filter(Boolean)),
+  ).sort();
 }
 
 // One category per card, independent of tag order or additional topics.
@@ -47,7 +49,7 @@ function clusters<T extends ClusterNode>(nodes: T[]) {
     group.push(node);
     grouped.set(key, group);
   }
-  return [...grouped].sort(([a], [b]) => a.localeCompare(b));
+  return Array.from(grouped).toSorted(([a], [b]) => a.localeCompare(b));
 }
 
 export function getClusterRegions(nodes: ClusterNode[]) {

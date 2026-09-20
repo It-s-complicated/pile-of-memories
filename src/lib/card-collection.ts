@@ -22,7 +22,7 @@ export async function createCardCollection(persistence?: PersistedCollectionPers
       >({
         ...options,
         persistence,
-        schemaVersion: 1,
+        schemaVersion: 2,
       })
     : options;
   const collection = createCollection<Card, string>(config);

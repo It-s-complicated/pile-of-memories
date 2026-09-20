@@ -13,9 +13,12 @@ import {
   type EnrichmentUsage,
 } from "#lib/enrichment-analytics.js";
 
-export const ENRICHMENT_PROVIDER = "opencode-go";
-export const ENRICHMENT_MODEL = "gpt-5.6-luna";
-export const ENRICHMENT_PROMPT_VERSION = "memory-enrichment-v1";
+import { LABEL_MODEL, selectMemoryLabels } from "./label-selection";
+
+const TITLE_MODEL = "gpt-5.6-luna";
+export const ENRICHMENT_PROVIDER = "opencode-go+typesafe";
+export const ENRICHMENT_MODEL = `${TITLE_MODEL}+${LABEL_MODEL}`;
+export const ENRICHMENT_PROMPT_VERSION = "memory-enrichment-v7";
 const PROVIDER_TIMEOUT_MS = 55_000;
 
 export type EnrichmentExecution = {
@@ -69,9 +72,8 @@ const reportedUsageSchema = z
 
 export function classifyEnrichmentError(
   error: unknown,
-  options: { configurationMissing?: boolean; timedOut?: boolean } = {},
+  options: { timedOut?: boolean } = {},
 ): EnrichmentErrorCode {
-  if (options.configurationMissing) return "configuration_missing";
   if (options.timedOut) return "provider_timeout";
 
   const providerError = providerErrorSchema.safeParse(error);
@@ -101,14 +103,6 @@ export async function enrichMemory(input: EnrichmentInput): Promise<EnrichmentEx
   let middlewareDurationMs: number | undefined;
   let timedOut = false;
 
-  if (!OPENCODE_GO_API_KEY) {
-    throw new EnrichmentExecutionError(
-      "configuration_missing",
-      Date.now() - startedAt,
-      reportedUsageSchema.parse({}),
-    );
-  }
-
   const analyticsMiddleware: ChatMiddleware = {
     name: "memory-enrichment-analytics",
     onUsage: (_context, reportedUsage) => {
@@ -134,45 +128,60 @@ export async function enrichMemory(input: EnrichmentInput): Promise<EnrichmentEx
 
   try {
     const opencode = openaiCompatible({
-      name: ENRICHMENT_PROVIDER,
+      name: "opencode-go",
       defaultHeaders: { "x-opencode-session": generateMessageId() },
       baseURL: "https://opencode.ai/zen/go/v1",
       apiKey: OPENCODE_GO_API_KEY,
-      models: [ENRICHMENT_MODEL],
+      models: [TITLE_MODEL],
       // ponytail: gpt-5.6-luna 503s on go chat/completions; go responses works
       api: "responses",
     });
 
-    const result = await chat({
-      adapter: opencode(ENRICHMENT_MODEL),
-      stream: false,
-      abortController,
-      middleware: [analyticsMiddleware],
-      modelOptions: { text: { format: { type: "json_object" } }, reasoning: { effort: "medium" } },
-      systemPrompts: [
-        'Return only a JSON object with the keys "title" and "tags". Create a concise title and 1-5 useful labels for a private memory. Reuse the provided board vocabulary when meaningful. Introduce a short new label only when necessary.',
-      ],
-      messages: [
-        {
-          role: "user",
-          // ponytail: the go proxy only checks the input (not instructions) for the
-          // word "json" when text.format is json_object, so restate it in the input
-          content: `Respond in JSON. Board vocabulary: ${JSON.stringify(input.existingTags)}\n\nMemory:\n${input.description}`,
-        },
-      ],
-    });
+    const [result, labels] = await Promise.all([
+      chat({
+        adapter: opencode(TITLE_MODEL),
+        stream: false,
+        abortController,
+        middleware: [analyticsMiddleware],
+        modelOptions: { reasoning: { effort: "medium" } },
+        systemPrompts: [
+          "Create a concise title of at most 80 characters for a private memory. Return only the title.",
+        ],
+        messages: [{ role: "user", content: `Memory:\n${input.description}` }],
+      }),
+      selectMemoryLabels(input, abortController.signal),
+    ]);
 
-    const output = enrichmentOutputSchema.parse(JSON.parse(result));
+    const output = enrichmentOutputSchema.parse({
+      title: result,
+      tags: labels.tags,
+      kind: labels.kind,
+    });
+    const titleUsage = reportedUsageSchema.parse(usage ?? {});
     return {
       output,
       latencyMs: Math.max(Date.now() - startedAt, middlewareDurationMs ?? 0),
-      usage: reportedUsageSchema.parse(usage ?? {}),
+      usage: {
+        promptTokens:
+          titleUsage.promptTokens === null ? null : titleUsage.promptTokens + labels.inputTokens,
+        completionTokens:
+          titleUsage.completionTokens === null
+            ? null
+            : titleUsage.completionTokens + labels.outputTokens,
+        totalTokens:
+          titleUsage.totalTokens === null
+            ? null
+            : titleUsage.totalTokens + labels.inputTokens + labels.outputTokens,
+        providerCost: null,
+      },
     };
   } catch (error) {
+    abortController.abort();
     throw new EnrichmentExecutionError(
       classifyEnrichmentError(error, { timedOut }),
       Math.max(Date.now() - startedAt, middlewareDurationMs ?? 0),
-      reportedUsageSchema.parse(usage ?? {}),
+      // A failed combined request cannot report complete usage across both providers.
+      reportedUsageSchema.parse({}),
     );
   } finally {
     clearTimeout(timeout);

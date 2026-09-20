@@ -4,6 +4,9 @@ import { labelsSchema, partitionLabels } from "./labels";
 import { httpUrlSchema, parseMarkdown } from "./markdown";
 
 export const cardIdSchema = z.uuidv4();
+export const cardKindSchema = z.enum(["memory", "idea", "note"]);
+export type CardKind = z.infer<typeof cardKindSchema>;
+export const cardKindLabels = { memory: "Memory", idea: "Idea", note: "Note" };
 
 export function isCardId(value: unknown): value is string {
   return cardIdSchema.safeParse(value).success;
@@ -14,6 +17,7 @@ const positionSchema = z.object({ x: z.number().finite(), y: z.number().finite()
 export const cardInputSchema = z
   .object({
     id: cardIdSchema,
+    kind: cardKindSchema.default("memory"),
     title: z.string().trim().min(1),
     body: z.string(),
     position: positionSchema,
@@ -51,17 +55,20 @@ export const memoryListSettingsSchema = z
       "title-asc",
       "title-desc",
     ]),
+    kinds: z.array(cardKindSchema).default([]),
     tags: labelsSchema,
   })
   .strict();
 export type MemoryListSettings = z.infer<typeof memoryListSettingsSchema>;
 
 export function sortAndFilterCards(cards: Card[], settings: MemoryListSettings): Card[] {
+  const selectedKinds = new Set(settings.kinds);
   const selectedTags = new Set(settings.tags.map((tag) => tag.toLowerCase()));
   const filtered = cards.filter(
     (card) =>
-      selectedTags.size === 0 ||
-      [...card.tags, ...card.topics].some((tag) => selectedTags.has(tag.toLowerCase())),
+      (selectedKinds.size === 0 || selectedKinds.has(card.kind)) &&
+      (selectedTags.size === 0 ||
+        [...card.tags, ...card.topics].some((tag) => selectedTags.has(tag.toLowerCase()))),
   );
 
   return filtered.toSorted((a, b) => {
@@ -84,6 +91,7 @@ export function sortAndFilterCards(cards: Card[], settings: MemoryListSettings):
 
 export const cardChangesSchema = z
   .object({
+    kind: cardKindSchema.optional(),
     title: z.string().trim().min(1).optional(),
     body: z.string().optional(),
     position: positionSchema.optional(),

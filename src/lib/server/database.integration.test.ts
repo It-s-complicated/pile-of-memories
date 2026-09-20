@@ -16,6 +16,7 @@ let sql: ReturnType<typeof postgres>;
 function input(id: string): CardInput {
   return {
     id,
+    kind: "idea",
     title: `Card ${id.at(-1)}`,
     body: "Body",
     position: { x: 0, y: 0 },
@@ -70,6 +71,9 @@ describeIntegration("PostgreSQL card integration", () => {
       "utf8",
     );
     await sql.unsafe(migration);
+    await sql.unsafe(
+      await readFile(new URL("../../../migrations/0004_card_kind.sql", import.meta.url), "utf8"),
+    );
     await sql`TRUNCATE cards CASCADE`;
   });
 
@@ -122,6 +126,14 @@ describeIntegration("PostgreSQL card integration", () => {
 
     const edited = await updateCard(FIRST_ID, { title: "Updated" });
     expect(new Date(edited!.updatedAt).getTime()).toBeGreaterThan(contentTimestamp.getTime());
+  });
+
+  it("persists and changes card types", async () => {
+    await sql`TRUNCATE cards CASCADE`;
+    expect((await insertCard(input(FIRST_ID))).kind).toBe("idea");
+    expect((await updateCard(FIRST_ID, { kind: "note" }))?.kind).toBe("note");
+    expect((await listCards())[0].kind).toBe("note");
+    await expect(sql`UPDATE cards SET kind = 'task' WHERE id = ${FIRST_ID}`).rejects.toThrow();
   });
 
   it("streams authoritative snapshots and releases its listener", async () => {

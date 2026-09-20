@@ -18,6 +18,7 @@ beforeEach(() => {
 
 it("downloads every saved field, archived memories and the full label vocabulary", async () => {
   const memory: Card = {
+    kind: "memory",
     id: "a0fa877d-fec6-47e4-8b71-1074f7eab732",
     title: "A memory — 日本語",
     body: "## Notes\n[Link](https://example.com)",

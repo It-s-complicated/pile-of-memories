@@ -22,9 +22,9 @@ describe("server enrichment analytics", () => {
     const succeeded = buildAttemptSucceeded(
       started,
       input,
-      { title: " Title ", tags: ["css", "New"] },
+      { kind: "note", title: " Title ", tags: ["css", "New"] },
       {
-        output: { title: "Title", tags: ["css", "New"] },
+        output: { kind: "note", title: "Title", tags: ["css", "New"] },
         latencyMs: 125,
         usage: {
           promptTokens: 10,
@@ -47,9 +47,9 @@ describe("server enrichment analytics", () => {
     const succeeded = buildAttemptSucceeded(
       buildAttemptStarted(attemptId, input),
       input,
-      { title: "Title", tags: ["CSS"] },
+      { kind: "note", title: "Title", tags: ["CSS"] },
       {
-        output: { title: "Title", tags: ["CSS"] },
+        output: { kind: "note", title: "Title", tags: ["CSS"] },
         latencyMs: 1,
         usage: {
           promptTokens: null,
@@ -67,6 +67,7 @@ describe("server enrichment analytics", () => {
   it("builds an immutable review job without final private values", () => {
     const key = "another-secure-analytics-key-32-chars";
     const card: Card = {
+      kind: "memory",
       id: "00000000-0000-4000-8000-000000000002",
       title: " Final title ",
       body: "Private body",
