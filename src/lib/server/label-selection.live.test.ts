@@ -3,7 +3,7 @@ import { PRIMARY_TAGS, TOPIC_TAGS } from "../labels";
 import { selectMemoryLabels } from "./label-selection";
 
 // Opt in with truthy TEST_LIVE_ENRICHMENT; uses the configured provider and synthetic text only.
-it.skipIf(!process.env.TEST_LIVE_ENRICHMENT)(
+it.skipIf(!!process.env.TEST_LIVE_ENRICHMENT)(
   "suggests relevant labels for short notes without forcing unrelated labels",
   async () => {
     const examples = [
