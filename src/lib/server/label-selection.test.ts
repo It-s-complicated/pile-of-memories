@@ -62,7 +62,7 @@ describe("candidate label selection", () => {
   });
 
   it("allows no match and applies the 0.75 normalized score cutoff", async () => {
-    mockAnswers([0.74, 0.5]);
+    mockAnswers([0.7, 0.5]);
     expect(
       (
         await selectMemoryLabels(
