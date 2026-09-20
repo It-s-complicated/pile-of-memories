@@ -52,7 +52,6 @@
 
   function closeEditor(): void {
     enrichmentGeneration += 1;
-    enriching = false;
     editOpen = false;
   }
 
