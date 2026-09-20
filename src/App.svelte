@@ -15,7 +15,6 @@
   import * as z from "zod";
   import "@xyflow/svelte/dist/style.css";
   import ClickableMiniMap from "./components/ClickableMiniMap.svelte";
-  import ClusterRegions from "./components/ClusterRegions.svelte";
   import MemoryListDialog from "./components/MemoryListDialog.svelte";
   import ViewportStart from "./components/ViewportStart.svelte";
   import MemoryNodeComponent from "./components/MemoryNode.svelte";
@@ -37,11 +36,12 @@
 
   let { userId }: { userId: string } = $props();
 
+  const MIN_ZOOM = 0.1;
   const VIEWPORT_STORAGE_KEY = "pile-of-memories-viewport";
   const storedViewportSchema = z.object({
     cx: z.number(),
     cy: z.number(),
-    zoom: z.number().min(0.5).max(1.5),
+    zoom: z.number().min(MIN_ZOOM).max(1.5),
   });
   type StoredViewport = z.infer<typeof storedViewportSchema>;
   type ViewportController = {
@@ -312,14 +312,14 @@
         return current?.x === position.x && current.y === position.y;
       })
     ) {
-      reorganizeStatus = "The board is already organized by category.";
+      reorganizeStatus = "The board is already organized by similarity.";
       return;
     }
 
     reorganizeSnapshot = nodes.map((node) => ({ ...node, position: { ...node.position } }));
     reorganizeViewport = { ...viewport };
     nodes = preview;
-    reorganizeStatus = "Previewing category groups. Apply or cancel.";
+    reorganizeStatus = "Previewing related memories. Apply or cancel.";
     await tick();
     await viewportStart?.fit();
   }
@@ -378,7 +378,7 @@
     bind:nodes
     bind:viewport
     {nodeTypes}
-    minZoom={0.5}
+    minZoom={MIN_ZOOM}
     maxZoom={1.5}
     nodesDraggable={boardReady && !browseMode && !reorganizeSnapshot}
     elementsSelectable={!browseMode && !reorganizeSnapshot}
@@ -391,7 +391,6 @@
       <ViewportStart bind:this={viewportStart} stored={storedViewport} />
     {/if}
     <Background variant={BackgroundVariant.Lines} gap={56} patternColor="var(--hairline)" />
-    <ClusterRegions />
     <Controls position="top-right" showLock={false} fitViewOptions={{ maxZoom: 1 }} />
     <ClickableMiniMap
       position="bottom-left"
