@@ -7,7 +7,7 @@ import { streamCardSnapshots } from "./card-changes";
 
 const connectionString = process.env.DATABASE_CONNECTION_STRING;
 const runIntegration = process.env.DATABASE_INTEGRATION_TEST === "1" && connectionString;
-const describeIntegration = runIntegration ? describe.sequential : describe.skip;
+const describeIntegration = runIntegration ? describe : describe.skip;
 const FIRST_ID = "00000000-0000-4000-8000-000000000001";
 const SECOND_ID = "00000000-0000-4000-8000-000000000002";
 const MISSING_ID = "00000000-0000-4000-8000-000000000099";
@@ -63,7 +63,7 @@ async function waitForListenerCount(expected: number): Promise<void> {
   throw new Error(`Timed out waiting for ${expected} PostgreSQL listeners`);
 }
 
-describeIntegration("PostgreSQL card integration", () => {
+describeIntegration("PostgreSQL card integration", { concurrent: false }, () => {
   beforeAll(async () => {
     sql = postgres(connectionString!, { ssl: "require", max: 1 });
     const migration = await readFile(
