@@ -2,19 +2,15 @@ packages:
   - .
 
 overrides:
-  vite: "catalog:"
-  vitest: "catalog:"
+  vite@*: "catalog:"
 catalog:
-  vite: npm:@voidzero-dev/vite-plus-core@^0.3.3
-  vitest: 4.1.11
-  vite-plus: ^0.3.3
+  vite: npm:@voidzero-dev/vite-plus-core@1.0.0
+  vite-plus: 1.0.0
 peerDependencyRules:
   allowAny:
     - vite
-    - vitest
   allowedVersions:
     vite: "*"
-    vitest: "*"
 allowBuilds:
   "@journeyapps/wa-sqlite": false
   agent-browser: true
@@ -22,3 +18,13 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - "@sveltejs/adapter-node@6.0.0-next.4"
   - "@sveltejs/kit@3.0.0-next.10"
+  - "@voidzero-dev/vite-plus-core@1.0.0"
+  - "@voidzero-dev/vite-plus-darwin-arm64@1.0.0"
+  - "@voidzero-dev/vite-plus-darwin-x64@1.0.0"
+  - "@voidzero-dev/vite-plus-linux-arm64-gnu@1.0.0"
+  - "@voidzero-dev/vite-plus-linux-arm64-musl@1.0.0"
+  - "@voidzero-dev/vite-plus-linux-x64-gnu@1.0.0"
+  - "@voidzero-dev/vite-plus-linux-x64-musl@1.0.0"
+  - "@voidzero-dev/vite-plus-win32-arm64-msvc@1.0.0"
+  - "@voidzero-dev/vite-plus-win32-x64-msvc@1.0.0"
+  - vite-plus@1.0.0

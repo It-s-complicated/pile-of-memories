@@ -13,10 +13,6 @@ describe("withDeadline", () => {
   it("rejects with the boundary error after the deadline", async () => {
     vi.useFakeTimers();
     const result = withDeadline(new Promise<never>(() => {}), 100, () => new Error("late"));
-    const expectation = expect(result).rejects.toThrow("late");
-
-    await vi.advanceTimersByTimeAsync(100);
-
-    await expectation;
+    await Promise.all([expect(result).rejects.toThrow("late"), vi.advanceTimersByTimeAsync(100)]);
   });
 });
