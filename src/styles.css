@@ -145,6 +145,10 @@ select {
 }
 
 .chip-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   border: 1px solid var(--hairline);
   border-radius: 3px;
   padding: 0.45rem 0.7rem;
@@ -152,6 +156,7 @@ select {
   font-size: 0.68rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+  text-decoration: none;
   color: var(--text);
   background: var(--paper);
   box-shadow: var(--shadow-slip);
