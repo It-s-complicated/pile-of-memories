@@ -16,7 +16,6 @@ typography:
     fontFamily: "'Archivo Variable', ui-sans-serif, system-ui, sans-serif"
     fontSize: "1.05rem"
     fontWeight: 600
-    lineHeight: 1.3
     letterSpacing: "-0.01em"
   body:
     fontFamily: "'Archivo Variable', ui-sans-serif, system-ui, sans-serif"
@@ -28,11 +27,21 @@ typography:
     fontSize: "0.68rem"
     fontWeight: 400
     letterSpacing: "0.12em"
+  reading:
+    fontFamily: "'Archivo Variable', ui-sans-serif, system-ui, sans-serif"
+    fontSize: "1rem"
+    fontWeight: 400
+    lineHeight: 1.6
 rounded:
   label: "2px"
   card: "3px"
   dialog: "4px"
   fab: "50%"
+spacing:
+  field-gap: "0.35rem"
+  control-gap: "0.5rem"
+  section-gap: "1rem"
+  dialog-inset: "1.25rem"
 components:
   button-primary:
     backgroundColor: "{colors.theme-ink}"
@@ -62,23 +71,33 @@ components:
     textColor: "{colors.text}"
     rounded: "{rounded.card}"
     padding: "0.45rem 0.7rem"
+  chip-mode-selected:
+    backgroundColor: "{colors.theme-ink}"
+    textColor: "{colors.paper}"
+    rounded: "{rounded.card}"
   specimen-slip:
     backgroundColor: "{colors.paper}"
     textColor: "{colors.text}"
     rounded: "{rounded.card}"
     padding: "0.9rem 1.1rem 1rem"
+    width: "320px"
   tag-primary:
-    backgroundColor: "oklch(0.46 0.09 <hue>)"
+    backgroundColor: "var(--tag-color)"
     textColor: "{colors.paper}"
     rounded: "{rounded.label}"
     padding: "0.4rem 0.5rem"
   tag-topic:
     backgroundColor: "{colors.paper}"
-    textColor: "oklch(0.44 0.08 <hue>)"
+    textColor: "var(--topic-color)"
     rounded: "{rounded.label}"
     padding: "0.4rem 0.5rem"
   input-field:
     backgroundColor: "#ffffff"
+    textColor: "{colors.text}"
+    rounded: "{rounded.card}"
+    padding: "0.65rem"
+  input-list-sort:
+    backgroundColor: "{colors.paper}"
     textColor: "{colors.text}"
     rounded: "{rounded.card}"
     padding: "0.65rem"
@@ -106,13 +125,20 @@ mode cave, anything that slows capture.
 - One theme ink derives the entire UI palette via CSS `color-mix`.
 - Typed mono labels carry metadata; a grotesque carries reading text.
 
+Implementation sources: `src/styles.css` owns the global palette and chrome;
+`src/components/MemoryNode.svelte`, `TagEditor.svelte`, and `MemoryListDialog.svelte`
+own scoped component styles; `src/routes/+page.svelte` owns the access screen;
+`src/lib/scene.ts` owns tag colors. Frontmatter records observed values, not a
+new CSS token API. CSS custom properties in color values remain live dependencies;
+tag components require the per-label property supplied by `scene.ts`.
+
 ## Colors
 
 Restrained: archival paper neutrals plus one theme ink, everything derived.
 
 ### Primary
 
-- **Archive Ink** (`--theme-ink`, oklch(0.44 0.06 168)): the single source of
+- **Archive Ink** (`--theme-ink`): the single source of
   the palette. Owns the capture FAB, primary buttons, focus and selection
   states, links, and control icons. Change this one custom property to
   re-theme the whole app.
@@ -122,17 +148,20 @@ Restrained: archival paper neutrals plus one theme ink, everything derived.
 - **Paper** (`--paper`): slip and dialog surfaces, minimap ground.
 - **Sheet** (`--sheet`): the canvas ground, one step deeper than paper so
   slips lift.
-- **Text** (`--text`): near-black with a breath of ink (13.9:1 on paper).
-- **Muted** (`--muted`): typed metadata — accession numbers, kickers, field
-  labels (7.2:1 on paper).
+- **Ink Strong** (`--ink-strong`): deeper primary hover fill and access heading ink.
+- **Text** (`--text`): near-black with a breath of ink.
+- **Muted** (`--muted`): typed metadata — dates, card kinds, kickers, field
+  labels.
 - **Hairline** (`--hairline`): 1px structure lines, input borders, the canvas
   grid (56px lines, Svelte Flow `Background`).
 - **Ink Tint** (`--ink-tint`): hover wash on paper controls, code blocks.
 
 ### Semantic
 
-- **Cabinet Red** (`--danger`, #a04032): permanent actions only — delete
-  forever. Never decoration.
+- **Cabinet Red** (`--danger`): permanent deletion and error feedback, including
+  alert text and alert borders. Never decoration.
+- **Field White**: literal white used by capture/edit fields and the tag entry
+  control; the list sort select uses Paper instead.
 
 ### Tag colors
 
@@ -140,13 +169,15 @@ A normalized OKLCH family — fixed lightness and chroma, hue per tag — so eve
 tag stays scannable while the pile sits calm. Primary tags: filled labels,
 `oklch(0.46 0.09 <hue>)` with paper text. Topic tags: outlined typed labels,
 `oklch(0.44 0.08 <hue>)`. Minimap segments: `oklch(0.62 0.1 <hue>)`. Hues live
-in `src/lib/scene.ts`; unknown tags fall back to the theme ink.
+in `src/lib/scene.ts`; unknown primary tags fall back to Archive Ink and unknown
+topics to Muted. Minimap nodes show known primary-tag colors only; a node with
+none uses `color-mix(in oklch, var(--muted) 45%, var(--paper))`.
 
 ### Named Rules
 
 **The One Ink Rule.** Every chrome color derives from `--theme-ink` by
 `color-mix`; no second accent hue enters the interface chrome. (Tag colors and
-the destructive red are meaning, not chrome.)
+the semantic red are meaning, not chrome.)
 
 **The Color-on-Labels Rule.** Tag color appears on labels, chips, and the
 minimap index — never as a full card background fill.
@@ -155,7 +186,7 @@ minimap index — never as a full card background fill.
 
 **Reading/UI face:** Archivo Variable (grotesque workhorse) — titles, body,
 controls.
-**Label face:** Cutive Mono (typewritten) — accession numbers, kickers, tag
+**Label face:** Cutive Mono (typewritten) — dates, card kinds, kickers, tag
 labels, buttons on floating chrome, status text.
 
 **Character:** a catalog card typed on a museum label maker, annotated in a
@@ -163,16 +194,23 @@ modern grotesque.
 
 ### Hierarchy
 
-- **Title** (600, 1.05rem, −0.01em): slip titles, dialog headings.
-- **Body** (400, 0.86rem, 1.5): Markdown card bodies; dialogs may go to 1rem.
+- **Title:** slip and memory read/edit headings use the frontmatter title role.
+  Capture and list headings retain the browser's h2 size with weight 600 and
+  −0.01em tracking; there is no global heading size or line-height reset.
+- **Body:** compact Markdown in cards and the list uses the body role; list
+  prose is capped at 75ch. The read dialog uses the larger reading role.
 - **Label** (400, 0.64–0.68rem, +0.08–0.18em, uppercase, Cutive Mono): all
-  metadata — accession №, field labels, tags, chip buttons, status pill.
+  metadata — dates, card kind, field labels, tags, chip buttons, status text.
+  Dates and status copy preserve sentence case; uppercase applies to labels.
+- **Access heading** (Archivo, 700, `clamp(1.8rem, 7vw, 2.8rem)`,
+  line-height 1, −0.03em): the owner access screen only. Supporting text is
+  0.95rem/1.55 and capped at 34ch; this is not a display scale for the board.
 
 ### Named Rules
 
 **The Typed Label Rule.** Metadata is set in the mono face like a catalog
-entry; prose is set in the grotesque. The mono is never used for body copy,
-and the grotesque is never tracked out like a label.
+entry; prose is set in the grotesque. The mono is used for code as well as labels, never
+for prose, and the grotesque is never tracked out like a label.
 
 ## Layout
 
@@ -188,21 +226,38 @@ the viewport — the drawer's inner edge. It carries no interaction.
   520px). Each card renders its primary tag colors as hard split segments via
   the MiniMap `nodeComponent`, framed by a 35% ink stroke.
 - **Top-right:** zoom/fit controls.
-- **Bottom-right:** the capture cluster — paper chips (Archive, Reorganize)
-  beside the round inked FAB. Under 520px the chips stack above the FAB.
-- **Top-center:** the status pill, only when there is something to say.
+- **Bottom-right:** the capture cluster — paper chips (Browse/Arrange, List,
+  Archive, Reorganize) beside the round inked FAB. During reorganization,
+  Cancel and Apply layout replace the list/archive/reorganize actions.
+  At 520px and below the chips stack above the FAB.
+- **Below the drawer plate:** Sign out and Export memories as floating chips.
+- **Top-center:** a rectangular status notice, only when there is something to say.
 
 The app reopens at the exact spot the owner left: the world-space center and
 zoom are persisted to localStorage on `moveend` (Zod-validated on read), so
-the restore survives window-size changes. A first visit with no stored
-viewport fits the cards once, floored at 0.8 zoom so they stay readable —
-the minimap carries whole-board orientation. Dialogs are centered catalog
-cards, max 34rem, on a dimmed sheet.
+the restore survives window-size changes. Without a saved viewport, the board
+keeps its initial translation (32px, 32px) at zoom 1; it does not auto-fit on
+first visit. Zoom ranges from 0.1 to 1.5. The minimap and explicit fit control
+carry whole-board orientation.
+
+Dialogs are centered catalog cards, `min(34rem, calc(100vw - 2rem))`, on a
+dimmed sheet. The memory list expands to 68rem and viewport height minus 2rem;
+at 640px and below it becomes an edge-to-edge, square-cornered sheet with
+single-column controls and summaries. At 520px and below regular dialog
+insets reduce from 1.25rem to 1rem and the minimap shrinks to 8.5×6.5rem.
+
+Spacing is compact and component-specific, not a strict mathematical scale.
+The frontmatter names recurring observed gaps and insets; preserve their roles.
+
+The owner access screen centers a Paper slip on Sheet with the same fixed
+hairline frame. Its slip is capped at 28rem with 2.25rem padding; at 520px and
+below screen/slip padding reduces to 1.25rem/1.6rem.
 
 ## Elevation & Depth
 
-Structure is declared by 1px hairlines; elevation by one offset soft shadow —
-never both on the same surface beyond a resting slip's hairline.
+Paper surfaces lift from the darker Sheet through tonal contrast, 1px
+hairlines, and soft shadows. Cards and floating controls use the low slip
+shadow; modal dialogs and the access slip use the stronger dialog shadow.
 
 ### Shadow Vocabulary
 
@@ -215,7 +270,9 @@ never both on the same surface beyond a resting slip's hairline.
 
 Near-square corners, archival card stock: 2px on labels and tag chips, 3px on
 slips, inputs, and buttons, 4px on dialogs. The single round element in the
-system is the capture FAB. Pills are banned everywhere else.
+system is the capture FAB. Pills are banned everywhere else; the class named
+`status-pill` is actually a 3px rectangle. The full-screen mobile list has
+square corners and no outer border.
 
 ## Components
 
@@ -228,15 +285,28 @@ system is the capture FAB. Pills are banned everywhere else.
 - **Danger:** transparent, Cabinet Red text and border; hover 8% red wash.
 - **Floating chips:** paper, hairline, shadow-slip, Cutive Mono uppercase —
   the quiet actions beside the FAB.
+- **Selected mode:** Browse uses Archive Ink fill and Paper text via
+  `aria-pressed="true"`; Arrange retains the Paper chip. The mode button is
+  at least 44px tall. Coarse pointers also give chips and dialog buttons a
+  44px minimum height.
+- **Disabled:** action buttons use opacity 0.5 and a not-allowed cursor;
+  hover fills apply only while enabled. Native focus remains on dialog
+  action buttons and floating chrome; custom ink outlines exist on fields,
+  list controls, and card/read targets. Do not remove visible focus.
 
 ### Cards / Slips
 
 - **Corner Style:** near-square (3px).
 - **Background:** Paper with 1px Hairline; shadow-slip.
 - **Selection:** border deepens to 65% ink; keyboard focus gets a 2px ink outline.
-- **Anatomy:** compact created and updated dates (`DD.MM.YY`, typed, muted) →
+- **Size:** 320px wide, minimum 180px tall; height follows content.
+- **Anatomy:** an 18px line icon with typed Memory/Idea/Note kind →
+  compact created and updated dates (`DD.MM.YY`, typed, muted) →
   title (Archivo 600) → quiet typed Edit action → Markdown body (max 13rem,
   scrolls) → tag labels → links.
+- **Browse:** the full card opens a read dialog; inline Edit is hidden,
+  body overflow is clipped, and inline body/links are inert so gestures pan
+  the canvas. Arrange exposes Edit, body scrolling, and card dragging.
 
 ### Tags
 
@@ -244,6 +314,9 @@ system is the capture FAB. Pills are banned everywhere else.
   with roomy label padding (0.4rem 0.5rem) and near-square corners (2px).
 - **Topic:** paper ground, colored text and 55% colored hairline, typed
   uppercase, with the same label padding and corners.
+- **Editor:** removable selected tags retain those color roles with tighter
+  padding (0.15rem 0.3rem 0.15rem 0.45rem), a native datalist input, and Add.
+- **List:** tags use 0.25rem 0.4rem padding and 0.65rem mono type.
 
 ### Inputs / Fields
 
@@ -255,7 +328,9 @@ system is the capture FAB. Pills are banned everywhere else.
 
 The canvas and the drawer index (minimap) are the navigation. The minimap is
 click-to-center; each node shows all of its primary tag colors as hard
-vertical segments. There are no menus, tabs, or breadcrumbs.
+vertical segments. A floating List chip opens a sortable/filterable catalog
+dialog with Locate on board actions. Browse/Arrange is a pressed-state button,
+not a tab bar. There are no navigation menus or breadcrumbs.
 
 ### Dialogs
 
@@ -266,6 +341,22 @@ Selected tags in the tag editor carry the same
 filled-primary / outlined-topic color roles as card labels. Entrance: 160ms
 fade-rise (cubic-bezier(0.16, 1, 0.3, 1)); disabled under
 prefers-reduced-motion.
+
+### Memory list
+
+A wide catalog with native sort/select and checkbox filters above
+hairline-separated expandable rows. Titles and dates sit opposite right-aligned
+tag labels; hover/open summaries receive Ink Tint. Expanded bodies use the
+compact body role and a right-aligned Locate on board action. On mobile the
+summary stacks, tags align left, and the list occupies the viewport.
+
+### Owner access
+
+A centered archival slip with a typed private-collection kicker, a large
+Archivo title, short explanatory copy, and a full-width inked GitHub sign-in
+button. The button uses mono uppercase type and a 2.8rem minimum height.
+Errors use Cabinet Red; the note below uses muted mono. Keep this access
+treatment consistent with the board's paper, ink, frame, and shadows.
 
 ## Do's and Don'ts
 
