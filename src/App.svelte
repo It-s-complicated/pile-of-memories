@@ -14,6 +14,7 @@
   import { openCapture, closeCapture } from "./lib/capture-navigation";
   import * as z from "zod";
   import "@xyflow/svelte/dist/style.css";
+  import ClusterLabels from "./components/ClusterLabels.svelte";
   import ClickableMiniMap from "./components/ClickableMiniMap.svelte";
   import MemoryListDialog from "./components/MemoryListDialog.svelte";
   import ViewportStart from "./components/ViewportStart.svelte";
@@ -390,6 +391,7 @@
     {#if boardReady}
       <ViewportStart bind:this={viewportStart} stored={storedViewport} />
     {/if}
+    <ClusterLabels {nodes} />
     <Background variant={BackgroundVariant.Lines} gap={56} patternColor="var(--hairline)" />
     <Controls position="top-right" showLock={false} fitViewOptions={{ maxZoom: 1 }} />
     <ClickableMiniMap

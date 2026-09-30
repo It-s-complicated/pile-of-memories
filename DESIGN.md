@@ -182,6 +182,12 @@ the semantic red are meaning, not chrome.)
 **The Color-on-Labels Rule.** Tag color appears on labels, chips, and the
 minimap index — never as a full card background fill.
 
+Cluster names show each dominant broad tag once, centered behind its largest
+matching combined tag/topic group. They use oversized, translucent,
+mostly neutral lettering with a trace of that tag's existing hue and 24% opacity.
+Only the first word is displayed (for example, “Web” or “Personal”).
+Topics and overlapping tags continue to influence grouping and placement.
+
 ## Typography
 
 **Reading/UI face:** Archivo Variable (grotesque workhorse) — titles, body,
@@ -205,6 +211,11 @@ modern grotesque.
 - **Access heading** (Archivo, 700, `clamp(1.8rem, 7vw, 2.8rem)`,
   line-height 1, −0.03em): the owner access screen only. Supporting text is
   0.95rem/1.55 and capped at 34ch; this is not a display scale for the board.
+- **Cluster names:** Archivo 600, 128–384 world-space pixels, line-height
+  0.95 and −0.02em tracking. Each name stays on one line and scales to the
+  group width, capped so short names do not dominate the board. Its midpoint
+  sits at the group's bounding-box center. They pan
+  and zoom with the board and never receive pointer input.
 
 ### Named Rules
 

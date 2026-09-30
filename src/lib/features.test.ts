@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
   findClusterPosition,
+  getClusters,
+  getClusterLandmarks,
   reflowClusters,
   DEFAULT_CARD_SIZE,
   CLUSTER_GAP,
@@ -70,6 +72,54 @@ describe("labels", () => {
 });
 
 describe("cluster placement", () => {
+  it("shows each broad tag once, anchored to its largest matching cluster", () => {
+    const cards = [
+      node("a", ["Job"], ["AI"]),
+      node("b", ["Job"], ["CSS"]),
+      node("c", ["Job"], ["CSS"]),
+      node("d", ["Project"], ["Hosting"]),
+      node("untagged", [], []),
+    ];
+    const landmarks = (items: typeof cards) =>
+      getClusterLandmarks(items).map(({ tag, members }) => ({
+        tag,
+        ids: members.map(({ id }) => id),
+      }));
+    expect(landmarks(cards)).toEqual([
+      { tag: "Job", ids: ["b", "c"] },
+      { tag: "Project", ids: ["d"] },
+    ]);
+    expect(landmarks(cards.toReversed())).toEqual(landmarks(cards));
+    expect(getClusterLandmarks([])).toEqual([]);
+  });
+
+  it("names clusters by their most frequent broad tag, counting each card once", () => {
+    const cards = [
+      node("a", ["Project", "project", "PROJECT", "Job"], ["AI"]),
+      node("b", [" job "], ["AI"]),
+    ];
+    expect(getClusters(cards)[0].tag).toBe("Job");
+    expect(getClusters(cards.toReversed())[0].tag).toBe("Job");
+    expect(getClusters([node("tie", ["Project", "Job"], [])])[0].tag).toBe("Job");
+    expect(getClusters([node("untagged", [], ["AI"])])[0].tag).toBeUndefined();
+  });
+
+  it("exposes the same combined tag/topic groups for their background labels", () => {
+    const nodes = [
+      node("a", ["Job"], ["AI"]),
+      node("b", ["Project"], ["AI"]),
+      node("c", ["Job"], ["CSS"]),
+      node("d", ["Project"], ["CSS"]),
+      node("untagged", [], []),
+    ];
+    const groups = (cards: typeof nodes) =>
+      getClusters(cards).map(({ members }) => members.map(({ id }) => id));
+    expect(groups(nodes)).toEqual([["a", "b"], ["c", "d"], ["untagged"]]);
+    expect(groups(nodes.toReversed())).toEqual(groups(nodes));
+    expect(groups(reflowClusters(nodes))).toEqual(groups(nodes));
+    expect(getClusters([])).toEqual([]);
+  });
+
   it("packs uneven groups and mixed card heights without large empty rows", () => {
     const cards = Array.from({ length: 34 }, (_, index) => ({
       ...node(

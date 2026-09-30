@@ -1,3 +1,5 @@
+import { canonicalizeLabels } from "./labels";
+
 export const CLUSTER_GAP = 160;
 export const CARD_GAP = 24;
 export const DEFAULT_CARD_SIZE = { width: 320, height: 220 };
@@ -134,19 +136,13 @@ function pack(boxes: LayoutBox[], gap: number, seedScale = 0.35) {
   };
 }
 
-export function reflowClusters<T extends ClusterNode>(nodes: T[]): T[] {
-  if (!nodes.length) return [];
+export function getClusters<T extends ClusterNode>(nodes: T[]) {
   const ordered = nodes.toSorted((a, b) => a.id.localeCompare(b.id));
-  const boxes = ordered.map((node) => ({
-    x: 0,
-    y: 0,
-    ...size(node),
-    labels: labels(node.data),
-  }));
-  const affinities = boxes.map((left) =>
-    boxes.map((right) => similarity(left.labels, right.labels)),
+  const weightedLabels = ordered.map((node) => labels(node.data));
+  const affinities = weightedLabels.map((left) =>
+    weightedLabels.map((right) => similarity(left, right)),
   );
-  const groups = boxes.map((_, index) => [index]);
+  const groups = ordered.map((_, index) => [index]);
   // Complete-link grouping prevents a bridge card from joining unrelated groups.
   // ponytail: cubic grouping suits personal boards; replace with cached linkage if boards grow large.
   for (;;) {
@@ -168,10 +164,45 @@ export function reflowClusters<T extends ClusterNode>(nodes: T[]): T[] {
     groups.splice(merge[1], 1);
   }
 
-  const islands = groups
-    .map((indices) => {
-      const members = indices.map((index) => boxes[index]);
-      const cohesion = Math.min(...indices.flatMap((a) => indices.map((b) => affinities[a][b])));
+  return groups.map((indices) => {
+    const members = indices.map((index) => ordered[index]);
+    const counts = new Map<string, number>();
+    for (const node of members) {
+      for (const tag of canonicalizeLabels(node.data.tags)) {
+        counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      }
+    }
+    const tag = [...counts].toSorted((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0];
+    return {
+      members,
+      tag,
+      cohesion: Math.min(...indices.flatMap((a) => indices.map((b) => affinities[a][b]))),
+    };
+  });
+}
+
+export function getClusterLandmarks<T extends ClusterNode>(nodes: T[]) {
+  return getClusters(nodes)
+    .toSorted((a, b) => b.members.length - a.members.length)
+    .filter(
+      (cluster, index, clusters) =>
+        cluster.tag && clusters.findIndex((other) => other.tag === cluster.tag) === index,
+    );
+}
+
+export function reflowClusters<T extends ClusterNode>(nodes: T[]): T[] {
+  if (!nodes.length) return [];
+  const ordered = nodes.toSorted((a, b) => a.id.localeCompare(b.id));
+  const boxes = ordered.map((node) => ({
+    x: 0,
+    y: 0,
+    ...size(node),
+  }));
+
+  const boxesById = new Map(ordered.map((node, index) => [node.id, boxes[index]]));
+  const islands = getClusters(ordered)
+    .map(({ members: nodes, cohesion }) => {
+      const members = nodes.map((node) => boxesById.get(node.id)!);
       return { x: 0, y: 0, members, ...pack(members, CARD_GAP * (1 + 2 * (1 - cohesion))) };
     })
     .toSorted((a, b) => b.height - a.height);
