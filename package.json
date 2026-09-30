@@ -17,7 +17,7 @@
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",
     "@fontsource/cutive-mono": "^5.3.0",
-    "@humanspeak/svelte-markdown": "~1.9.5",
+    "@humanspeak/svelte-markdown": "~2.0.0",
     "@tanstack/ai": "^0.63.0",
     "@tanstack/ai-openai": "^0.25.1",
     "@tanstack/browser-db-sqlite-persistence": "^0.2.23",
