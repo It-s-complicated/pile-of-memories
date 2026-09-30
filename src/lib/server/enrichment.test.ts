@@ -16,8 +16,8 @@ it("combines a generated title with only vocabulary-selected labels, including n
         answers: {
           kind: { type: "choice", choice: "note" },
           label_0: {
-            type: "score",
-            score: 2.7,
+            type: "noul",
+            noul: 0.9,
           },
         },
         usage: { input_tokens: 10, output_tokens: 1 },

@@ -3,16 +3,16 @@ import { selectMemoryLabels } from "./label-selection";
 
 afterEach(() => vi.unstubAllGlobals());
 
-function mockAnswers(relevanceScores: number[], kind: string = "note") {
+function mockAnswers(probabilities: number[], kind: string = "note") {
   const response = {
     answers: {
       kind: { type: "choice", choice: kind },
       ...Object.fromEntries(
-        relevanceScores.map((relevance, index) => [
+        probabilities.map((probability, index) => [
           `label_${index}`,
           {
-            type: "score",
-            score: relevance * 3,
+            type: "noul",
+            noul: probability,
           },
         ]),
       ),
@@ -25,8 +25,8 @@ function mockAnswers(relevanceScores: number[], kind: string = "note") {
 }
 
 describe("candidate label selection", () => {
-  it("batches candidates, preserves their spelling, and ranks at most five qualifying labels", async () => {
-    const fetchMock = mockAnswers([0.79, 0.8, 0.95, 0.9, 0.85, 1, 0.99, 0.5]);
+  it("batches candidates and keeps the first five ask.if matches without ranking probabilities", async () => {
+    const fetchMock = mockAnswers([0.1, 0.51, 0.95, 0.9, 0.85, 1, 0.99, 0.5]);
     const input = {
       description: "A memory about building a personal website",
       existingTags: [
@@ -44,7 +44,7 @@ describe("candidate label selection", () => {
     const result = await selectMemoryLabels(input, signal);
     expect(result).toEqual({
       kind: "note",
-      tags: ["Project", "AI", "CSS", "Web development", "Hosting"],
+      tags: ["Boundary", "CSS", "Web development", "Hosting", "Project"],
       inputTokens: 100,
       outputTokens: 10,
     });
@@ -57,12 +57,12 @@ describe("candidate label selection", () => {
     expect(body.questions.kind.type).toBe("choice");
     expect(Object.keys(body.questions.kind.criteria)).toEqual(["memory", "idea", "note"]);
     expect(body.questions.label_2.instructions).toContain('"CSS"');
-    expect(body.questions.label_2.type).toBe("score");
-    expect(body.questions.label_2.criteria).toHaveLength(4);
+    expect(body.questions.label_2.type).toBe("noul");
+    expect(body.questions.label_2.instructions).toContain("passing mentions");
   });
 
-  it("allows no match and applies the 0.7 normalized score cutoff", async () => {
-    mockAnswers([0.69, 0.5]);
+  it("uses the default ask.if boolean, excluding 0.5 and accepting just above it", async () => {
+    mockAnswers([0.49, 0.5]);
     expect(
       (
         await selectMemoryLabels(
@@ -71,7 +71,7 @@ describe("candidate label selection", () => {
         )
       ).tags,
     ).toEqual([]);
-    mockAnswers([0.7]);
+    mockAnswers([0.51]);
     expect(
       (
         await selectMemoryLabels(
