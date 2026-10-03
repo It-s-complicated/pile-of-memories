@@ -22,7 +22,6 @@ function input(id: string): CardInput {
     position: { x: 0, y: 0 },
     tags: [],
     topics: [],
-    links: [],
     archived: false,
   };
 }
@@ -73,6 +72,12 @@ describeIntegration("PostgreSQL card integration", { concurrent: false }, () => 
     await sql.unsafe(migration);
     await sql.unsafe(
       await readFile(new URL("../../../migrations/0004_card_kind.sql", import.meta.url), "utf8"),
+    );
+    await sql.unsafe(
+      await readFile(
+        new URL("../../../migrations/0005_drop_card_links.sql", import.meta.url),
+        "utf8",
+      ),
     );
     await sql`TRUNCATE cards CASCADE`;
   });
@@ -134,6 +139,15 @@ describeIntegration("PostgreSQL card integration", { concurrent: false }, () => 
     expect((await updateCard(FIRST_ID, { kind: "note" }))?.kind).toBe("note");
     expect((await listCards())[0].kind).toBe("note");
     await expect(sql`UPDATE cards SET kind = 'task' WHERE id = ${FIRST_ID}`).rejects.toThrow();
+  });
+
+  it("derives links from Markdown without a stored links column", async () => {
+    await sql`TRUNCATE cards CASCADE`;
+    const card = { ...input(FIRST_ID), body: "Read [this](https://example.com)." };
+    expect((await insertCard(card)).links).toEqual(["https://example.com"]);
+    expect((await sql`SELECT * FROM cards WHERE id = ${FIRST_ID}`)[0]).not.toHaveProperty("links");
+    expect((await listCards())[0].links).toEqual(["https://example.com"]);
+    expect((await updateCard(FIRST_ID, { body: "No links" }))?.links).toEqual([]);
   });
 
   it("streams authoritative snapshots and releases its listener", async () => {

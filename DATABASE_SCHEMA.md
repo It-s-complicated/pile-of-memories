@@ -4,10 +4,12 @@
 `migrations/0002_better_auth.sql` owns Better Auth's user, session, account, and verification
 tables; `migrations/0003_enrichment_analytics.sql` owns the private AI-enrichment analytics tables,
 views, row-level security, and grants. `migrations/0004_card_kind.sql` adds the card kind
-(`memory`, `idea`, or `note`), assigning `memory` to all existing cards. Run all migrations with `vp run db:migrate` before starting
-the application. Runtime application code never creates or alters schema.
+(`memory`, `idea`, or `note`), assigning `memory` to all existing cards.
+`migrations/0005_drop_card_links.sql` removes the unused stored links column.
+Run all migrations with `vp run db:migrate` before starting the application. Runtime application
+code never creates or alters schema.
 
-Each card stores its UUID, kind, title, Markdown body, canvas coordinates, tags, topics, derived HTTP links,
+Each card stores its UUID, kind, title, Markdown body, canvas coordinates, tags, topics,
 archive flag, creation timestamp, and last content-edit timestamp. Moving, archiving, or restoring a
 card does not change its content-edit timestamp. Application reads return complete snapshots ordered
 by `created_at, id`; links are re-derived from the Markdown body.

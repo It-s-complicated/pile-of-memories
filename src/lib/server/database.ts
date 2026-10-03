@@ -28,7 +28,6 @@ type CardRow = {
   y: number;
   tags: string[];
   topics: string[];
-  links: string[];
   archived: boolean;
   created_at: Date;
   updated_at: Date;
@@ -65,10 +64,10 @@ export async function listCards(): Promise<Card[]> {
 export async function insertCard(card: CardInput): Promise<Card> {
   const sql = getSql();
   const [row] = await sql<CardRow[]>`
-    INSERT INTO cards (id, kind, title, body, x, y, tags, topics, links, archived)
+    INSERT INTO cards (id, kind, title, body, x, y, tags, topics, archived)
     VALUES (
       ${card.id}, ${card.kind}, ${card.title}, ${card.body}, ${card.position.x}, ${card.position.y},
-      ${card.tags}, ${card.topics}, ${card.links}, ${card.archived}
+      ${card.tags}, ${card.topics}, ${card.archived}
     )
     ON CONFLICT (id) DO NOTHING
     RETURNING *
@@ -102,7 +101,6 @@ export async function updateCard(id: string, changes: CardChanges): Promise<Card
   }
   if (changes.tags !== undefined) values.tags = changes.tags;
   if (changes.topics !== undefined) values.topics = changes.topics;
-  if (changes.links !== undefined) values.links = changes.links;
   if (changes.archived !== undefined) values.archived = changes.archived;
 
   const [row] = await sql<CardRow[]>`

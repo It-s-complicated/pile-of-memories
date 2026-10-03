@@ -8,7 +8,6 @@
   import type { CardCreationProvenance } from "../lib/enrichment-analytics";
   import { enrichMemory } from "../lib/enrichment.remote";
   import { canonicalizeLabels, partitionLabels } from "../lib/labels";
-  import { parseMarkdown } from "../lib/markdown";
 
   let {
     tagVocabulary,
@@ -20,7 +19,7 @@
     onclose: () => void;
     boardReady: boolean;
     oncreate: (
-      draft: Pick<CardInput, "title" | "body" | "tags" | "topics" | "links" | "kind">,
+      draft: Pick<CardInput, "title" | "body" | "tags" | "topics" | "kind">,
       creation?: CardCreationProvenance,
     ) => Promise<void>;
   } = $props();
@@ -117,7 +116,6 @@
           kind: memoryKind,
           body: memoryBody,
           ...partitionLabels(memoryLabels),
-          links: parseMarkdown(memoryBody).links,
         },
         creationProvenance,
       );

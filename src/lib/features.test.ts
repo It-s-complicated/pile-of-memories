@@ -17,7 +17,6 @@ import {
   cardCreationProvenanceSchema,
   compareTagFingerprints,
   normalizeAnalyticsTags,
-  ratioOrNull,
 } from "./enrichment-analytics";
 import { canonicalizeLabels, partitionLabels } from "./labels";
 import { parseMarkdown } from "./markdown";
@@ -333,19 +332,22 @@ describe("AI contracts", () => {
 });
 
 describe("enrichment analytics", () => {
-  it("canonicalizes tag comparisons and reports empty ratios as null", () => {
+  it("canonicalizes tag comparisons and counts unique retained, removed, and added tags", () => {
     expect(normalizeAnalyticsTags([" CSS ", "css", "Job"])).toEqual(["css", "job"]);
-    expect(compareTagFingerprints(["css", "job"], ["css", "new"])).toEqual({
+    expect(compareTagFingerprints(["css", "job", "css"], ["css", "new", "new"])).toEqual({
       generatedTagCount: 2,
       finalTagCount: 2,
       retainedTagCount: 1,
       removedTagCount: 1,
       addedTagCount: 1,
-      generatedTagAcceptance: 0.5,
-      finalTagCoverage: 0.5,
     });
-    expect(ratioOrNull(0, 0)).toBeNull();
-    expect(compareTagFingerprints([], []).generatedTagAcceptance).toBeNull();
+    expect(compareTagFingerprints([], [])).toEqual({
+      generatedTagCount: 0,
+      finalTagCount: 0,
+      retainedTagCount: 0,
+      removedTagCount: 0,
+      addedTagCount: 0,
+    });
   });
 
   it("validates bounded creation provenance", () => {

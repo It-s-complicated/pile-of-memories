@@ -1,7 +1,7 @@
 import * as z from "zod";
 import { cardCreationProvenanceSchema } from "./enrichment-analytics";
 import { labelsSchema, partitionLabels } from "./labels";
-import { httpUrlSchema, parseMarkdown } from "./markdown";
+import { httpUrlSchema } from "./markdown";
 
 export const cardIdSchema = z.uuidv4();
 export const cardKindSchema = z.enum(["memory", "idea", "note"]);
@@ -19,7 +19,6 @@ export const cardInputSchema = z
     position: positionSchema,
     tags: labelsSchema,
     topics: labelsSchema,
-    links: z.array(httpUrlSchema),
     archived: z.boolean(),
   })
   .strict()
@@ -30,12 +29,12 @@ export const cardInputSchema = z
   .transform((value) => ({
     ...value,
     ...partitionLabels([...value.tags, ...value.topics]),
-    links: parseMarkdown(value.body).links,
   }));
 
 export type CardInput = z.infer<typeof cardInputSchema>;
 export const cardSchema = z.object({
   ...cardInputSchema.in.shape,
+  links: z.array(httpUrlSchema),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
@@ -93,16 +92,11 @@ export const cardChangesSchema = z
     position: positionSchema.optional(),
     tags: labelsSchema.optional(),
     topics: labelsSchema.optional(),
-    links: z.array(httpUrlSchema).optional(),
     archived: z.boolean().optional(),
   })
   .strict()
   .refine((value) => Object.values(value).some((field) => field !== undefined), {
     message: "At least one card change is required",
-  })
-  .refine((value) => value.links === undefined || value.body !== undefined, {
-    message: "Links can only be supplied with a body",
-    path: ["links"],
   })
   .refine((value) => (value.tags === undefined) === (value.topics === undefined), {
     message: "Tags and topics must be supplied together",
@@ -112,9 +106,8 @@ export const cardChangesSchema = z
     message: "Too many labels",
     path: ["tags"],
   })
-  .transform(({ tags, topics, links: _links, ...value }) => ({
+  .transform(({ tags, topics, ...value }) => ({
     ...value,
-    ...(value.body === undefined ? {} : { links: parseMarkdown(value.body).links }),
     ...(tags && topics ? partitionLabels([...tags, ...topics]) : {}),
   }));
 

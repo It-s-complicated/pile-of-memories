@@ -173,12 +173,8 @@
   }
   setCardPersistence({
     browse: () => browseMode,
-    async update(id, changes) {
-      await saveCard(id, changes);
-    },
-    async delete(id) {
-      await removeCard(id);
-    },
+    update: saveCard,
+    delete: removeCard,
   });
 
   let cards = $derived(localCards.data ?? []);
@@ -256,7 +252,7 @@
   }
 
   async function addMemory(
-    draft: Pick<CardInput, "title" | "body" | "tags" | "topics" | "links" | "kind">,
+    draft: Pick<CardInput, "title" | "body" | "tags" | "topics" | "kind">,
     creation?: CardCreationProvenance,
   ): Promise<void> {
     requireOnline();

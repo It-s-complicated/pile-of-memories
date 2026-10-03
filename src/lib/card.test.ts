@@ -21,12 +21,11 @@ const validCard = {
   position: { x: 12, y: -4 },
   tags: [" job ", "Concept"],
   topics: ["CSS", "css"],
-  links: [],
   archived: false,
 };
 
 describe("card creation validation", () => {
-  it("normalizes titles and labels and derives links from the body", () => {
+  it("normalizes titles and labels without writing derived links", () => {
     expect(cardInputSchema.safeParse(validCard)).toEqual({
       success: true,
       data: {
@@ -34,13 +33,13 @@ describe("card creation validation", () => {
         title: "Capture this",
         tags: ["Job"],
         topics: ["Concept", "CSS"],
-        links: ["https://example.com/docs"],
       },
     });
   });
 
   it.each([
     ["unknown properties", { ...validCard, privateField: "nope" }],
+    ["derived links", { ...validCard, links: ["https://example.com/docs"] }],
     ["invalid UUIDs", { ...validCard, id: "card-1" }],
     ["empty titles", { ...validCard, title: "   " }],
     ["non-finite positions", { ...validCard, position: { x: Number.POSITIVE_INFINITY, y: 0 } }],
@@ -67,14 +66,13 @@ describe("card creation validation", () => {
 });
 
 describe("card change validation", () => {
-  it("normalizes changes and derives links only from a supplied body", () => {
+  it("normalizes content changes without writing derived links", () => {
     expect(
       cardChangesSchema.safeParse({
         title: "  Updated  ",
         body: "Visit https://example.org.",
         tags: ["Personal development", "Svelte"],
         topics: ["CSS"],
-        links: [],
         archived: true,
       }),
     ).toEqual({
@@ -84,7 +82,6 @@ describe("card change validation", () => {
         body: "Visit https://example.org.",
         tags: ["Personal development"],
         topics: ["Svelte", "CSS"],
-        links: ["https://example.org"],
         archived: true,
       },
     });
@@ -97,7 +94,7 @@ describe("card change validation", () => {
     ["empty titles", { title: "  " }],
     ["tags without topics", { tags: ["Job"] }],
     ["topics without tags", { topics: ["CSS"] }],
-    ["links without a body", { links: ["https://example.com"] }],
+    ["derived links", { body: "https://example.com", links: ["https://example.com"] }],
   ])("rejects %s", (_case, changes) => {
     expect(cardChangesSchema.safeParse(changes).success).toBe(false);
   });
@@ -163,6 +160,7 @@ describe("memory list", () => {
       kind: "note" as const,
       tags: ["Job"],
       topics: [],
+      links: ["https://example.com/docs"],
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-03T00:00:00.000Z",
     },
@@ -172,6 +170,7 @@ describe("memory list", () => {
       title: "Alpha",
       tags: ["Project"],
       topics: ["CSS"],
+      links: ["https://example.com/docs"],
       createdAt: "2026-01-02T00:00:00.000Z",
       updatedAt: "2026-01-02T00:00:00.000Z",
     },

@@ -79,16 +79,10 @@ export type TagReviewMetrics = {
   retainedTagCount: number;
   removedTagCount: number;
   addedTagCount: number;
-  generatedTagAcceptance: number | null;
-  finalTagCoverage: number | null;
 };
 
 export function normalizeAnalyticsTags(labels: string[]): string[] {
   return canonicalizeLabels(labels).map((label) => label.toLowerCase());
-}
-
-export function ratioOrNull(numerator: number, denominator: number): number | null {
-  return denominator === 0 ? null : numerator / denominator;
 }
 
 export function compareTagFingerprints(
@@ -109,7 +103,5 @@ export function compareTagFingerprints(
     retainedTagCount,
     removedTagCount: generated.size - retainedTagCount,
     addedTagCount: final.size - retainedTagCount,
-    generatedTagAcceptance: ratioOrNull(retainedTagCount, generated.size),
-    finalTagCoverage: ratioOrNull(retainedTagCount, final.size),
   };
 }

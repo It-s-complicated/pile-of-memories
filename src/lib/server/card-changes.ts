@@ -3,18 +3,12 @@ import postgres from "postgres";
 
 const CARD_CHANGE_CHANNEL = "cards_changed";
 
-function deferred() {
-  let resolve!: () => void;
-  const promise = new Promise<void>((done) => (resolve = done));
-  return { promise, resolve };
-}
-
 export async function* streamCardSnapshots<T>(
   readSnapshot: () => Promise<T>,
   signal: AbortSignal,
 ): AsyncGenerator<T> {
   const sql = postgres(DATABASE_LISTEN_CONNECTION_STRING, { ssl: "require", max: 1 });
-  let changed = deferred();
+  let changed = Promise.withResolvers<void>();
   let connected = false;
   const notify = () => changed.resolve();
   signal.addEventListener("abort", notify);
@@ -35,7 +29,7 @@ export async function* streamCardSnapshots<T>(
 
       while (!signal.aborted) {
         await changed.promise;
-        changed = deferred();
+        changed = Promise.withResolvers<void>();
         if (!signal.aborted) yield await readSnapshot();
       }
     } finally {

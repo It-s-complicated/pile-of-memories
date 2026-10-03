@@ -26,29 +26,25 @@ describe("card writes", () => {
     position: { x: 10, y: 20 },
     tags: ["personal development"],
     topics: ["CSS", "css"],
-    links: [],
     archived: false,
   };
 
-  it("normalizes labels and derives links from the body", () => {
+  it("normalizes labels and rejects derived links in writes", () => {
     expect(cardInputSchema.safeParse(card)).toMatchObject({
       success: true,
       data: {
         title: "Capture",
         tags: ["Personal development"],
         topics: ["CSS"],
-        links: ["https://example.com", "https://example.org"],
       },
     });
     expect(cardInputSchema.safeParse({ ...card, links: ["javascript:alert(1)"] }).success).toBe(
       false,
     );
     expect(
-      cardChangesSchema.safeParse({ body: "No links", links: ["https://example.com"] }),
-    ).toEqual({
-      success: true,
-      data: { body: "No links", links: [] },
-    });
+      cardChangesSchema.safeParse({ body: "No links", links: ["https://example.com"] }).success,
+    ).toBe(false);
+    expect(cardChangesSchema.parse({ body: "No links" })).toEqual({ body: "No links" });
     expect(cardChangesSchema.safeParse({ links: [] }).success).toBe(false);
   });
 
@@ -73,11 +69,13 @@ describe("card writes", () => {
       if (!parsed.success) throw parsed.error;
       const node = cardToMemoryNode({
         ...parsed.data,
+        links: ["https://example.com", "https://example.org"],
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-01T00:00:00.000Z",
       });
       expect(node.type).toBe("memory");
       expect(node.data.kind).toBe(kind);
+      expect(node.data.links).toEqual(["https://example.com", "https://example.org"]);
       expect(cardChangesSchema.safeParse({ kind })).toEqual({ success: true, data: { kind } });
     }
     expect(cardInputSchema.safeParse({ ...card, kind: "task" }).success).toBe(false);

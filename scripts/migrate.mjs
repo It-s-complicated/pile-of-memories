@@ -17,6 +17,8 @@ execFileSync(
     "migrations/0003_enrichment_analytics.sql",
     "-f",
     "migrations/0004_card_kind.sql",
+    "-f",
+    "migrations/0005_drop_card_links.sql",
   ],
   { stdio: "inherit" },
 );
