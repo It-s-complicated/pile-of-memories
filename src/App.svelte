@@ -33,7 +33,7 @@
   import { DEFAULT_CARD_SIZE, findClusterPosition, reflowClusters } from "./lib/cluster-layout";
   import type { CardCreationProvenance } from "./lib/enrichment-analytics";
   import { canonicalizeLabels, PRIMARY_TAGS, TOPIC_TAGS } from "./lib/labels";
-  import { cardToMemoryNode, memoryNodeToCard, type MemoryNode } from "./lib/scene";
+  import { cardToMemoryNode, type MemoryNode } from "./lib/scene";
 
   let { userId }: { userId: string } = $props();
 
@@ -266,22 +266,8 @@
       y: (canvasHeight / 2 - viewport.y) / viewport.zoom - DEFAULT_CARD_SIZE.height / 2,
     };
     const position = findClusterPosition(nodes, draft, openSpace);
-    const timestamp = new Date().toISOString();
-    const node: MemoryNode = {
-      id: crypto.randomUUID(),
-      type: "memory",
-      position,
-      data: {
-        ...draft,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        tagVocabulary,
-      },
-      focusable: true,
-    };
-
     const saved = await createCard({
-      card: memoryNodeToCard(node),
+      card: { ...draft, id: crypto.randomUUID(), position, archived: false },
       ...(creation ? { creation } : {}),
     });
     if (!stopped) await cacheResult(board?.upsert([saved]));

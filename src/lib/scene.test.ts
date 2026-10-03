@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
-import { parseCardChanges, parseCardInput } from "./card";
-import {
-  cardToMemoryNode,
-  memoryNodeToCard,
-  getMinimapColors,
-  getPrimaryTagAccent,
-  getTopicTagColor,
-} from "./scene";
+import { cardChangesSchema, cardInputSchema } from "./card";
+import { cardToMemoryNode, getMinimapColors, getPrimaryTagAccent, getTopicTagColor } from "./scene";
 
 describe("board", () => {
   it("colors labels from one OKLCH family, hue per tag", () => {
@@ -37,42 +31,56 @@ describe("card writes", () => {
   };
 
   it("normalizes labels and derives links from the body", () => {
-    expect(parseCardInput(card)).toMatchObject({
-      title: "Capture",
-      tags: ["Personal development"],
-      topics: ["CSS"],
-      links: ["https://example.com", "https://example.org"],
+    expect(cardInputSchema.safeParse(card)).toMatchObject({
+      success: true,
+      data: {
+        title: "Capture",
+        tags: ["Personal development"],
+        topics: ["CSS"],
+        links: ["https://example.com", "https://example.org"],
+      },
     });
-    expect(parseCardInput({ ...card, links: ["javascript:alert(1)"] })).toBeNull();
-    expect(parseCardChanges({ body: "No links", links: ["https://example.com"] })).toEqual({
-      body: "No links",
-      links: [],
+    expect(cardInputSchema.safeParse({ ...card, links: ["javascript:alert(1)"] }).success).toBe(
+      false,
+    );
+    expect(
+      cardChangesSchema.safeParse({ body: "No links", links: ["https://example.com"] }),
+    ).toEqual({
+      success: true,
+      data: { body: "No links", links: [] },
     });
-    expect(parseCardChanges({ links: [] })).toBeNull();
+    expect(cardChangesSchema.safeParse({ links: [] }).success).toBe(false);
   });
 
   it("rejects invalid IDs, positions, and partial label updates", () => {
-    expect(parseCardInput({ ...card, id: "starter-capture" })).toBeNull();
-    expect(parseCardChanges({ position: { x: Number.NaN, y: 0 } })).toBeNull();
-    expect(parseCardChanges({ tags: ["Job"] })).toBeNull();
-    expect(parseCardChanges({ archived: true })).toEqual({ archived: true });
-    expect(parseCardChanges({ archived: "yes" })).toBeNull();
+    expect(cardInputSchema.safeParse({ ...card, id: "starter-capture" }).success).toBe(false);
+    expect(cardChangesSchema.safeParse({ position: { x: Number.NaN, y: 0 } }).success).toBe(false);
+    expect(cardChangesSchema.safeParse({ tags: ["Job"] }).success).toBe(false);
+    expect(cardChangesSchema.safeParse({ archived: true })).toEqual({
+      success: true,
+      data: { archived: true },
+    });
+    expect(cardChangesSchema.safeParse({ archived: "yes" }).success).toBe(false);
   });
 
   it("defaults legacy cards to memory and preserves each kind through canvas conversion", () => {
-    expect(parseCardInput(card)?.kind).toBe("memory");
+    expect(cardInputSchema.safeParse(card)).toMatchObject({
+      success: true,
+      data: { kind: "memory" },
+    });
     for (const kind of ["memory", "idea", "note"] as const) {
-      const parsed = parseCardInput({ ...card, kind })!;
+      const parsed = cardInputSchema.safeParse({ ...card, kind });
+      if (!parsed.success) throw parsed.error;
       const node = cardToMemoryNode({
-        ...parsed,
+        ...parsed.data,
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-01T00:00:00.000Z",
       });
       expect(node.type).toBe("memory");
-      expect(memoryNodeToCard(node).kind).toBe(kind);
-      expect(parseCardChanges({ kind })).toEqual({ kind });
+      expect(node.data.kind).toBe(kind);
+      expect(cardChangesSchema.safeParse({ kind })).toEqual({ success: true, data: { kind } });
     }
-    expect(parseCardInput({ ...card, kind: "task" })).toBeNull();
-    expect(parseCardChanges({ kind: "task" })).toBeNull();
+    expect(cardInputSchema.safeParse({ ...card, kind: "task" }).success).toBe(false);
+    expect(cardChangesSchema.safeParse({ kind: "task" }).success).toBe(false);
   });
 });

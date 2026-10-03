@@ -379,22 +379,6 @@ select {
   color: var(--muted);
 }
 
-.memory-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1rem;
-}
-
-.placement-options {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.memory-options label,
-.placement-options label {
-  cursor: pointer;
-}
-
 .placement-note {
   margin: 0;
   border: 1px solid var(--hairline);

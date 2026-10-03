@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
+  cardChangesSchema,
+  cardIdSchema,
+  cardInputSchema,
   createCardRequestSchema,
   deleteCardCommandSchema,
-  isCardId,
   memoryListSettingsSchema,
-  parseCardChanges,
-  parseCardInput,
   sortAndFilterCards,
   type Card,
   updateCardCommandSchema,
@@ -27,12 +27,15 @@ const validCard = {
 
 describe("card creation validation", () => {
   it("normalizes titles and labels and derives links from the body", () => {
-    expect(parseCardInput(validCard)).toEqual({
-      ...validCard,
-      title: "Capture this",
-      tags: ["Job"],
-      topics: ["Concept", "CSS"],
-      links: ["https://example.com/docs"],
+    expect(cardInputSchema.safeParse(validCard)).toEqual({
+      success: true,
+      data: {
+        ...validCard,
+        title: "Capture this",
+        tags: ["Job"],
+        topics: ["Concept", "CSS"],
+        links: ["https://example.com/docs"],
+      },
     });
   });
 
@@ -43,7 +46,7 @@ describe("card creation validation", () => {
     ["non-finite positions", { ...validCard, position: { x: Number.POSITIVE_INFINITY, y: 0 } }],
     ["overlong labels", { ...validCard, tags: ["x".repeat(41)] }],
   ])("rejects %s", (_case, input) => {
-    expect(parseCardInput(input)).toBeNull();
+    expect(cardInputSchema.safeParse(input).success).toBe(false);
   });
 
   it("validates the remote creation envelope without trusting extra fields", () => {
@@ -58,15 +61,15 @@ describe("card creation validation", () => {
       createCardRequestSchema.safeParse({ card: validCard, creation, generatedTitle: "private" })
         .success,
     ).toBe(false);
-    expect(isCardId(CARD_ID)).toBe(true);
-    expect(isCardId("not-a-card-id")).toBe(false);
+    expect(cardIdSchema.safeParse(CARD_ID).success).toBe(true);
+    expect(cardIdSchema.safeParse("not-a-card-id").success).toBe(false);
   });
 });
 
 describe("card change validation", () => {
   it("normalizes changes and derives links only from a supplied body", () => {
     expect(
-      parseCardChanges({
+      cardChangesSchema.safeParse({
         title: "  Updated  ",
         body: "Visit https://example.org.",
         tags: ["Personal development", "Svelte"],
@@ -75,12 +78,15 @@ describe("card change validation", () => {
         archived: true,
       }),
     ).toEqual({
-      title: "Updated",
-      body: "Visit https://example.org.",
-      tags: ["Personal development"],
-      topics: ["Svelte", "CSS"],
-      links: ["https://example.org"],
-      archived: true,
+      success: true,
+      data: {
+        title: "Updated",
+        body: "Visit https://example.org.",
+        tags: ["Personal development"],
+        topics: ["Svelte", "CSS"],
+        links: ["https://example.org"],
+        archived: true,
+      },
     });
   });
 
@@ -93,11 +99,14 @@ describe("card change validation", () => {
     ["topics without tags", { topics: ["CSS"] }],
     ["links without a body", { links: ["https://example.com"] }],
   ])("rejects %s", (_case, changes) => {
-    expect(parseCardChanges(changes)).toBeNull();
+    expect(cardChangesSchema.safeParse(changes).success).toBe(false);
   });
 
   it("accepts archive-only changes and validates remote command IDs", () => {
-    expect(parseCardChanges({ archived: false })).toEqual({ archived: false });
+    expect(cardChangesSchema.safeParse({ archived: false })).toEqual({
+      success: true,
+      data: { archived: false },
+    });
     expect(
       updateCardCommandSchema.safeParse({ id: CARD_ID, changes: { archived: true } }).success,
     ).toBe(true);

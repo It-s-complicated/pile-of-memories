@@ -1,5 +1,5 @@
 import type { Node } from "@xyflow/svelte";
-import type { Card, CardInput } from "./card";
+import type { Card } from "./card";
 import { PRIMARY_TAGS, TOPIC_TAGS } from "./labels";
 
 export { PRIMARY_TAGS, TOPIC_TAGS } from "./labels";
@@ -82,19 +82,5 @@ export function cardToMemoryNode(card: Card, tagVocabulary: string[] = []): Memo
       tagVocabulary,
     },
     focusable: true,
-  };
-}
-
-export function memoryNodeToCard(node: MemoryNode): CardInput {
-  return {
-    id: node.id,
-    kind: node.data.kind,
-    title: node.data.title.trim() || "Untitled memory",
-    body: node.data.body,
-    position: node.position,
-    tags: node.data.tags,
-    topics: node.data.topics,
-    links: node.data.links,
-    archived: false,
   };
 }

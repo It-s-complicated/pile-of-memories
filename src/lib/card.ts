@@ -8,10 +8,6 @@ export const cardKindSchema = z.enum(["memory", "idea", "note"]);
 export type CardKind = z.infer<typeof cardKindSchema>;
 export const cardKindLabels = { memory: "Memory", idea: "Idea", note: "Note" };
 
-export function isCardId(value: unknown): value is string {
-  return cardIdSchema.safeParse(value).success;
-}
-
 const positionSchema = z.object({ x: z.number().finite(), y: z.number().finite() }).strict();
 
 export const cardInputSchema = z
@@ -153,13 +149,3 @@ export const updateCardPositionsCommandSchema = z
   });
 
 export type CardPositionUpdate = z.infer<typeof cardPositionUpdateSchema>;
-
-export function parseCardInput(value: unknown): CardInput | null {
-  const result = cardInputSchema.safeParse(value);
-  return result.success ? result.data : null;
-}
-
-export function parseCardChanges(value: unknown): CardChanges | null {
-  const result = cardChangesSchema.safeParse(value);
-  return result.success ? result.data : null;
-}
