@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "imports": {
+    "#lib": "./src/lib/index.js",
     "#lib/*": "./src/lib/*"
   },
   "scripts": {
@@ -46,7 +47,7 @@
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
-      "version": "12.8.1",
+      "version": "12.9.1",
       "onFail": "download"
     }
   },
