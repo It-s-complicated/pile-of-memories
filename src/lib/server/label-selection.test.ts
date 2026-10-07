@@ -61,6 +61,25 @@ describe("candidate label selection", () => {
     expect(body.questions.label_2.instructions).toContain("passing mentions");
   });
 
+  it("defines broad categories without changing custom labels or the selection threshold", async () => {
+    const fetchMock = mockAnswers([0.84, 0.66, 0.1, 0.1, 0.1]);
+    const result = await selectMemoryLabels(
+      {
+        description: "Product engineers should stay curious instead of just completing tickets.",
+        existingTags: ["Job", "Personal development", "Web development", "Project", "Custom topic"],
+      },
+      new AbortController().signal,
+    );
+    expect(result.tags).toEqual(["Job", "Personal development"]);
+    const { questions } = JSON.parse(fetchMock.mock.calls[0]![1].body);
+    expect(questions.label_0.instructions).toContain("not limited to job searching");
+    expect(questions.label_1.instructions).toContain("mindset, self-improvement, and curiosity");
+    expect(questions.label_2.instructions).toContain("without a web context does not qualify");
+    expect(questions.label_3.instructions).toContain("specific planned or ongoing undertaking");
+    expect(questions.label_4.instructions).toContain('"Custom topic"');
+    expect(questions.label_4.instructions).not.toContain("For this board");
+  });
+
   it("uses the default ask.if boolean, excluding 0.5 and accepting just above it", async () => {
     mockAnswers([0.49, 0.5]);
     expect(

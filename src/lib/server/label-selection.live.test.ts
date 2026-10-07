@@ -14,6 +14,15 @@ const examples = [
     existingTags: vocabulary,
   },
   {
+    name: "professional mindset and curiosity",
+    description:
+      "Product engineers build for other people and bring their own opinions. They are more than ticket workers. Curiosity matters: ask questions and stay open to learning.",
+    kind: "note",
+    required: ["Job", "Personal development"],
+    allowed: ["Job", "Personal development"],
+    existingTags: vocabulary,
+  },
+  {
     name: "multiple web development topics",
     description:
       "Project notes: my personal website uses Vue components and CSS grid layouts. Deployment requires choosing a web hosting provider.",

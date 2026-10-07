@@ -18,7 +18,7 @@ import { LABEL_MODEL, selectMemoryLabels } from "./label-selection";
 const TITLE_MODEL = "gpt-5.6-luna";
 export const ENRICHMENT_PROVIDER = "opencode-go+typesafe";
 export const ENRICHMENT_MODEL = `${TITLE_MODEL}+${LABEL_MODEL}`;
-export const ENRICHMENT_PROMPT_VERSION = "memory-enrichment-v9";
+export const ENRICHMENT_PROMPT_VERSION = "memory-enrichment-v10";
 const PROVIDER_TIMEOUT_MS = 55_000;
 
 export type EnrichmentExecution = {
