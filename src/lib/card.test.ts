@@ -3,11 +3,13 @@ import {
   cardChangesSchema,
   cardIdSchema,
   cardInputSchema,
-  createCardRequestSchema,
+  createCardFormSchema,
+  updateCardFormSchema,
   deleteCardCommandSchema,
   memoryListSettingsSchema,
   sortAndFilterCards,
   type Card,
+  type CreateCardFormInput,
   updateCardCommandSchema,
   updateCardPositionsCommandSchema,
 } from "./card";
@@ -31,8 +33,8 @@ describe("card creation validation", () => {
       data: {
         ...validCard,
         title: "Capture this",
-        tags: ["Job"],
-        topics: ["Concept", "CSS"],
+        tags: ["job", "Concept"],
+        topics: ["CSS"],
       },
     });
   });
@@ -55,13 +57,63 @@ describe("card creation validation", () => {
       reviewStartedAt: "2026-01-01T12:00:00.000Z",
     };
 
-    expect(createCardRequestSchema.safeParse({ card: validCard, creation }).success).toBe(true);
+    expect(createCardFormSchema.safeParse({ card: validCard, creation }).success).toBe(true);
     expect(
-      createCardRequestSchema.safeParse({ card: validCard, creation, generatedTitle: "private" })
+      createCardFormSchema.safeParse({ card: validCard, creation, generatedTitle: "private" })
         .success,
+    ).toBe(false);
+    expect(
+      createCardFormSchema.safeParse({ card: { ...validCard, privateField: "nope" }, creation })
+        .success,
+    ).toBe(false);
+    expect(
+      createCardFormSchema.safeParse({
+        card: validCard,
+        creation: { ...creation, privateField: "nope" },
+      }).success,
     ).toBe(false);
     expect(cardIdSchema.safeParse(CARD_ID).success).toBe(true);
     expect(cardIdSchema.safeParse("not-a-card-id").success).toBe(false);
+  });
+});
+
+describe("card forms", () => {
+  it.each([
+    { resultSource: "manual" },
+    { resultSource: "ai", enrichmentAttemptId: "not-a-uuid" },
+    { resultSource: "fallback", reviewStartedAt: "not-a-datetime" },
+  ])("rejects invalid creation provenance %j", (creation) => {
+    expect(createCardFormSchema.safeParse({ card: validCard, creation }).success).toBe(false);
+  });
+
+  it.each(["tags", "topics"] as const)("rejects invalid %s in creation forms", (field) => {
+    expect(
+      createCardFormSchema.safeParse({ card: { ...validCard, [field]: ["x".repeat(41)] } }).success,
+    ).toBe(false);
+    expect(createCardFormSchema.safeParse({ card: { ...validCard, [field]: [" "] } }).success).toBe(
+      false,
+    );
+  });
+
+  it("normalizes omitted HTML controls without weakening validation", () => {
+    const { archived: _archived, tags: _tags, topics: _topics, kind: _kind, ...card } = validCard;
+    expect(
+      createCardFormSchema.parse({ card, creation: { resultSource: "fallback" } }),
+    ).toMatchObject({
+      card: { kind: "memory", archived: false, tags: [], topics: [] },
+      creation: { enrichmentAttemptId: null, resultSource: "fallback" },
+    });
+    const input = { card } satisfies CreateCardFormInput;
+    expect(createCardFormSchema.parse(input)).not.toHaveProperty("creation");
+    const tags = Array.from({ length: 101 }, (_, index) => `Tag ${index}`);
+    const topics = Array.from({ length: 100 }, (_, index) => `Topic ${index}`);
+    expect(createCardFormSchema.safeParse({ card: { ...card, tags, topics } }).success).toBe(false);
+    expect(updateCardFormSchema.safeParse({ id: CARD_ID, changes: { tags, topics } }).success).toBe(
+      false,
+    );
+    expect(
+      createCardFormSchema.safeParse({ card: { ...card, position: { x: NaN, y: 0 } } }).success,
+    ).toBe(false);
   });
 });
 
@@ -80,8 +132,8 @@ describe("card change validation", () => {
       data: {
         title: "Updated",
         body: "Visit https://example.org.",
-        tags: ["Personal development"],
-        topics: ["Svelte", "CSS"],
+        tags: ["Personal development", "Svelte"],
+        topics: ["CSS"],
         archived: true,
       },
     });

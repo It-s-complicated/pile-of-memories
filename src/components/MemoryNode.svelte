@@ -6,11 +6,14 @@
 
 <script lang="ts">
   import { type NodeProps } from "@xyflow/svelte";
-  import { cardKindLabels, type CardKind } from "#lib/card.js";
-  import { deleteCard, updateCard } from "#lib/cards.remote.js";
+  import type { RemoteFormEnhanceInstance } from "$app/server";
+  import { cardKindLabels, updateCardFormSchema, type Card, type UpdateCardFormInput } from "#lib/card.js";
+  import { deleteCard, saveCard, updateCard } from "#lib/cards.remote.js";
+  import { getLiveLabels } from "#lib/labels.remote.js";
   import { getCardPersistence } from "#lib/card-persistence.js";
+  import { getErrorMessage } from "#lib/errors.js";
+  import { showModal } from "#lib/dialog.js";
   import { enrichMemory } from "#lib/enrichment.remote.js";
-  import { partitionLabels } from "#lib/labels.js";
   import { parseMarkdown } from "#lib/markdown.js";
   import { getPrimaryTagAccent, getTopicTagColor, type MemoryNode } from "#lib/scene.js";
   import MemoryMarkdown from "./MemoryMarkdown.svelte";
@@ -24,27 +27,29 @@
   let createdDate = $derived(compactDateFormatter.format(new Date(data.createdAt)));
   let updatedDate = $derived(compactDateFormatter.format(new Date(data.updatedAt)));
   let editOpen = $state(false);
-  let editTitle = $state("");
-  let editKind = $state<CardKind>("memory");
-  let editBody = $state("");
-  let editLabels = $state<string[]>([]);
+  let editForm = $derived(saveCard.for(id).preflight(updateCardFormSchema));
+  const labelsQuery = getLiveLabels();
+  let vocabulary = $derived(labelsQuery.current ?? []);
+  let labelsReady = $derived(labelsQuery.ready && !labelsQuery.error);
+  let tagSuggestions = $derived(vocabulary.filter(({ kind }) => kind === "tag").map(({ name }) => name));
+  let topicSuggestions = $derived(vocabulary.filter(({ kind }) => kind === "topic").map(({ name }) => name));
   let enrichmentGeneration = 0;
   let enriching = $derived(enrichMemory.pending > 0);
-  let busy = $derived(updateCard.pending > 0 || deleteCard.pending > 0);
+  let busy = $derived(editForm.pending > 0 || updateCard.pending > 0 || deleteCard.pending > 0);
   let enrichmentStatus = $state("");
   let saveError = $state("");
 
-  function showModal(dialog: HTMLDialogElement) {
-    dialog.showModal();
-    return () => dialog.close();
-  }
-
   function openEditor(): void {
     enrichmentGeneration += 1;
-    editTitle = data.title;
-    editKind = data.kind;
-    editBody = data.body;
-    editLabels = [...data.tags, ...data.topics];
+    editForm.element?.reset();
+    const fields = editForm.fields;
+    fields.set({ id, changes: {
+      title: data.title,
+      kind: data.kind,
+      body: data.body,
+      tags: [...data.tags],
+      topics: [...data.topics],
+    } });
     enrichmentStatus = "";
     saveError = "";
     editOpen = true;
@@ -56,7 +61,7 @@
   }
 
   async function repeatEnrichment(): Promise<void> {
-    const description = editBody.trim();
+    const description = editForm.fields.changes.body.value()?.trim() ?? "";
     if (!description) {
       saveError = "Add memory text before repeating enrichment.";
       return;
@@ -66,30 +71,27 @@
     enrichmentStatus = "";
     saveError = "";
     try {
-      const result = await enrichMemory({ description, existingTags: data.tagVocabulary });
+      const result = await enrichMemory({ description });
       if (generation !== enrichmentGeneration) return;
-      editTitle = result.title;
-      editKind = result.kind;
-      editLabels = result.tags;
-      enrichmentStatus = "Fresh title, type, and tags are ready. Save to keep them.";
+      const fields = editForm.fields.changes;
+      fields.title.set(result.title);
+      fields.kind.set(result.kind);
+      fields.tags.set(result.tags);
+      fields.topics.set(result.topics);
+      enrichmentStatus = "Fresh title, type, tags, and topics are ready. Save to keep them.";
     } catch {
       if (generation === enrichmentGeneration) saveError = "Enrichment failed. Try again.";
     }
   }
 
-  async function save(event: SubmitEvent): Promise<void> {
-    event.preventDefault();
-    const title = editTitle.trim() || "Untitled memory";
-    const body = editBody;
-    const { tags, topics } = partitionLabels(editLabels);
-    const changes = { title, body, tags, topics, kind: editKind };
-
+  async function save(form: RemoteFormEnhanceInstance<UpdateCardFormInput, Card>): Promise<void> {
+    if (form.pending > 1) return;
+    const generation = enrichmentGeneration;
     saveError = "";
     try {
-      await cardPersistence.update(id, changes);
-      closeEditor();
-    } catch {
-      saveError = "Changes not saved.";
+      if (await cardPersistence.save(form) && generation === enrichmentGeneration) closeEditor();
+    } catch (caught) {
+      saveError = getErrorMessage(caught, "Changes not saved. Please try again.");
     }
   }
 
@@ -213,7 +215,8 @@
     onclose={closeEditor}
     {@attach showModal}
   >
-    <form method="dialog" onsubmit={save}>
+    <form {...editForm.enhance(save)}>
+      <input {...editForm.fields.id.as("hidden", id)} />
       <header>
         <p>Edit memory</p>
         <h2 id={`edit-memory-${id}`}>{data.title || "Untitled memory"}</h2>
@@ -222,7 +225,7 @@
       <fieldset class="edit-fields" disabled={busy || enriching}>
         <label class="memory-field">
           <span>Card type</span>
-          <select bind:value={editKind}>
+          <select {...editForm.fields.changes.kind.as("select")}>
             {#each Object.entries(cardKindLabels) as [kind, label] (kind)}
               <option value={kind}>{label}</option>
             {/each}
@@ -230,31 +233,45 @@
         </label>
         <label class="memory-field">
           <span>Title</span>
-          <input bind:value={editTitle} maxlength="80" required />
+          <input {...editForm.fields.changes.title.as("text")} maxlength="80" required />
         </label>
         <label class="memory-field">
           <span>Memory</span>
-          <textarea bind:value={editBody} rows="10" maxlength="8000" required></textarea>
+          <textarea {...editForm.fields.changes.body.as("text")} rows="10" maxlength="8000" required></textarea>
         </label>
         <TagEditor
           id={`edit-memory-tags-${id}`}
-          bind:value={editLabels}
-          suggestions={data.tagVocabulary}
+          bind:value={() => editForm.fields.changes.tags.value()?.filter((tag) => tag !== undefined) ?? [], (value) => { const fields = editForm.fields.changes; fields.tags.set(value); }}
+          field={editForm.fields.changes.tags}
+          ready={labelsReady}
+          suggestions={tagSuggestions}
+        />
+        <TagEditor
+          id={`edit-memory-topics-${id}`}
+          label="Topics"
+          kind="topic"
+          bind:value={() => editForm.fields.changes.topics.value()?.filter((topic) => topic !== undefined) ?? [], (value) => { const fields = editForm.fields.changes; fields.topics.set(value); }}
+          field={editForm.fields.changes.topics}
+          ready={labelsReady}
+          suggestions={topicSuggestions}
         />
       </fieldset>
 
       <fieldset class="debug-tools">
         <legend>Debug</legend>
-        <p>Generate a fresh title, type, and tags from the current card text.</p>
+        <p>Generate a fresh title, type, tags, and topics from the current card text.</p>
         <button
           type="button"
           class="secondary-button"
-          disabled={busy || enriching}
+          disabled={busy || enriching || !labelsReady}
           onclick={repeatEnrichment}
         >{enriching ? "Enriching…" : "Repeat enrichment"}</button>
       </fieldset>
 
       {#if enrichmentStatus}<p class="placement-note" role="status">{enrichmentStatus}</p>{/if}
+      {#each editForm.fields.allIssues() ?? [] as issue (issue)}
+        <p class="save-error" role="alert">{issue.message}</p>
+      {/each}
       {#if saveError}<p class="save-error" role="alert">{saveError}</p>{/if}
       <footer>
         <button type="button" class="danger-button" disabled={busy || enriching} onclick={remove}>

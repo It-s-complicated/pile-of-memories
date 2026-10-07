@@ -1,8 +1,23 @@
 import { expect, it } from "vite-plus/test";
-import { PRIMARY_TAGS, TOPIC_TAGS } from "../labels";
+import { readFileSync } from "node:fs";
+import { labelDefinitionSchema } from "../labels";
 import { selectMemoryLabels } from "./label-selection";
 
-const vocabulary = [...PRIMARY_TAGS, ...TOPIC_TAGS];
+// Read the actual seed definitions rather than maintaining a second hardcoded vocabulary.
+const migration = readFileSync(
+  new URL("../../../migrations/0006_managed_labels.sql", import.meta.url),
+  "utf8",
+);
+const vocabulary = Array.from(
+  migration.matchAll(/\('([^']+)', '(tag|topic)', '((?:[^']|'')*)'\)/g),
+  (match, index) =>
+    labelDefinitionSchema.parse({
+      id: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+      name: match[1],
+      kind: match[2],
+      description: match[3]!.replaceAll("''", "'"),
+    }),
+);
 const examples = [
   {
     name: "AI reference note",
@@ -11,6 +26,15 @@ const examples = [
     kind: "note",
     required: ["AI"],
     allowed: ["AI"],
+    existingTags: vocabulary,
+  },
+  {
+    name: "professional mindset and curiosity",
+    description:
+      "Product engineers build for other people and bring their own opinions. They are more than ticket workers. Curiosity matters: ask questions and stay open to learning.",
+    kind: "note",
+    required: ["Job", "Personal development"],
+    allowed: ["Job", "Personal development"],
     existingTags: vocabulary,
   },
   {
@@ -73,14 +97,30 @@ it.runIf(process.env.TEST_LIVE_ENRICHMENT === "1").each(examples)(
   "$name",
   async ({ description, kind, required, allowed, existingTags }) => {
     const result = await selectMemoryLabels(
-      { description, existingTags },
+      { description },
+      existingTags,
       AbortSignal.timeout(10_000),
     );
-    expect.soft(result.kind).toBe(kind);
-    expect.soft(result.tags, "Missing required labels").toEqual(expect.arrayContaining(required));
+    const selected = [...result.tags, ...result.topics];
     expect
       .soft(
-        result.tags.filter((tag) => !allowed.includes(tag)),
+        result.tags.every((name) =>
+          existingTags.some((label) => label.name === name && label.kind === "tag"),
+        ),
+      )
+      .toBe(true);
+    expect
+      .soft(
+        result.topics.every((name) =>
+          existingTags.some((label) => label.name === name && label.kind === "topic"),
+        ),
+      )
+      .toBe(true);
+    expect.soft(result.kind).toBe(kind);
+    expect.soft(selected, "Missing required labels").toEqual(expect.arrayContaining(required));
+    expect
+      .soft(
+        selected.filter((tag) => !allowed.includes(tag)),
         "Unexpected labels",
       )
       .toEqual([]);

@@ -27,8 +27,9 @@ is unavailable, capture defaults to an editable Note. Existing cards remain Memo
 
 Choose **Export memories** next to **Sign out** to download a versioned JSON file of all
 saved memories, including archived ones, Markdown bodies, IDs, canvas positions, timestamps,
-links, and assigned tags/topics. The file also includes the complete hardcoded tag and topic
-vocabularies plus any custom labels used by memories, even when the board is filtered.
+links, and assigned tags/topics. The file also includes the complete managed tag and topic
+vocabularies, even when the board is filtered.
+The version-2 export also includes managed label IDs, types, and enrichment descriptions, including unused labels.
 The download reads PostgreSQL and requires the approved session and a working connection.
 Save edits and apply layout previews before exporting.
 
@@ -48,6 +49,23 @@ Set `DATABASE_CONNECTION_STRING` in `.env`. If it uses transaction pooling, set
 `DATABASE_LISTEN_CONNECTION_STRING` to a session-mode URL for live updates. Set
 `OPENCODE_GO_API_KEY` for title suggestions through OpenCode Go and `TYPESAFE_API_KEY` for
 card classification and tag suggestions through TypeSafe.
+
+## Tags and topics
+
+Open **Tags & topics** on the board to create, edit, or delete labels. **Tags** are broad areas;
+**topics** are specific subjects. Both have an editable enrichment description explaining what
+belongs and what does not. Descriptions are optional; without one, AI uses the label's name.
+AI reads the current database vocabulary on the server and suggests up to five tags/topics total.
+
+Capture and card editing have separate tag and topic selectors. New labels are created in the
+manager, not implicitly by typing into a card. Names are unique across both types, ignoring case.
+Renaming or changing a label's type updates assignments on all cards, including archived cards.
+Deleting a label requires confirmation and removes only its assignments, never the cards.
+
+Run `vp run db:migrate` before deploying this feature. Migration 0006 seeds the existing defaults
+and preserves custom labels already assigned to cards; rerunning it does not overwrite edited
+definitions or resurrect deleted defaults. Label changes refresh both labels and card snapshots
+through the existing PostgreSQL notification stream.
 
 ## Authentication
 

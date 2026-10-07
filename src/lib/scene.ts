@@ -1,10 +1,5 @@
 import type { Node } from "@xyflow/svelte";
 import type { Card } from "./card";
-import { PRIMARY_TAGS, TOPIC_TAGS } from "./labels";
-
-export { PRIMARY_TAGS, TOPIC_TAGS } from "./labels";
-type PrimaryTagKey = Lowercase<(typeof PRIMARY_TAGS)[number]>;
-type TopicTagKey = Lowercase<(typeof TOPIC_TAGS)[number]>;
 
 // Tag colors form one OKLCH family: fixed lightness and chroma, hue per tag,
 // so every tag is scannable while the whole pile sits calm.
@@ -13,7 +8,7 @@ const PRIMARY_TAG_HUES = {
   job: 145,
   "personal development": 305,
   project: 354,
-} satisfies Record<PrimaryTagKey, number>;
+};
 const TOPIC_TAG_HUES = {
   ai: 195,
   "local-first": 50,
@@ -22,7 +17,9 @@ const TOPIC_TAG_HUES = {
   vue: 160,
   react: 225,
   finance: 85,
-} satisfies Record<TopicTagKey, number>;
+};
+type PrimaryTagKey = keyof typeof PRIMARY_TAG_HUES;
+type TopicTagKey = keyof typeof TOPIC_TAG_HUES;
 
 export type MemoryData = {
   kind: Card["kind"];
@@ -33,7 +30,6 @@ export type MemoryData = {
   tags: string[];
   topics: string[];
   links: string[];
-  tagVocabulary: string[];
 };
 export type MemoryNode = Node<MemoryData, "memory">;
 function getPrimaryTagHue(tag: string): number | undefined {
@@ -65,7 +61,7 @@ export function getMinimapColors(tags: string[]): string[] {
   return colors.length > 0 ? colors : ["color-mix(in oklch, var(--muted) 45%, var(--paper))"];
 }
 
-export function cardToMemoryNode(card: Card, tagVocabulary: string[] = []): MemoryNode {
+export function cardToMemoryNode(card: Card): MemoryNode {
   return {
     id: card.id,
     type: "memory",
@@ -79,7 +75,6 @@ export function cardToMemoryNode(card: Card, tagVocabulary: string[] = []): Memo
       tags: card.tags,
       topics: card.topics,
       links: card.links,
-      tagVocabulary,
     },
     focusable: true,
   };

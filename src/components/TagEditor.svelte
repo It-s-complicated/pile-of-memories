@@ -1,21 +1,26 @@
 <script lang="ts">
-  import { canonicalizeLabels, MAX_LABEL_LENGTH, PRIMARY_TAGS } from "#lib/labels.js";
+  import type { RemoteFormFields } from "$app/server";
+  import { canonicalizeLabels, type LabelKind } from "#lib/labels.js";
   import { getPrimaryTagAccent, getTopicTagColor } from "#lib/scene.js";
-
-  const primaryTagKeys = new Set(PRIMARY_TAGS.map((tag) => tag.toLowerCase()));
 
   interface Props {
     id: string;
     label?: string;
+    kind?: LabelKind;
     value?: string[];
     suggestions?: string[];
+    field?: RemoteFormFields<string[]>;
+    ready?: boolean;
   }
 
   let {
     id,
     label = "Tags",
+    kind = "tag",
     value = $bindable([]),
     suggestions = [],
+    field,
+    ready = true,
   }: Props = $props();
   let input = $state("");
   let availableSuggestions = $derived(
@@ -24,39 +29,28 @@
     ),
   );
 
-  function addLabel(label = input): void {
-    const next = label.trim();
-    if (!next || next.length > MAX_LABEL_LENGTH) return;
-    value = canonicalizeLabels([...value, next]);
+  let unavailableLabels = $derived(ready ? value.filter(
+    (selected) => !suggestions.some((suggestion) => suggestion.toLowerCase() === selected.toLowerCase()),
+  ) : []);
+
+  function addLabel(): void {
+    if (!availableSuggestions.includes(input)) return;
+    value = canonicalizeLabels([...value, input]);
     input = "";
-  }
-
-  function handleInput(event: Event & { currentTarget: HTMLInputElement }): void {
-    input = event.currentTarget.value;
-    if (!input.includes(",")) return;
-
-    const labels = input.split(",");
-    input = labels.pop() ?? "";
-    for (const label of labels) addLabel(label);
-  }
-
-  function handleKeydown(event: KeyboardEvent): void {
-    if (event.key !== "Enter" && event.key !== ",") return;
-    event.preventDefault();
-    addLabel();
   }
 </script>
 
 <div class="tag-editor">
   <label for={id}>{label}</label>
   {#if value.length}
-    <ul aria-label="Selected tags">
-      {#each value as tag (tag.toLowerCase())}
-        {@const primary = primaryTagKeys.has(tag.toLowerCase())}
+    <ul aria-label={`Selected ${label.toLowerCase()}`}>
+      {#each value as tag, index (tag.toLowerCase())}
+        {@const primary = kind === "tag"}
         <li
           class:primary
           style:--tag-color={primary ? getPrimaryTagAccent(tag) : getTopicTagColor(tag)}
         >
+          {#if field}<input {...field[index].as("hidden", tag)} />{/if}
           <span>{tag}</span>
           <button
             type="button"
@@ -69,23 +63,18 @@
       {/each}
     </ul>
   {/if}
+  {#if unavailableLabels.length}
+    <p role="status">No longer available as {kind === "tag" ? "tags" : "topics"}: {unavailableLabels.join(", ")}. Remove these selections and choose current labels below.</p>
+  {/if}
   <div class="tag-input">
-    <input
-      {id}
-      list={`${id}-suggestions`}
-      value={input}
-      maxlength={MAX_LABEL_LENGTH}
-      placeholder="Type a tag, then press Enter"
-      oninput={handleInput}
-      onkeydown={handleKeydown}
-    />
-    <button type="button" onclick={() => addLabel()}>Add</button>
+    <select {id} bind:value={input} disabled={availableSuggestions.length === 0}>
+      <option value="">Choose a {kind}…</option>
+      {#each availableSuggestions as suggestion (suggestion.toLowerCase())}
+        <option value={suggestion}>{suggestion}</option>
+      {/each}
+    </select>
+    <button type="button" onclick={addLabel} disabled={!availableSuggestions.includes(input)}>Add</button>
   </div>
-  <datalist id={`${id}-suggestions`}>
-    {#each availableSuggestions as suggestion (suggestion.toLowerCase())}
-      <option value={suggestion}></option>
-    {/each}
-  </datalist>
 </div>
 
 <style>
@@ -158,7 +147,7 @@
     gap: 0.4rem;
   }
 
-  input,
+  select,
   .tag-input button {
     border: 1px solid var(--hairline);
     border-radius: 3px;
@@ -167,7 +156,7 @@
     background: #fff;
   }
 
-  input:focus-visible {
+  select:focus-visible {
     outline: 2px solid color-mix(in oklch, var(--theme-ink) 55%, var(--paper));
     outline-offset: 1px;
   }
@@ -177,7 +166,16 @@
     cursor: pointer;
   }
 
-  .tag-input button:hover {
+  .tag-input button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  select {
+    min-width: 0;
+  }
+
+  .tag-input button:hover:not(:disabled) {
     background: var(--ink-tint);
   }
 </style>

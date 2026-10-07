@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import type { Card, CardInput } from "../card";
 import { insertCard, listCards, removeCard, updateCard, updateCardPositions } from "./database";
 import { streamCardSnapshots } from "./card-changes";
+import { withDeadline } from "./deadline";
 
 const connectionString = process.env.DATABASE_CONNECTION_STRING;
 const runIntegration = process.env.DATABASE_INTEGRATION_TEST === "1" && connectionString;
@@ -27,24 +28,23 @@ function input(id: string): CardInput {
 }
 
 async function nextSnapshot(snapshots: AsyncGenerator<Card[]>): Promise<Card[]> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error("Timed out waiting for card snapshot")),
-      10_000,
-    );
-    snapshots.next().then(
-      ({ value, done }) => {
-        clearTimeout(timer);
-        if (done) reject(new Error("Card snapshot stream ended"));
-        else resolve(value);
-      },
-      (error) => {
-        clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
+  const { value, done } = await withDeadline(
+    snapshots.next(),
+    10_000,
+    () => new Error("Timed out waiting for card snapshot"),
+  );
+  if (done) throw new Error("Card snapshot stream ended");
+  return value;
 }
+
+it("returns snapshots and rejects an exhausted stream without a database", async () => {
+  async function* snapshots(): AsyncGenerator<Card[]> {
+    yield [];
+  }
+  const stream = snapshots();
+  await expect(nextSnapshot(stream)).resolves.toEqual([]);
+  await expect(nextSnapshot(stream)).rejects.toThrow("Card snapshot stream ended");
+});
 
 async function listenerCount(): Promise<number> {
   const [row] = await sql<{ count: number }[]>`
@@ -79,11 +79,43 @@ describeIntegration("PostgreSQL card integration", { concurrent: false }, () => 
         "utf8",
       ),
     );
+    await sql.unsafe(
+      await readFile(
+        new URL("../../../migrations/0006_managed_labels.sql", import.meta.url),
+        "utf8",
+      ),
+    );
     await sql`TRUNCATE cards CASCADE`;
   });
 
   afterAll(async () => {
     await sql?.end();
+  });
+
+  it("canonicalizes managed labels and cascades rename, retype, and deletion to archived cards", async () => {
+    await sql`TRUNCATE cards CASCADE`;
+    const [label] = await sql`INSERT INTO memory_labels (name, kind, description)
+      VALUES ('Integration area', 'tag', 'A test area') RETURNING id`;
+    const card = await insertCard({
+      ...input(FIRST_ID),
+      tags: [],
+      topics: [" integration AREA ", "Integration area"],
+      archived: true,
+    });
+    expect(card.tags).toEqual(["Integration area"]);
+    expect(card.topics).toEqual([]);
+    await sql`UPDATE memory_labels SET name = 'Integration topic', kind = 'topic' WHERE id = ${label.id}`;
+    expect((await listCards())[0]).toMatchObject({
+      tags: [],
+      topics: ["Integration topic"],
+      archived: true,
+    });
+    await expect(
+      updateCard(FIRST_ID, { tags: ["Unknown label"], topics: [] }),
+    ).rejects.toMatchObject({ code: "23503" });
+    expect((await listCards())[0].topics).toEqual(["Integration topic"]);
+    await sql`DELETE FROM memory_labels WHERE id = ${label.id}`;
+    expect((await listCards())[0]).toMatchObject({ tags: [], topics: [], archived: true });
   });
 
   it("updates a position batch atomically without changing content timestamps", async () => {

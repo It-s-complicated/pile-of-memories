@@ -14,42 +14,58 @@ function hmac(value: string, key: string): string {
 
 describe("server enrichment analytics", () => {
   const attemptId = "00000000-0000-4000-8000-000000000001";
-  const input = { description: "A private memory", existingTags: ["CSS", "Job"] };
+  const input = { description: "A private memory" };
+  const vocabulary = [
+    { id: attemptId, name: "CSS", kind: "topic" as const, description: "" },
+    {
+      id: "00000000-0000-4000-8000-000000000002",
+      name: "Job",
+      kind: "tag" as const,
+      description: "",
+    },
+  ];
 
-  it("uses a keyed fingerprint and counts vocabulary reuse", () => {
+  it("fingerprints and counts both tags and topics without retaining private text", () => {
     const key = "a-secure-analytics-key-with-32-characters";
-    const started = buildAttemptStarted(attemptId, input);
+    const started = buildAttemptStarted(attemptId, input, vocabulary);
+    const output = {
+      kind: "note" as const,
+      title: " Title ",
+      tags: ["Job"],
+      topics: ["css", "New"],
+    };
     const succeeded = buildAttemptSucceeded(
       started,
-      input,
-      { kind: "note", title: " Title ", tags: ["css", "New"] },
+      vocabulary,
+      output,
       {
-        output: { kind: "note", title: "Title", tags: ["css", "New"] },
+        output,
         latencyMs: 125,
-        usage: {
-          promptTokens: 10,
-          completionTokens: 5,
-          totalTokens: 15,
-          providerCost: null,
-        },
+        usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, providerCost: null },
       },
       key,
     );
-
+    expect(started.existingTagCount).toBe(2);
     expect(succeeded.generatedTitleFingerprint).toBe(hmac("Title", key));
-    expect(succeeded.generatedTagFingerprints).toEqual([hmac("css", key), hmac("new", key)]);
-    expect(succeeded.vocabularyReuseCount).toBe(1);
+    expect(succeeded.generatedTagFingerprints).toEqual([
+      hmac("job", key),
+      hmac("css", key),
+      hmac("new", key),
+    ]);
+    expect(succeeded.generatedTagCount).toBe(3);
+    expect(succeeded.vocabularyReuseCount).toBe(2);
     expect(JSON.stringify(succeeded)).not.toContain("A private memory");
   });
 
   it("degrades to null fingerprints when the key is too short", () => {
     expect(hasAnalyticsFingerprintKey("short")).toBe(false);
+    const output = { kind: "note" as const, title: "Title", tags: [], topics: ["CSS"] };
     const succeeded = buildAttemptSucceeded(
-      buildAttemptStarted(attemptId, input),
-      input,
-      { kind: "note", title: "Title", tags: ["CSS"] },
+      buildAttemptStarted(attemptId, input, vocabulary),
+      vocabulary,
+      output,
       {
-        output: { kind: "note", title: "Title", tags: ["CSS"] },
+        output,
         latencyMs: 1,
         usage: {
           promptTokens: null,
@@ -79,7 +95,6 @@ describe("server enrichment analytics", () => {
       createdAt: "2026-01-01T12:00:00.000Z",
       updatedAt: "2026-01-01T12:00:00.000Z",
     };
-
     const job = buildReviewAnalyticsJob(
       card,
       {
@@ -89,7 +104,6 @@ describe("server enrichment analytics", () => {
       },
       key,
     );
-
     expect(job.finalTitleFingerprint).toBe(hmac("Final title", key));
     expect(job.finalTagFingerprints).toEqual([hmac("job", key), hmac("css", key)]);
     expect(job.finalTagCount).toBe(2);

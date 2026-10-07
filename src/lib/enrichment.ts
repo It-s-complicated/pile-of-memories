@@ -5,7 +5,6 @@ import { canonicalizeLabels, labelSchema } from "./labels";
 export const enrichmentInputSchema = z
   .object({
     description: z.string().trim().min(1).max(8_000),
-    existingTags: z.array(labelSchema).max(1_000).transform(canonicalizeLabels),
   })
   .strict();
 
@@ -14,8 +13,12 @@ export const enrichmentOutputSchema = z
     kind: cardKindSchema,
     title: z.string().trim().min(1).max(80),
     tags: z.array(labelSchema).max(5).transform(canonicalizeLabels),
+    topics: z.array(labelSchema).max(5).transform(canonicalizeLabels),
   })
-  .strict();
+  .strict()
+  .refine(({ tags, topics }) => tags.length + topics.length <= 5, {
+    message: "Too many suggested labels",
+  });
 
 export const enrichmentResponseSchema = enrichmentOutputSchema.safeExtend({
   attemptId: z.string().uuid(),

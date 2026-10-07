@@ -21,19 +21,21 @@
   import MemoryNodeComponent from "./components/MemoryNode.svelte";
   import MiniMapMemoryNode from "./components/MiniMapMemoryNode.svelte";
   import CaptureDialog from "./components/CaptureDialog.svelte";
-  import type { Card, CardInput } from "./lib/card";
+  import LabelsDialog from "./components/LabelsDialog.svelte";
+  import type { RemoteFormEnhanceInstance } from "$app/server";
+  import type { Card, CardInput, CreateCardFormInput, UpdateCardFormInput } from "./lib/card";
   import { setCardPersistence } from "./lib/card-persistence";
   import {
-    createCard,
     deleteCard,
     getLiveCards,
     updateCard,
     updateCardPositions,
   } from "./lib/cards.remote";
   import { DEFAULT_CARD_SIZE, findClusterPosition, reflowClusters } from "./lib/cluster-layout";
-  import type { CardCreationProvenance } from "./lib/enrichment-analytics";
-  import { canonicalizeLabels, PRIMARY_TAGS, TOPIC_TAGS } from "./lib/labels";
+  import { getLiveLabels } from "./lib/labels.remote";
   import { cardToMemoryNode, type MemoryNode } from "./lib/scene";
+  import { getErrorMessage } from "./lib/errors";
+  import { showModal } from "./lib/dialog";
 
   let { userId }: { userId: string } = $props();
 
@@ -78,6 +80,7 @@
 
   const nodeTypes = { memory: MemoryNodeComponent } satisfies NodeTypes;
   const cardsQuery = getLiveCards();
+  const labelsQuery = getLiveLabels();
   let board = $state.raw<Awaited<ReturnType<typeof createCardCollection>>>();
   let cacheWarning = $state("");
   let stopped = false;
@@ -141,6 +144,14 @@
     if (!stopped) await cacheResult(board?.upsert([card]));
   }
 
+  async function submitCard(form: RemoteFormEnhanceInstance<UpdateCardFormInput, Card>): Promise<boolean> {
+    requireOnline();
+    // LISTEN/NOTIFY handles live updates; use the returned card for the local cache.
+    if (!await form.submit().updates()) return false;
+    if (!stopped && form.result) await cacheResult(board?.upsert([form.result]));
+    return true;
+  }
+
   async function removeCard(id: string) {
     requireOnline();
     await deleteCard({ id });
@@ -173,23 +184,15 @@
   }
   setCardPersistence({
     browse: () => browseMode,
+    save: submitCard,
     update: saveCard,
     delete: removeCard,
   });
 
   let cards = $derived(localCards.data ?? []);
-  let tagVocabulary = $derived(
-    canonicalizeLabels([
-      ...PRIMARY_TAGS,
-      ...TOPIC_TAGS,
-      ...cards.flatMap((card) => [...card.tags, ...card.topics]),
-    ]),
-  );
-  let nodes = $derived<MemoryNode[]>(
-    cards
-      .filter((card) => !card.archived)
-      .map((card) => cardToMemoryNode(card, tagVocabulary)),
-  );
+  let vocabulary = $derived(labelsQuery.current ?? []);
+  let labelsReady = $derived(labelsQuery.ready && !labelsQuery.error);
+  let nodes = $derived<MemoryNode[]>(cards.filter((card) => !card.archived).map(cardToMemoryNode));
   let archivedCards = $derived(cards.filter((card) => card.archived));
   let viewport = $state<Viewport>({ x: 32, y: 32, zoom: 1 });
   let viewportStart = $state<ViewportController>();
@@ -202,16 +205,13 @@
   let persistenceError = $state("");
   let archiveOpen = $state(false);
   let listOpen = $state(false);
+  let labelsOpen = $state(false);
   let archiveError = $state("");
   let archiveBusy = $derived(updateCard.pending > 0 || deleteCard.pending > 0);
   let reorganizeSnapshot = $state.raw<MemoryNode[] | null>(null);
   let reorganizeViewport = $state<Viewport>();
   let reorganizeSaving = $derived(updateCardPositions.pending > 0);
   let reorganizeStatus = $state("");
-
-  function getErrorMessage(error: unknown): string {
-    return error instanceof Error ? error.message : "The board could not be saved.";
-  }
 
   function openArchive(): void {
     archiveError = "";
@@ -246,31 +246,25 @@
     }
   }
 
-  function showModal(dialog: HTMLDialogElement) {
-    dialog.showModal();
-    return () => dialog.close();
-  }
-
-  async function addMemory(
-    draft: Pick<CardInput, "title" | "body" | "tags" | "topics" | "kind">,
-    creation?: CardCreationProvenance,
-  ): Promise<void> {
-    requireOnline();
-    if (!boardReady || !cardsQuery.ready) throw new Error("The board is still loading. Please try again shortly.");
+  function getCapturePosition(draft: Pick<CardInput, "tags" | "topics">): CardInput["position"] {
     const openSpace = {
       x: (canvasWidth / 2 - viewport.x) / viewport.zoom - DEFAULT_CARD_SIZE.width / 2,
       y: (canvasHeight / 2 - viewport.y) / viewport.zoom - DEFAULT_CARD_SIZE.height / 2,
     };
-    const position = findClusterPosition(nodes, draft, openSpace);
-    const saved = await createCard({
-      card: { ...draft, id: crypto.randomUUID(), position, archived: false },
-      ...(creation ? { creation } : {}),
-    });
+    return findClusterPosition(nodes, draft, openSpace);
+  }
+
+  async function addMemory(form: RemoteFormEnhanceInstance<CreateCardFormInput, Card>): Promise<boolean> {
+    requireOnline();
+    if (!boardReady || !cardsQuery.ready) throw new Error("The board is still loading. Please try again shortly.");
+    if (!await form.submit().updates() || !form.result) return false;
+    const saved = form.result;
     if (!stopped) await cacheResult(board?.upsert([saved]));
     viewportStart?.center(
-      position.x + DEFAULT_CARD_SIZE.width / 2,
-      position.y + DEFAULT_CARD_SIZE.height / 2,
+      saved.position.x + DEFAULT_CARD_SIZE.width / 2,
+      saved.position.y + DEFAULT_CARD_SIZE.height / 2,
     );
+    return true;
   }
 
   async function saveMovedCards({ nodes: movedNodes }: { nodes: MemoryNode[] }) {
@@ -280,7 +274,7 @@
       await savePositions(movedNodes.map(({ id, position }) => ({ id, position })));
     } catch (error) {
       persistenceError = getErrorMessage(error);
-      nodes = cards.filter((card) => !card.archived).map((card) => cardToMemoryNode(card, tagVocabulary));
+      nodes = cards.filter((card) => !card.archived).map(cardToMemoryNode);
       void cardsQuery.reconnect().catch(() => {});
     }
   }
@@ -344,7 +338,7 @@
       persistenceError = getErrorMessage(error);
       await tick();
       if (previousViewport) await viewportStart?.restore(previousViewport);
-      nodes = cards.filter((card) => !card.archived).map((card) => cardToMemoryNode(card, tagVocabulary));
+      nodes = cards.filter((card) => !card.archived).map(cardToMemoryNode);
       void cardsQuery.reconnect().catch(() => {});
     }
   }
@@ -426,6 +420,9 @@
       <button type="button" class="chip-button" onclick={openArchive} disabled={!boardReady}>
         Archive · {archivedCards.length}
       </button>
+      <button type="button" class="chip-button" onclick={() => (labelsOpen = true)}>
+        Tags & topics
+      </button>
       <button
         type="button"
         class="chip-button"
@@ -456,12 +453,17 @@
     <p class="status-pill" role="alert">Database unavailable</p>
   {:else if !boardReady}
     <p class="status-pill" role="status">Loading board…</p>
+  {:else if labelsQuery.error}
+    <p class="status-pill" role="alert">
+      Tags and topics unavailable.
+      <button type="button" onclick={() => labelsQuery.reconnect()}>Reconnect</button>
+    </p>
   {:else if cacheWarning}
     <p class="status-pill" role="status">{cacheWarning}</p>
-  {:else if !cardsQuery.connected}
+  {:else if !cardsQuery.connected || !labelsQuery.connected}
     <p class="status-pill" role="status">
       Live updates paused.
-      <button type="button" onclick={() => cardsQuery.reconnect()}>Reconnect</button>
+      <button type="button" onclick={() => Promise.allSettled([cardsQuery.reconnect(), labelsQuery.reconnect()])}>Reconnect</button>
     </p>
   {/if}
 
@@ -482,7 +484,18 @@
 {/if}
 
 {#if captureOpen}
-  <CaptureDialog {tagVocabulary} boardReady={boardReady && cardsQuery.ready} oncreate={addMemory} onclose={closeCapture} />
+  <CaptureDialog {vocabulary} {labelsReady} boardReady={boardReady && cardsQuery.ready && labelsReady} oncreate={addMemory} getPosition={getCapturePosition} onclose={closeCapture} />
+{/if}
+
+{#if labelsOpen}
+  <LabelsDialog
+    labels={vocabulary}
+    ready={labelsReady}
+    loadError={!!labelsQuery.error}
+    connected={labelsQuery.connected}
+    onreconnect={() => labelsQuery.reconnect().catch(() => {})}
+    onclose={() => (labelsOpen = false)}
+  />
 {/if}
 
 {#if archiveOpen}

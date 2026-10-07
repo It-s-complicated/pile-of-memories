@@ -9,6 +9,7 @@ import {
   type EnrichmentReviewJob,
 } from "../enrichment-analytics";
 import { parseMarkdown } from "../markdown";
+import { managedLabelSchema, type LabelInput, type ManagedLabel } from "../labels";
 
 let database: ReturnType<typeof postgres> | undefined;
 
@@ -59,6 +60,41 @@ export async function listCards(): Promise<Card[]> {
   const sql = getSql();
   const rows = await sql<CardRow[]>`SELECT * FROM cards ORDER BY created_at, id`;
   return rows.map(toCard);
+}
+
+export async function listLabels(): Promise<ManagedLabel[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT label.*,
+      (SELECT count(*)::integer FROM cards WHERE label.name = ANY(tags || topics)) AS "usageCount"
+    FROM memory_labels label ORDER BY lower(label.name), label.id
+  `;
+  return managedLabelSchema.array().parse(rows);
+}
+
+export async function createLabel(label: LabelInput): Promise<ManagedLabel> {
+  const sql = getSql();
+  const [row] = await sql`
+    INSERT INTO memory_labels (name, kind, description)
+    VALUES (${label.name}, ${label.kind}, ${label.description})
+    RETURNING *, 0 AS "usageCount"
+  `;
+  return managedLabelSchema.parse(row);
+}
+
+export async function updateLabel(id: string, label: LabelInput): Promise<ManagedLabel | null> {
+  const sql = getSql();
+  const result = await sql`
+    UPDATE memory_labels SET name = ${label.name}, kind = ${label.kind},
+      description = ${label.description} WHERE id = ${id}
+  `;
+  if (result.count === 0) return null;
+  return (await listLabels()).find((label) => label.id === id) ?? null;
+}
+
+export async function deleteLabel(id: string): Promise<boolean> {
+  const sql = getSql();
+  return (await sql`DELETE FROM memory_labels WHERE id = ${id}`).count > 0;
 }
 
 export async function insertCard(card: CardInput): Promise<Card> {
@@ -159,80 +195,49 @@ export async function recordEnrichmentAttemptStarted(
   `;
 }
 
+async function recordEnrichmentAttemptCompleted(
+  attempt:
+    | (EnrichmentAttemptSucceeded & { status: "succeeded" })
+    | (EnrichmentAttemptFailed & { status: "failed" }),
+): Promise<void> {
+  const sql = getSql();
+  const succeeded = attempt.status === "succeeded" ? attempt : null;
+  const row = {
+    status: attempt.status,
+    provider: attempt.provider,
+    model: attempt.model,
+    prompt_version: attempt.promptVersion,
+    error_code: attempt.status === "failed" ? attempt.errorCode : null,
+    latency_ms: attempt.latencyMs,
+    input_character_count: attempt.inputCharacterCount,
+    existing_tag_count: attempt.existingTagCount,
+    generated_title_fingerprint: succeeded?.generatedTitleFingerprint ?? null,
+    generated_tag_fingerprints: succeeded?.generatedTagFingerprints ?? null,
+    generated_tag_count: succeeded?.generatedTagCount ?? null,
+    vocabulary_reuse_count: succeeded?.vocabularyReuseCount ?? null,
+    prompt_tokens: attempt.usage.promptTokens,
+    completion_tokens: attempt.usage.completionTokens,
+    total_tokens: attempt.usage.totalTokens,
+    provider_cost: attempt.usage.providerCost,
+    // Object builders support query fragments at runtime, but Postgres.js types omit them.
+    completed_at: sql`now()` as unknown as postgres.SerializableParameter,
+  };
+  await sql`
+    INSERT INTO analytics_ai_enrichment_attempts ${sql({ id: attempt.id, ...row })}
+    ON CONFLICT (id) DO UPDATE SET ${sql(row)}
+  `;
+}
+
 export async function recordEnrichmentAttemptSucceeded(
   attempt: EnrichmentAttemptSucceeded,
 ): Promise<void> {
-  const sql = getSql();
-  await sql`
-    INSERT INTO analytics_ai_enrichment_attempts (
-      id, status, provider, model, prompt_version, latency_ms, input_character_count,
-      existing_tag_count, generated_title_fingerprint, generated_tag_fingerprints,
-      generated_tag_count, vocabulary_reuse_count, prompt_tokens, completion_tokens,
-      total_tokens, provider_cost, completed_at
-    ) VALUES (
-      ${attempt.id}, 'succeeded', ${attempt.provider}, ${attempt.model}, ${attempt.promptVersion},
-      ${attempt.latencyMs}, ${attempt.inputCharacterCount}, ${attempt.existingTagCount},
-      ${attempt.generatedTitleFingerprint}, ${attempt.generatedTagFingerprints},
-      ${attempt.generatedTagCount}, ${attempt.vocabularyReuseCount}, ${attempt.usage.promptTokens},
-      ${attempt.usage.completionTokens}, ${attempt.usage.totalTokens},
-      ${attempt.usage.providerCost}, now()
-    )
-    ON CONFLICT (id) DO UPDATE SET
-      status = EXCLUDED.status,
-      provider = EXCLUDED.provider,
-      model = EXCLUDED.model,
-      prompt_version = EXCLUDED.prompt_version,
-      error_code = NULL,
-      latency_ms = EXCLUDED.latency_ms,
-      input_character_count = EXCLUDED.input_character_count,
-      existing_tag_count = EXCLUDED.existing_tag_count,
-      generated_title_fingerprint = EXCLUDED.generated_title_fingerprint,
-      generated_tag_fingerprints = EXCLUDED.generated_tag_fingerprints,
-      generated_tag_count = EXCLUDED.generated_tag_count,
-      vocabulary_reuse_count = EXCLUDED.vocabulary_reuse_count,
-      prompt_tokens = EXCLUDED.prompt_tokens,
-      completion_tokens = EXCLUDED.completion_tokens,
-      total_tokens = EXCLUDED.total_tokens,
-      provider_cost = EXCLUDED.provider_cost,
-      completed_at = EXCLUDED.completed_at
-  `;
+  await recordEnrichmentAttemptCompleted({ ...attempt, status: "succeeded" });
 }
 
 export async function recordEnrichmentAttemptFailed(
   attempt: EnrichmentAttemptFailed,
 ): Promise<void> {
-  const sql = getSql();
-  await sql`
-    INSERT INTO analytics_ai_enrichment_attempts (
-      id, status, provider, model, prompt_version, error_code, latency_ms,
-      input_character_count, existing_tag_count, prompt_tokens, completion_tokens,
-      total_tokens, provider_cost, completed_at
-    ) VALUES (
-      ${attempt.id}, 'failed', ${attempt.provider}, ${attempt.model}, ${attempt.promptVersion},
-      ${attempt.errorCode}, ${attempt.latencyMs}, ${attempt.inputCharacterCount},
-      ${attempt.existingTagCount}, ${attempt.usage.promptTokens},
-      ${attempt.usage.completionTokens}, ${attempt.usage.totalTokens},
-      ${attempt.usage.providerCost}, now()
-    )
-    ON CONFLICT (id) DO UPDATE SET
-      status = EXCLUDED.status,
-      provider = EXCLUDED.provider,
-      model = EXCLUDED.model,
-      prompt_version = EXCLUDED.prompt_version,
-      error_code = EXCLUDED.error_code,
-      latency_ms = EXCLUDED.latency_ms,
-      input_character_count = EXCLUDED.input_character_count,
-      existing_tag_count = EXCLUDED.existing_tag_count,
-      generated_title_fingerprint = NULL,
-      generated_tag_fingerprints = NULL,
-      generated_tag_count = NULL,
-      vocabulary_reuse_count = NULL,
-      prompt_tokens = EXCLUDED.prompt_tokens,
-      completion_tokens = EXCLUDED.completion_tokens,
-      total_tokens = EXCLUDED.total_tokens,
-      provider_cost = EXCLUDED.provider_cost,
-      completed_at = EXCLUDED.completed_at
-  `;
+  await recordEnrichmentAttemptCompleted({ ...attempt, status: "failed" });
 }
 
 type AttemptFingerprintRow = {
