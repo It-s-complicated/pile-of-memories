@@ -4,6 +4,8 @@ import {
   cardIdSchema,
   cardInputSchema,
   createCardRequestSchema,
+  createCardFormSchema,
+  updateCardFormSchema,
   deleteCardCommandSchema,
   memoryListSettingsSchema,
   sortAndFilterCards,
@@ -31,8 +33,8 @@ describe("card creation validation", () => {
       data: {
         ...validCard,
         title: "Capture this",
-        tags: ["Job"],
-        topics: ["Concept", "CSS"],
+        tags: ["job", "Concept"],
+        topics: ["CSS"],
       },
     });
   });
@@ -65,6 +67,27 @@ describe("card creation validation", () => {
   });
 });
 
+describe("card forms", () => {
+  it("normalizes omitted HTML controls without weakening validation", () => {
+    const { archived: _archived, tags: _tags, topics: _topics, ...card } = validCard;
+    expect(
+      createCardFormSchema.parse({ card, creation: { resultSource: "fallback" } }),
+    ).toMatchObject({
+      card: { archived: false, tags: [], topics: [] },
+      creation: { enrichmentAttemptId: null, resultSource: "fallback" },
+    });
+    const tags = Array.from({ length: 101 }, (_, index) => `Tag ${index}`);
+    const topics = Array.from({ length: 100 }, (_, index) => `Topic ${index}`);
+    expect(createCardFormSchema.safeParse({ card: { ...card, tags, topics } }).success).toBe(false);
+    expect(updateCardFormSchema.safeParse({ id: CARD_ID, changes: { tags, topics } }).success).toBe(
+      false,
+    );
+    expect(
+      createCardFormSchema.safeParse({ card: { ...card, position: { x: NaN, y: 0 } } }).success,
+    ).toBe(false);
+  });
+});
+
 describe("card change validation", () => {
   it("normalizes content changes without writing derived links", () => {
     expect(
@@ -80,8 +103,8 @@ describe("card change validation", () => {
       data: {
         title: "Updated",
         body: "Visit https://example.org.",
-        tags: ["Personal development"],
-        topics: ["Svelte", "CSS"],
+        tags: ["Personal development", "Svelte"],
+        topics: ["CSS"],
         archived: true,
       },
     });

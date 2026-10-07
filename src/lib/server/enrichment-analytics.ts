@@ -2,6 +2,7 @@ import { ANALYTICS_FINGERPRINT_KEY } from "$app/env/private";
 import { createHmac } from "node:crypto";
 import * as z from "zod";
 import type { Card } from "#lib/card.js";
+import type { LabelDefinition } from "#lib/labels.js";
 import {
   normalizeAnalyticsTags,
   type CardCreationProvenance,
@@ -35,6 +36,7 @@ function fingerprintTags(tags: string[], key: string): string[] {
 export function buildAttemptStarted(
   attemptId: string,
   input: EnrichmentInput,
+  vocabulary: LabelDefinition[],
 ): EnrichmentAttemptStarted {
   return {
     id: attemptId,
@@ -42,27 +44,28 @@ export function buildAttemptStarted(
     model: ENRICHMENT_MODEL,
     promptVersion: ENRICHMENT_PROMPT_VERSION,
     inputCharacterCount: input.description.length,
-    existingTagCount: input.existingTags.length,
+    existingTagCount: vocabulary.length,
   };
 }
 
 export function buildAttemptSucceeded(
   started: EnrichmentAttemptStarted,
-  input: EnrichmentInput,
+  vocabularyDefinitions: LabelDefinition[],
   output: EnrichmentOutput,
   execution: EnrichmentExecution,
   fingerprintKeyValue: string | undefined = ANALYTICS_FINGERPRINT_KEY,
 ): EnrichmentAttemptSucceeded {
   const key = fingerprintKeySchema.parse(fingerprintKeyValue);
-  const normalizedGeneratedTags = normalizeAnalyticsTags(output.tags);
-  const vocabulary = new Set(normalizeAnalyticsTags(input.existingTags));
+  const generatedLabels = [...output.tags, ...output.topics];
+  const normalizedGeneratedTags = normalizeAnalyticsTags(generatedLabels);
+  const vocabulary = new Set(normalizeAnalyticsTags(vocabularyDefinitions.map(({ name }) => name)));
 
   return {
     ...started,
     latencyMs: execution.latencyMs,
     usage: execution.usage,
     generatedTitleFingerprint: key ? fingerprintTitle(output.title, key) : null,
-    generatedTagFingerprints: key ? fingerprintTags(output.tags, key) : null,
+    generatedTagFingerprints: key ? fingerprintTags(generatedLabels, key) : null,
     generatedTagCount: normalizedGeneratedTags.length,
     vocabularyReuseCount: normalizedGeneratedTags.filter((tag) => vocabulary.has(tag)).length,
   };

@@ -9,6 +9,7 @@ import {
   type EnrichmentReviewJob,
 } from "../enrichment-analytics";
 import { parseMarkdown } from "../markdown";
+import { managedLabelSchema, type LabelInput, type ManagedLabel } from "../labels";
 
 let database: ReturnType<typeof postgres> | undefined;
 
@@ -59,6 +60,41 @@ export async function listCards(): Promise<Card[]> {
   const sql = getSql();
   const rows = await sql<CardRow[]>`SELECT * FROM cards ORDER BY created_at, id`;
   return rows.map(toCard);
+}
+
+export async function listLabels(): Promise<ManagedLabel[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT label.*,
+      (SELECT count(*)::integer FROM cards WHERE label.name = ANY(tags || topics)) AS "usageCount"
+    FROM memory_labels label ORDER BY lower(label.name), label.id
+  `;
+  return managedLabelSchema.array().parse(rows);
+}
+
+export async function createLabel(label: LabelInput): Promise<ManagedLabel> {
+  const sql = getSql();
+  const [row] = await sql`
+    INSERT INTO memory_labels (name, kind, description)
+    VALUES (${label.name}, ${label.kind}, ${label.description})
+    RETURNING *, 0 AS "usageCount"
+  `;
+  return managedLabelSchema.parse(row);
+}
+
+export async function updateLabel(id: string, label: LabelInput): Promise<ManagedLabel | null> {
+  const sql = getSql();
+  const result = await sql`
+    UPDATE memory_labels SET name = ${label.name}, kind = ${label.kind},
+      description = ${label.description} WHERE id = ${id}
+  `;
+  if (result.count === 0) return null;
+  return (await listLabels()).find((label) => label.id === id) ?? null;
+}
+
+export async function deleteLabel(id: string): Promise<boolean> {
+  const sql = getSql();
+  return (await sql`DELETE FROM memory_labels WHERE id = ${id}`).count > 0;
 }
 
 export async function insertCard(card: CardInput): Promise<Card> {

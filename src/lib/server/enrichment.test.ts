@@ -6,6 +6,14 @@ import { classifyEnrichmentError, enrichMemory } from "./enrichment";
 vi.mock("$app/env/private", () => ({ OPENCODE_GO_API_KEY: "test", TYPESAFE_API_KEY: "test" }));
 vi.mock("@tanstack/ai", () => ({ chat: vi.fn(), generateMessageId: () => "test" }));
 afterEach(() => vi.unstubAllGlobals());
+const vocabulary = [
+  {
+    id: "00000000-0000-4000-8000-000000000001",
+    name: "CSS",
+    kind: "topic" as const,
+    description: "CSS layout and styling.",
+  },
+];
 
 it("combines a generated title with only vocabulary-selected labels, including no matches", async () => {
   vi.mocked(chat).mockResolvedValue("A CSS note");
@@ -24,12 +32,15 @@ it("combines a generated title with only vocabulary-selected labels, including n
       }),
     ),
   );
-  const result = await enrichMemory({ description: "Learning CSS grid", existingTags: ["CSS"] });
-  expect(result.output).toEqual({ kind: "note", title: "A CSS note", tags: ["CSS"] });
+  const result = await enrichMemory({ description: "Learning CSS grid" }, vocabulary);
+  expect(result.output).toEqual({ kind: "note", title: "A CSS note", tags: [], topics: ["CSS"] });
   expect(result.usage.providerCost).toBeNull();
-  expect(
-    (await enrichMemory({ description: "Learning CSS grid", existingTags: [] })).output,
-  ).toEqual({ kind: "note", title: "A CSS note", tags: [] });
+  expect((await enrichMemory({ description: "Learning CSS grid" }, [])).output).toEqual({
+    kind: "note",
+    title: "A CSS note",
+    tags: [],
+    topics: [],
+  });
 });
 
 it("cancels the other provider on failure so the caller can use its manual fallback", async () => {
@@ -44,9 +55,9 @@ it("cancels the other provider on failure so the caller can use its manual fallb
       );
     }),
   );
-  await expect(
-    enrichMemory({ description: "Memory", existingTags: ["CSS"] }),
-  ).rejects.toMatchObject({ errorCode: "invalid_provider_json" });
+  await expect(enrichMemory({ description: "Memory" }, vocabulary)).rejects.toMatchObject({
+    errorCode: "invalid_provider_json",
+  });
   expect(signal?.aborted).toBe(true);
 });
 

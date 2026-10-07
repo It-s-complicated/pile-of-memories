@@ -18,7 +18,7 @@ import {
   compareTagFingerprints,
   normalizeAnalyticsTags,
 } from "./enrichment-analytics";
-import { canonicalizeLabels, partitionLabels } from "./labels";
+import { canonicalizeLabels, labelInputSchema } from "./labels";
 import { parseMarkdown } from "./markdown";
 
 const node = (id: string, tags: string[], topics: string[] = [], position = { x: 0, y: 0 }) => ({
@@ -57,16 +57,25 @@ describe("Markdown", () => {
 });
 
 describe("labels", () => {
-  it("deduplicates case-insensitively and partitions known areas", () => {
+  it("deduplicates case-insensitively without assuming a label's category", () => {
     expect(canonicalizeLabels([" CSS ", "css", "job", "New topic"])).toEqual([
       "CSS",
-      "Job",
+      "job",
       "New topic",
     ]);
-    expect(partitionLabels(["css", "JOB", "project", "new topic"])).toEqual({
-      tags: ["Job", "Project"],
-      topics: ["css", "new topic"],
-    });
+    expect(
+      labelInputSchema.parse({ name: "  AI ", kind: "tag", description: " A broad area " }),
+    ).toEqual({ name: "AI", kind: "tag", description: "A broad area" });
+    expect(labelInputSchema.safeParse({ name: "", kind: "topic", description: "" }).success).toBe(
+      false,
+    );
+    expect(labelInputSchema.safeParse({ name: "AI", kind: "other", description: "" }).success).toBe(
+      false,
+    );
+    expect(
+      labelInputSchema.safeParse({ name: "AI", kind: "topic", description: "x".repeat(1001) })
+        .success,
+    ).toBe(false);
   });
 });
 
@@ -296,32 +305,43 @@ describe("cluster placement", () => {
 });
 
 describe("AI contracts", () => {
-  it("validates inputs and deduplicates provider output", () => {
-    expect(
-      enrichmentInputSchema.parse({ description: "  Memory  ", existingTags: ["CSS", "css"] }),
-    ).toEqual({ description: "Memory", existingTags: ["CSS"] });
-    expect(enrichmentInputSchema.safeParse({ description: "", existingTags: [] }).success).toBe(
-      false,
-    );
-    expect(
-      enrichmentOutputSchema.parse({ kind: "note", title: " Title ", tags: ["CSS", "css"] }),
-    ).toEqual({
-      kind: "note",
-      title: "Title",
-      tags: ["CSS"],
+  it("accepts only note text from the client and distinguishes suggested tags and topics", () => {
+    expect(enrichmentInputSchema.parse({ description: "  Memory  " })).toEqual({
+      description: "Memory",
     });
+    expect(enrichmentInputSchema.safeParse({ description: "" }).success).toBe(false);
+    expect(
+      enrichmentInputSchema.safeParse({ description: "Text", existingTags: ["CSS"] }).success,
+    ).toBe(false);
+    expect(
+      enrichmentOutputSchema.parse({
+        kind: "note",
+        title: " Title ",
+        tags: ["Job"],
+        topics: ["CSS", "css"],
+      }),
+    ).toEqual({ kind: "note", title: "Title", tags: ["Job"], topics: ["CSS"] });
+    expect(
+      enrichmentOutputSchema.safeParse({
+        kind: "note",
+        title: "Title",
+        tags: ["A", "B", "C"],
+        topics: ["D", "E", "F"],
+      }).success,
+    ).toBe(false);
   });
 
   it("validates correlated enrichment responses", () => {
     const attemptId = "00000000-0000-4000-8000-000000000001";
     expect(
-      enrichmentResponseSchema.parse({ kind: "idea", attemptId, title: "Title", tags: ["CSS"] }),
-    ).toEqual({
-      kind: "idea",
-      attemptId,
-      title: "Title",
-      tags: ["CSS"],
-    });
+      enrichmentResponseSchema.parse({
+        kind: "idea",
+        attemptId,
+        title: "Title",
+        tags: [],
+        topics: ["CSS"],
+      }),
+    ).toEqual({ kind: "idea", attemptId, title: "Title", tags: [], topics: ["CSS"] });
   });
 
   it("builds a fallback title without losing the description", () => {

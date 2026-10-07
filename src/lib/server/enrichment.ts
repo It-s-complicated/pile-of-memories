@@ -14,11 +14,12 @@ import {
 } from "#lib/enrichment-analytics.js";
 
 import { LABEL_MODEL, selectMemoryLabels } from "./label-selection";
+import type { LabelDefinition } from "../labels";
 
 const TITLE_MODEL = "gpt-5.6-luna";
 export const ENRICHMENT_PROVIDER = "opencode-go+typesafe";
 export const ENRICHMENT_MODEL = `${TITLE_MODEL}+${LABEL_MODEL}`;
-export const ENRICHMENT_PROMPT_VERSION = "memory-enrichment-v10";
+export const ENRICHMENT_PROMPT_VERSION = "memory-enrichment-v11";
 const PROVIDER_TIMEOUT_MS = 55_000;
 
 export type EnrichmentExecution = {
@@ -97,7 +98,10 @@ export function classifyEnrichmentError(
   return "unknown";
 }
 
-export async function enrichMemory(input: EnrichmentInput): Promise<EnrichmentExecution> {
+export async function enrichMemory(
+  input: EnrichmentInput,
+  vocabulary: LabelDefinition[],
+): Promise<EnrichmentExecution> {
   const startedAt = Date.now();
   let usage: TokenUsage | undefined;
   let middlewareDurationMs: number | undefined;
@@ -149,12 +153,13 @@ export async function enrichMemory(input: EnrichmentInput): Promise<EnrichmentEx
         ],
         messages: [{ role: "user", content: `Memory:\n${input.description}` }],
       }),
-      selectMemoryLabels(input, abortController.signal),
+      selectMemoryLabels(input, vocabulary, abortController.signal),
     ]);
 
     const output = enrichmentOutputSchema.parse({
       title: result,
       tags: labels.tags,
+      topics: labels.topics,
       kind: labels.kind,
     });
     const titleUsage = reportedUsageSchema.parse(usage ?? {});

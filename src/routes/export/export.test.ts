@@ -1,12 +1,36 @@
 import { beforeEach, expect, it, vi } from "vite-plus/test";
 import type { Card } from "#lib/card.js";
-import { PRIMARY_TAGS, TOPIC_TAGS } from "#lib/labels.js";
+import type { ManagedLabel } from "#lib/labels.js";
+const vocabulary: ManagedLabel[] = [
+  {
+    id: "00000000-0000-4000-8000-000000000001",
+    name: "Project",
+    kind: "tag",
+    description: "A concrete undertaking.",
+    usageCount: 2,
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000002",
+    name: "AI",
+    kind: "topic",
+    description: "Artificial intelligence.",
+    usageCount: 2,
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000003",
+    name: "Custom topic",
+    kind: "topic",
+    description: "A custom definition.",
+    usageCount: 0,
+  },
+];
 
-const { listCards, getRequestEvent } = vi.hoisted(() => ({
+const { listCards, listLabels, getRequestEvent } = vi.hoisted(() => ({
   listCards: vi.fn<() => Promise<Card[]>>(),
+  listLabels: vi.fn<() => Promise<ManagedLabel[]>>(),
   getRequestEvent: vi.fn(),
 }));
-vi.mock("#lib/server/database.js", () => ({ listCards }));
+vi.mock("#lib/server/database.js", () => ({ listCards, listLabels }));
 vi.mock("$app/server", () => ({ getRequestEvent }));
 
 import { GET } from "./+server";
@@ -14,6 +38,7 @@ import { GET } from "./+server";
 beforeEach(() => {
   vi.resetAllMocks();
   getRequestEvent.mockReturnValue({ locals: { user: { id: "owner" } } });
+  listLabels.mockResolvedValue(vocabulary);
 });
 
 it("downloads every saved field, archived memories and the full label vocabulary", async () => {
@@ -43,21 +68,22 @@ it("downloads every saved field, archived memories and the full label vocabulary
   );
   expect(response.headers.get("cache-control")).toBe("private, no-store");
   expect(data).toEqual({
-    version: 1,
+    version: 2,
     exportedAt: expect.any(String),
     memories,
-    tags: [...PRIMARY_TAGS],
-    topics: [...TOPIC_TAGS, "Custom topic"],
+    labels: vocabulary.map(({ usageCount: _usageCount, ...label }) => label),
+    tags: ["Project"],
+    topics: ["AI", "Custom topic"],
   });
   expect(Number.isNaN(Date.parse(data.exportedAt))).toBe(false);
 });
 
-it("exports the hardcoded vocabulary for an empty board", async () => {
+it("exports unused managed definitions even for an empty board", async () => {
   listCards.mockResolvedValue([]);
   expect(await (await GET()).json()).toMatchObject({
     memories: [],
-    tags: [...PRIMARY_TAGS],
-    topics: [...TOPIC_TAGS],
+    tags: ["Project"],
+    topics: ["AI", "Custom topic"],
   });
 });
 

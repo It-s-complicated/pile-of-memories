@@ -1,6 +1,6 @@
 import * as z from "zod";
 import { cardCreationProvenanceSchema } from "./enrichment-analytics";
-import { labelsSchema, partitionLabels } from "./labels";
+import { labelsSchema } from "./labels";
 import { httpUrlSchema } from "./markdown";
 
 export const cardIdSchema = z.uuidv4();
@@ -25,15 +25,11 @@ export const cardInputSchema = z
   .refine(({ tags, topics }) => tags.length + topics.length <= 200, {
     message: "Too many labels",
     path: ["tags"],
-  })
-  .transform((value) => ({
-    ...value,
-    ...partitionLabels([...value.tags, ...value.topics]),
-  }));
+  });
 
 export type CardInput = z.infer<typeof cardInputSchema>;
 export const cardSchema = z.object({
-  ...cardInputSchema.in.shape,
+  ...cardInputSchema.shape,
   links: z.array(httpUrlSchema),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
@@ -105,11 +101,7 @@ export const cardChangesSchema = z
   .refine((value) => (value.tags?.length ?? 0) + (value.topics?.length ?? 0) <= 200, {
     message: "Too many labels",
     path: ["tags"],
-  })
-  .transform(({ tags, topics, ...value }) => ({
-    ...value,
-    ...(tags && topics ? partitionLabels([...tags, ...topics]) : {}),
-  }));
+  });
 
 export type CardChanges = z.infer<typeof cardChangesSchema>;
 
@@ -120,12 +112,48 @@ export const createCardRequestSchema = z
   })
   .strict();
 
+export const createCardFormSchema = z
+  .object({
+    card: z
+      .object({
+        ...cardInputSchema.shape,
+        archived: z.boolean().default(false),
+        tags: labelsSchema.default([]),
+        topics: labelsSchema.default([]),
+      })
+      .strict()
+      .refine(({ tags, topics }) => tags.length + topics.length <= 200, {
+        message: "Too many labels",
+        path: ["tags"],
+      }),
+    creation: z
+      .object({
+        ...cardCreationProvenanceSchema.shape,
+        enrichmentAttemptId: cardCreationProvenanceSchema.shape.enrichmentAttemptId
+          .unwrap()
+          .optional()
+          .transform((attemptId) => attemptId ?? null),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+export type CreateCardFormInput = z.input<typeof createCardFormSchema>;
+
 export const updateCardCommandSchema = z
   .object({
     id: cardIdSchema,
     changes: cardChangesSchema,
   })
   .strict();
+
+export const updateCardFormSchema = updateCardCommandSchema.safeExtend({
+  changes: cardChangesSchema.safeExtend({
+    tags: labelsSchema.default([]),
+    topics: labelsSchema.default([]),
+  }),
+});
+export type UpdateCardFormInput = z.input<typeof updateCardFormSchema>;
 
 export const deleteCardCommandSchema = z.object({ id: cardIdSchema }).strict();
 

@@ -79,11 +79,43 @@ describeIntegration("PostgreSQL card integration", { concurrent: false }, () => 
         "utf8",
       ),
     );
+    await sql.unsafe(
+      await readFile(
+        new URL("../../../migrations/0006_managed_labels.sql", import.meta.url),
+        "utf8",
+      ),
+    );
     await sql`TRUNCATE cards CASCADE`;
   });
 
   afterAll(async () => {
     await sql?.end();
+  });
+
+  it("canonicalizes managed labels and cascades rename, retype, and deletion to archived cards", async () => {
+    await sql`TRUNCATE cards CASCADE`;
+    const [label] = await sql`INSERT INTO memory_labels (name, kind, description)
+      VALUES ('Integration area', 'tag', 'A test area') RETURNING id`;
+    const card = await insertCard({
+      ...input(FIRST_ID),
+      tags: [],
+      topics: [" integration AREA ", "Integration area"],
+      archived: true,
+    });
+    expect(card.tags).toEqual(["Integration area"]);
+    expect(card.topics).toEqual([]);
+    await sql`UPDATE memory_labels SET name = 'Integration topic', kind = 'topic' WHERE id = ${label.id}`;
+    expect((await listCards())[0]).toMatchObject({
+      tags: [],
+      topics: ["Integration topic"],
+      archived: true,
+    });
+    await expect(
+      updateCard(FIRST_ID, { tags: ["Unknown label"], topics: [] }),
+    ).rejects.toMatchObject({ code: "23503" });
+    expect((await listCards())[0].topics).toEqual(["Integration topic"]);
+    await sql`DELETE FROM memory_labels WHERE id = ${label.id}`;
+    expect((await listCards())[0]).toMatchObject({ tags: [], topics: [], archived: true });
   });
 
   it("updates a position batch atomically without changing content timestamps", async () => {

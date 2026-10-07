@@ -1,14 +1,14 @@
 import { error } from "@sveltejs/kit";
-import { canonicalizeLabels, PRIMARY_TAGS, TOPIC_TAGS } from "#lib/labels.js";
-import { listCards } from "#lib/server/database.js";
+import { listCards, listLabels } from "#lib/server/database.js";
 import { requirePrivateBoard } from "#lib/server/private-board.js";
 
 export async function GET(): Promise<Response> {
   requirePrivateBoard();
 
   let memories;
+  let vocabulary;
   try {
-    memories = await listCards();
+    [memories, vocabulary] = await Promise.all([listCards(), listLabels()]);
   } catch {
     error(503, "Could not export memories. Please try again.");
   }
@@ -17,11 +17,17 @@ export async function GET(): Promise<Response> {
   return new Response(
     JSON.stringify(
       {
-        version: 1,
+        version: 2,
         exportedAt,
         memories,
-        tags: canonicalizeLabels([...PRIMARY_TAGS, ...memories.flatMap((card) => card.tags)]),
-        topics: canonicalizeLabels([...TOPIC_TAGS, ...memories.flatMap((card) => card.topics)]),
+        labels: vocabulary.map(({ id, name, kind, description }) => ({
+          id,
+          name,
+          kind,
+          description,
+        })),
+        tags: vocabulary.filter(({ kind }) => kind === "tag").map(({ name }) => name),
+        topics: vocabulary.filter(({ kind }) => kind === "topic").map(({ name }) => name),
       },
       null,
       2,
