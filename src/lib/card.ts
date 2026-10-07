@@ -105,36 +105,23 @@ export const cardChangesSchema = z
 
 export type CardChanges = z.infer<typeof cardChangesSchema>;
 
-export const createCardRequestSchema = z
-  .object({
-    card: cardInputSchema,
-    creation: cardCreationProvenanceSchema.optional(),
-  })
-  .strict();
+const createCardDefaults = {
+  archived: z.boolean().default(false),
+  tags: labelsSchema.default([]),
+  topics: labelsSchema.default([]),
+};
 
 export const createCardFormSchema = z
   .object({
-    card: z
-      .object({
-        ...cardInputSchema.shape,
-        archived: z.boolean().default(false),
-        tags: labelsSchema.default([]),
-        topics: labelsSchema.default([]),
-      })
-      .strict()
-      .refine(({ tags, topics }) => tags.length + topics.length <= 200, {
-        message: "Too many labels",
-        path: ["tags"],
-      }),
-    creation: z
-      .object({
-        ...cardCreationProvenanceSchema.shape,
+    // @ts-expect-error Zod safeExtend rejects wider default inputs; outputs and refinements stay intact.
+    card: cardInputSchema.safeExtend(createCardDefaults),
+    creation: cardCreationProvenanceSchema
+      .extend({
         enrichmentAttemptId: cardCreationProvenanceSchema.shape.enrichmentAttemptId
           .unwrap()
           .optional()
           .transform((attemptId) => attemptId ?? null),
       })
-      .strict()
       .optional(),
   })
   .strict();

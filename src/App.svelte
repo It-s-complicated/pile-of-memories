@@ -35,6 +35,7 @@
   import { getLiveLabels } from "./lib/labels.remote";
   import { cardToMemoryNode, type MemoryNode } from "./lib/scene";
   import { getErrorMessage } from "./lib/errors";
+  import { showModal } from "./lib/dialog";
 
   let { userId }: { userId: string } = $props();
 
@@ -243,11 +244,6 @@
     } catch (error) {
       archiveError = getErrorMessage(error);
     }
-  }
-
-  function showModal(dialog: HTMLDialogElement) {
-    dialog.showModal();
-    return () => dialog.close();
   }
 
   function getCapturePosition(draft: Pick<CardInput, "tags" | "topics">): CardInput["position"] {

@@ -13,6 +13,7 @@
   } from "#lib/card.js";
   import { canonicalizeLabels } from "#lib/labels.js";
   import { parseMarkdown } from "#lib/markdown.js";
+  import { showModal } from "#lib/dialog.js";
   import { getPrimaryTagAccent, getTopicTagColor } from "#lib/scene.js";
   import MemoryMarkdown from "./MemoryMarkdown.svelte";
 
@@ -77,11 +78,6 @@
         ? settings.kinds.filter((value) => value !== kind)
         : [...settings.kinds, kind as Card["kind"]],
     });
-  }
-
-  function showModal(dialog: HTMLDialogElement) {
-    dialog.showModal();
-    return () => dialog.close();
   }
 </script>
 

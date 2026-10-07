@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import type { Card, CardInput } from "../card";
 import { insertCard, listCards, removeCard, updateCard, updateCardPositions } from "./database";
 import { streamCardSnapshots } from "./card-changes";
+import { withDeadline } from "./deadline";
 
 const connectionString = process.env.DATABASE_CONNECTION_STRING;
 const runIntegration = process.env.DATABASE_INTEGRATION_TEST === "1" && connectionString;
@@ -27,24 +28,23 @@ function input(id: string): CardInput {
 }
 
 async function nextSnapshot(snapshots: AsyncGenerator<Card[]>): Promise<Card[]> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error("Timed out waiting for card snapshot")),
-      10_000,
-    );
-    snapshots.next().then(
-      ({ value, done }) => {
-        clearTimeout(timer);
-        if (done) reject(new Error("Card snapshot stream ended"));
-        else resolve(value);
-      },
-      (error) => {
-        clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
+  const { value, done } = await withDeadline(
+    snapshots.next(),
+    10_000,
+    () => new Error("Timed out waiting for card snapshot"),
+  );
+  if (done) throw new Error("Card snapshot stream ended");
+  return value;
 }
+
+it("returns snapshots and rejects an exhausted stream without a database", async () => {
+  async function* snapshots(): AsyncGenerator<Card[]> {
+    yield [];
+  }
+  const stream = snapshots();
+  await expect(nextSnapshot(stream)).resolves.toEqual([]);
+  await expect(nextSnapshot(stream)).rejects.toThrow("Card snapshot stream ended");
+});
 
 async function listenerCount(): Promise<number> {
   const [row] = await sql<{ count: number }[]>`

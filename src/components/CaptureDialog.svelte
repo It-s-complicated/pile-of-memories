@@ -10,6 +10,7 @@
   import { enrichMemory } from "../lib/enrichment.remote";
   import type { ManagedLabel } from "../lib/labels";
   import { getErrorMessage } from "../lib/errors";
+  import { showModal } from "../lib/dialog";
 
   let {
     vocabulary,
@@ -59,11 +60,6 @@
     createForm.element?.reset();
     enrichmentGeneration += 1;
   });
-
-  function showModal(dialog: HTMLDialogElement) {
-    dialog.showModal();
-    return () => dialog.close();
-  }
 
   function focusCapture(textarea: HTMLTextAreaElement): void {
     queueMicrotask(() => textarea.focus());

@@ -10,6 +10,7 @@
   import type { saveLabelSchema } from "#lib/labels.js";
   import { saveLabel, deleteLabel } from "#lib/labels.remote.js";
   import { getErrorMessage } from "#lib/errors.js";
+  import { showModal } from "#lib/dialog.js";
   import { getPrimaryTagAccent, getTopicTagColor } from "#lib/scene.js";
 
   let {
@@ -38,11 +39,6 @@
   let busy = $derived(labelForm.pending > 0 || deleteLabel.pending > 0);
   let visibleLabels = $derived(labels.filter((label) => label.kind === filter));
   let editingLabel = $derived(labels.find(({ id }) => id === editingId));
-
-  function showModal(dialog: HTMLDialogElement) {
-    dialog.showModal();
-    return () => dialog.close();
-  }
 
   function edit(label?: ManagedLabel): void {
     labelForm.element?.reset();

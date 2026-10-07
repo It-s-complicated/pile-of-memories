@@ -91,11 +91,7 @@ export function compareTagFingerprints(
 ): TagReviewMetrics {
   const generated = new Set(generatedFingerprints);
   const final = new Set(finalFingerprints);
-  let retainedTagCount = 0;
-
-  for (const fingerprint of generated) {
-    if (final.has(fingerprint)) retainedTagCount += 1;
-  }
+  const retainedTagCount = generated.intersection(final).size;
 
   return {
     generatedTagCount: generated.size,

@@ -12,6 +12,7 @@
   import { getLiveLabels } from "#lib/labels.remote.js";
   import { getCardPersistence } from "#lib/card-persistence.js";
   import { getErrorMessage } from "#lib/errors.js";
+  import { showModal } from "#lib/dialog.js";
   import { enrichMemory } from "#lib/enrichment.remote.js";
   import { parseMarkdown } from "#lib/markdown.js";
   import { getPrimaryTagAccent, getTopicTagColor, type MemoryNode } from "#lib/scene.js";
@@ -37,11 +38,6 @@
   let busy = $derived(editForm.pending > 0 || updateCard.pending > 0 || deleteCard.pending > 0);
   let enrichmentStatus = $state("");
   let saveError = $state("");
-
-  function showModal(dialog: HTMLDialogElement) {
-    dialog.showModal();
-    return () => dialog.close();
-  }
 
   function openEditor(): void {
     enrichmentGeneration += 1;
