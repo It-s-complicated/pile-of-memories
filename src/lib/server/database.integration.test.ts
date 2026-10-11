@@ -2,7 +2,15 @@ import { readFile } from "node:fs/promises";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import type { Card, CardInput } from "../card";
-import { insertCard, listCards, removeCard, updateCard, updateCardPositions } from "./database";
+import {
+  insertCard,
+  listCards,
+  removeCard,
+  updateCard,
+  updateCardPositions,
+  updateLabel,
+  getBoardSnapshot,
+} from "./database";
 import { streamCardSnapshots } from "./card-changes";
 import { withDeadline } from "./deadline";
 
@@ -116,6 +124,89 @@ describeIntegration("PostgreSQL card integration", { concurrent: false }, () => 
     expect((await listCards())[0].topics).toEqual(["Integration topic"]);
     await sql`DELETE FROM memory_labels WHERE id = ${label.id}`;
     expect((await listCards())[0]).toMatchObject({ tags: [], topics: [], archived: true });
+  });
+
+  it("persists concurrent edits to different labels on the same card after a deadlock", async () => {
+    await sql`TRUNCATE cards CASCADE`;
+    const labels = await sql`INSERT INTO memory_labels (name, kind) VALUES
+      ('Concurrent first', 'tag'), ('Concurrent second', 'topic') RETURNING *`;
+    await insertCard({ ...input(FIRST_ID), tags: [labels[0].name], topics: [labels[1].name] });
+    const blocker = postgres(connectionString!, { ssl: "require", max: 1 });
+    const locked = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const blocking = blocker.begin(async (transaction) => {
+      await transaction`SELECT id FROM cards WHERE id = ${FIRST_ID} FOR UPDATE`;
+      locked.resolve();
+      await release.promise;
+    });
+    await locked.promise;
+    const edits = Promise.allSettled(
+      labels.map((label) =>
+        updateLabel(label.id, {
+          name: `${label.name} renamed`,
+          kind: label.kind,
+          description: "Renamed concurrently",
+        }),
+      ),
+    );
+    try {
+      // Both edits hold their label row and wait for the same card before we release it.
+      await expect
+        .poll(async () => {
+          const [row] = await sql`SELECT count(*)::integer AS count FROM pg_stat_activity
+          WHERE datname = current_database() AND wait_event_type = 'Lock'
+          AND query LIKE '%UPDATE memory_labels SET name%'`;
+          return row.count;
+        })
+        .toBe(2);
+    } finally {
+      release.resolve();
+      await blocking;
+      await blocker.end();
+    }
+    expect(await edits).toMatchObject([{ status: "fulfilled" }, { status: "fulfilled" }]);
+    expect((await listCards())[0]).toMatchObject({
+      tags: ["Concurrent first renamed"],
+      topics: ["Concurrent second renamed"],
+    });
+    for (const { id } of labels) await sql`DELETE FROM memory_labels WHERE id = ${id}`;
+  }, 10_000);
+
+  it("exports one board state when a label rename commits between its reads", async () => {
+    await sql`TRUNCATE cards CASCADE`;
+    const [label] = await sql`INSERT INTO memory_labels (name, kind)
+      VALUES ('Snapshot before', 'tag') RETURNING id`;
+    await insertCard({ ...input(FIRST_ID), tags: ["Snapshot before"] });
+    const blocker = postgres(connectionString!, { ssl: "require", max: 1 });
+    const locked = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const blocking = blocker.begin(async (transaction) => {
+      await transaction`LOCK TABLE memory_labels IN ACCESS EXCLUSIVE MODE`;
+      locked.resolve();
+      await release.promise;
+      await transaction`UPDATE memory_labels SET name = 'Snapshot after' WHERE id = ${label.id}`;
+    });
+    await locked.promise;
+    const exporting = getBoardSnapshot();
+    try {
+      await expect
+        .poll(async () => {
+          const [row] = await sql`SELECT count(*)::integer AS count FROM pg_stat_activity
+          WHERE datname = current_database() AND wait_event_type = 'Lock'
+          AND query LIKE '%FROM memory_labels label%'`;
+          return row.count;
+        })
+        .toBe(1);
+    } finally {
+      release.resolve();
+      await blocking;
+      await blocker.end();
+    }
+    const { memories, vocabulary } = await exporting;
+    expect(memories[0].tags).toEqual(["Snapshot before"]);
+    expect(vocabulary.find(({ id }) => id === label.id)?.name).toBe("Snapshot before");
+    expect((await listCards())[0].tags).toEqual(["Snapshot after"]);
+    await sql`DELETE FROM memory_labels WHERE id = ${label.id}`;
   });
 
   it("updates a position batch atomically without changing content timestamps", async () => {

@@ -25,12 +25,11 @@ const vocabulary: ManagedLabel[] = [
   },
 ];
 
-const { listCards, listLabels, getRequestEvent } = vi.hoisted(() => ({
-  listCards: vi.fn<() => Promise<Card[]>>(),
-  listLabels: vi.fn<() => Promise<ManagedLabel[]>>(),
+const { getBoardSnapshot, getRequestEvent } = vi.hoisted(() => ({
+  getBoardSnapshot: vi.fn<() => Promise<{ memories: Card[]; vocabulary: ManagedLabel[] }>>(),
   getRequestEvent: vi.fn(),
 }));
-vi.mock("#lib/server/database.js", () => ({ listCards, listLabels }));
+vi.mock("#lib/server/database.js", () => ({ getBoardSnapshot }));
 vi.mock("$app/server", () => ({ getRequestEvent }));
 
 import { GET } from "./+server";
@@ -38,7 +37,7 @@ import { GET } from "./+server";
 beforeEach(() => {
   vi.resetAllMocks();
   getRequestEvent.mockReturnValue({ locals: { user: { id: "owner" } } });
-  listLabels.mockResolvedValue(vocabulary);
+  getBoardSnapshot.mockResolvedValue({ memories: [], vocabulary });
 });
 
 it("downloads every saved field, archived memories and the full label vocabulary", async () => {
@@ -59,7 +58,7 @@ it("downloads every saved field, archived memories and the full label vocabulary
     memory,
     { ...memory, id: "ef39515f-49b7-483d-84d9-a1f91eec85ab", archived: true },
   ];
-  listCards.mockResolvedValue(memories);
+  getBoardSnapshot.mockResolvedValue({ memories, vocabulary });
   const response = await GET();
   const data = await response.json();
   expect(response.headers.get("content-type")).toBe("application/json; charset=utf-8");
@@ -79,7 +78,6 @@ it("downloads every saved field, archived memories and the full label vocabulary
 });
 
 it("exports unused managed definitions even for an empty board", async () => {
-  listCards.mockResolvedValue([]);
   expect(await (await GET()).json()).toMatchObject({
     memories: [],
     tags: ["Project"],
@@ -90,11 +88,11 @@ it("exports unused managed definitions even for an empty board", async () => {
 it("rejects unauthenticated requests before reading memories", async () => {
   getRequestEvent.mockReturnValue({ locals: { user: null } });
   await expect(GET()).rejects.toMatchObject({ status: 401 });
-  expect(listCards).not.toHaveBeenCalled();
+  expect(getBoardSnapshot).not.toHaveBeenCalled();
 });
 
 it("fails instead of downloading an empty backup when the database is unavailable", async () => {
-  listCards.mockRejectedValue(new Error("private connection details"));
+  getBoardSnapshot.mockRejectedValue(new Error("private connection details"));
   await expect(GET()).rejects.toMatchObject({
     status: 503,
     body: { message: "Could not export memories. Please try again." },

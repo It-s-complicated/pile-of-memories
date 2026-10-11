@@ -1,16 +1,83 @@
 import { expect, it, vi } from "vite-plus/test";
 
-const { sql } = vi.hoisted(() => ({ sql: vi.fn() }));
+const { sql } = vi.hoisted(() => ({ sql: Object.assign(vi.fn(), { begin: vi.fn() }) }));
 vi.mock("postgres", () => ({ default: () => sql }));
 vi.mock("$app/env/private", () => ({ DATABASE_CONNECTION_STRING: "test" }));
 
 import {
   insertCard,
   listCards,
+  getBoardSnapshot,
+  updateLabel,
+  deleteLabel,
   recordEnrichmentAttemptFailed,
   recordEnrichmentAttemptSucceeded,
   updateCard,
 } from "./database";
+
+it("reads export cards and vocabulary on the same repeatable-read connection", async () => {
+  sql.mockReset();
+  const label = {
+    id: "00000000-0000-4000-8000-000000000001",
+    name: "Project",
+    kind: "tag",
+    description: "A concrete undertaking.",
+    usageCount: 0,
+  };
+  const transaction = vi.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([label]);
+  sql.begin.mockImplementationOnce((_options, read) => read(transaction));
+
+  await expect(getBoardSnapshot()).resolves.toEqual({ memories: [], vocabulary: [label] });
+  expect(sql.begin).toHaveBeenCalledWith(
+    "isolation level repeatable read read only",
+    expect.any(Function),
+  );
+  expect(transaction.mock.calls.map(([query]) => query.join(""))).toEqual([
+    expect.stringContaining("FROM cards"),
+    expect.stringContaining("FROM memory_labels"),
+  ]);
+  expect(sql).not.toHaveBeenCalled();
+});
+
+it("retries the whole label edit after a deadlock before reading its saved result", async () => {
+  sql.mockReset();
+  const label = {
+    id: "00000000-0000-4000-8000-000000000001",
+    name: "Renamed",
+    kind: "topic" as const,
+    description: "Updated definition",
+    usageCount: 1,
+  };
+  sql
+    .mockRejectedValueOnce({ code: "40P01" })
+    .mockResolvedValueOnce(Object.assign([], { count: 1 }))
+    .mockResolvedValueOnce([label]);
+
+  await expect(updateLabel(label.id, label)).resolves.toEqual(label);
+  expect(sql).toHaveBeenCalledTimes(3);
+  expect(sql.mock.calls[0]).toEqual(sql.mock.calls[1]);
+  expect(sql.mock.calls[2][0].join("")).toContain("FROM memory_labels");
+});
+
+it("retries a deadlocked label deletion", async () => {
+  sql.mockReset();
+  sql.mockRejectedValueOnce({ code: "40P01" }).mockResolvedValueOnce({ count: 1 });
+  await expect(deleteLabel("00000000-0000-4000-8000-000000000001")).resolves.toBe(true);
+  expect(sql).toHaveBeenCalledTimes(2);
+  expect(sql.mock.calls[0]).toEqual(sql.mock.calls[1]);
+});
+
+it.each([
+  [{ code: "40P01" }, 3],
+  [{ code: "23505" }, 1],
+  [{ code: "23503" }, 1],
+  [new Error("Connection lost"), 1],
+])("bounds retries and preserves database failures (%j)", async (error, attempts) => {
+  sql.mockReset();
+  sql.mockRejectedValue(error);
+  await expect(deleteLabel("00000000-0000-4000-8000-000000000001")).rejects.toBe(error);
+  expect(sql).toHaveBeenCalledTimes(attempts);
+});
 
 it("writes only card content and derives links from returned Markdown", async () => {
   const input = {

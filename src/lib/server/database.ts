@@ -1,5 +1,6 @@
 import { DATABASE_CONNECTION_STRING } from "$app/env/private";
 import postgres from "postgres";
+import * as z from "zod";
 import type { Card, CardChanges, CardInput, CardPositionUpdate } from "../card";
 import {
   compareTagFingerprints,
@@ -18,6 +19,20 @@ function getSql(): ReturnType<typeof postgres> {
     throw new Error("DATABASE_CONNECTION_STRING is not set");
   }
   return (database ??= postgres(DATABASE_CONNECTION_STRING, { ssl: "require" }));
+}
+
+const databaseErrorSchema = z.object({ code: z.string() }).loose();
+
+async function withDeadlockRetry<T>(write: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await write();
+    } catch (error) {
+      if (attempt >= 2 || databaseErrorSchema.safeParse(error).data?.code !== "40P01") throw error;
+      // PostgreSQL rolled back the entire write, including its label-assignment triggers.
+      await new Promise((resolve) => setTimeout(resolve, 25 * (attempt + 1)));
+    }
+  }
 }
 
 type CardRow = {
@@ -56,20 +71,32 @@ async function findCard(id: string): Promise<Card | null> {
   return row ? toCard(row) : null;
 }
 
-export async function listCards(): Promise<Card[]> {
-  const sql = getSql();
+export async function listCards(
+  sql: postgres.Sql | postgres.TransactionSql = getSql(),
+): Promise<Card[]> {
   const rows = await sql<CardRow[]>`SELECT * FROM cards ORDER BY created_at, id`;
   return rows.map(toCard);
 }
 
-export async function listLabels(): Promise<ManagedLabel[]> {
-  const sql = getSql();
+export async function listLabels(
+  sql: postgres.Sql | postgres.TransactionSql = getSql(),
+): Promise<ManagedLabel[]> {
   const rows = await sql`
     SELECT label.*,
       (SELECT count(*)::integer FROM cards WHERE label.name = ANY(tags || topics)) AS "usageCount"
     FROM memory_labels label ORDER BY lower(label.name), label.id
   `;
   return managedLabelSchema.array().parse(rows);
+}
+
+export async function getBoardSnapshot(): Promise<{
+  memories: Card[];
+  vocabulary: ManagedLabel[];
+}> {
+  return getSql().begin("isolation level repeatable read read only", async (transaction) => ({
+    memories: await listCards(transaction),
+    vocabulary: await listLabels(transaction),
+  }));
 }
 
 export async function createLabel(label: LabelInput): Promise<ManagedLabel> {
@@ -84,22 +111,25 @@ export async function createLabel(label: LabelInput): Promise<ManagedLabel> {
 
 export async function updateLabel(id: string, label: LabelInput): Promise<ManagedLabel | null> {
   const sql = getSql();
-  const result = await sql`
+  const result = await withDeadlockRetry(
+    () => sql`
     UPDATE memory_labels SET name = ${label.name}, kind = ${label.kind},
       description = ${label.description} WHERE id = ${id}
-  `;
+  `,
+  );
   if (result.count === 0) return null;
   return (await listLabels()).find((label) => label.id === id) ?? null;
 }
 
 export async function deleteLabel(id: string): Promise<boolean> {
   const sql = getSql();
-  return (await sql`DELETE FROM memory_labels WHERE id = ${id}`).count > 0;
+  return (await withDeadlockRetry(() => sql`DELETE FROM memory_labels WHERE id = ${id}`)).count > 0;
 }
 
 export async function insertCard(card: CardInput): Promise<Card> {
   const sql = getSql();
-  const [row] = await sql<CardRow[]>`
+  const [row] = await withDeadlockRetry(
+    () => sql<CardRow[]>`
     INSERT INTO cards (id, kind, title, body, x, y, tags, topics, archived)
     VALUES (
       ${card.id}, ${card.kind}, ${card.title}, ${card.body}, ${card.position.x}, ${card.position.y},
@@ -107,7 +137,8 @@ export async function insertCard(card: CardInput): Promise<Card> {
     )
     ON CONFLICT (id) DO NOTHING
     RETURNING *
-  `;
+  `,
+  );
 
   const existing = row ? toCard(row) : await findCard(card.id);
   if (!existing) throw new Error("Card disappeared while it was being created");
@@ -139,9 +170,11 @@ export async function updateCard(id: string, changes: CardChanges): Promise<Card
   if (changes.topics !== undefined) values.topics = changes.topics;
   if (changes.archived !== undefined) values.archived = changes.archived;
 
-  const [row] = await sql<CardRow[]>`
+  const [row] = await withDeadlockRetry(
+    () => sql<CardRow[]>`
     UPDATE cards SET ${sql(values)} WHERE id = ${id} RETURNING *
-  `;
+  `,
+  );
   return row ? toCard(row) : null;
 }
 

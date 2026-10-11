@@ -1,5 +1,5 @@
 import { error } from "@sveltejs/kit";
-import { listCards, listLabels } from "#lib/server/database.js";
+import { getBoardSnapshot } from "#lib/server/database.js";
 import { requirePrivateBoard } from "#lib/server/private-board.js";
 
 export async function GET(): Promise<Response> {
@@ -8,7 +8,7 @@ export async function GET(): Promise<Response> {
   let memories;
   let vocabulary;
   try {
-    [memories, vocabulary] = await Promise.all([listCards(), listLabels()]);
+    ({ memories, vocabulary } = await getBoardSnapshot());
   } catch {
     error(503, "Could not export memories. Please try again.");
   }
