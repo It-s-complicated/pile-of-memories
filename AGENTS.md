@@ -26,27 +26,19 @@ Memory cards are Svelte Flow nodes with `type === "memory"`.
 - Prefer Svelte Flow APIs over custom canvas code.
 - Prefer Zod schemas with inferred types over hand-written runtime validators and type guards.
 
-## Available Svelte MCP Tools:
+## Guidance Map
 
-### 1. list-sections
+- When changing capture, placement, or reorganization, read [GUIDED_MEMORY_PLACEMENT.md](GUIDED_MEMORY_PLACEMENT.md).
+- When changing visual design or background cluster labels, read [DESIGN.md](DESIGN.md).
+- When changing persistence or schema, read [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) and [README.md — Browser cache](README.md#browser-cache).
+- When running locally, configuring authentication, or deploying, read [README.md — Development](README.md#development), [Authentication](README.md#authentication), and [Deployment](README.md#deployment).
+- When deciding product scope, read [PRODUCT.md](PRODUCT.md), which separates current behavior from future direction.
 
-Use this FIRST to discover all available documentation sections. Returns a structured list with titles, use_cases, and paths.
-When asked about Svelte or SvelteKit topics, ALWAYS use this tool at the start of the chat to find relevant sections.
+## Agent Tools
 
-### 2. get-documentation
-
-Retrieves full documentation content for specific sections. Accepts single or multiple sections.
-After calling the list-sections tool, you MUST analyze the returned documentation sections (especially the use_cases field) and then use the get-documentation tool to fetch ALL documentation sections that are relevant for the user's task.
-
-### 3. svelte-autofixer
-
-Analyzes Svelte code and returns issues and suggestions.
-You MUST use this tool whenever writing Svelte code before sending it to the user. Keep calling it until no issues or suggestions are returned.
-
-### 4. playground-link
-
-Generates a Svelte Playground link with the provided code.
-After completing the code, ask the user if they want a playground link. Only call this tool after user confirmation and NEVER if code was written to files in their project.
+- When creating, editing, or analyzing Svelte components or modules, use the `svelte:svelte-code-writer` and `svelte:svelte-core-bestpractices` skills for documentation lookup and validation.
+- Discover tools by the specific capability needed; filter tool metadata by name or description and return only matching entries.
+- Locate files and symbols with `rg --files` and `rg -n`, then read the relevant line ranges. Keep source and documentation reads in separate outputs; narrow any truncated read before retrying.
 
 <!--VITE PLUS START-->
 

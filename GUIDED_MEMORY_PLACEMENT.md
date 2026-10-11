@@ -1,7 +1,17 @@
 # Guided Memory Placement
 
-Memories sharing the same normalized, sorted union of areas and topics form a cluster. New memories join an exact cluster at the nearest collision-free position; new combinations are placed beside the cluster with the highest Jaccard similarity. Creation then opens the tag-proximity layout preview so the new memory can reshape the board.
+## Current behavior
 
-**Reorganize clusters** opens the same deterministic two-dimensional force layout. Exact clusters use balanced grids with 24px card gaps. Jaccard similarity pulls overlapping tag sets closer, while the spacing target reaches 180px between unrelated cluster bounds. Collision resolution prevents overlaps at the required gap. Cancel keeps a newly created memory at its collision-free position while restoring the existing board. Apply persists only changed positions and restores the original layout if persistence fails.
+After saving a new card, open the full-board reorganization preview, including the new card and all existing active cards. Existing cards can move as the new content reshapes the board. The owner applies or cancels the layout; creation does not automatically persist the reorganization. If every position already matches the layout, report that the board is already organized.
 
-Placement stays client-side. Svelte Flow measurements are used when available, with a 320×220 fallback.
+Before saving, place the new card in a collision-free slot near its most similar card, using weighted Jaccard similarity across normalized tags and topics. Topics have twice the weight of broad tags. This initial placement preserves existing positions so canceling the subsequent preview leaves the new card safely placed.
+
+**Reorganize** opens the same deterministic layout manually. Complete-link grouping requires every pair within a group to have at least 0.25 similarity, keeping bridge cards from joining unrelated groups. Groups are packed into compact islands, with card gaps starting at 24px and increasing as cohesion falls; separate islands have a 160px gap.
+
+Cancel restores the pre-preview positions and viewport while retaining a newly saved card. Apply persists only changed positions; failed persistence restores the confirmed board. Archived cards do not participate.
+
+Placement runs client-side in `src/lib/cluster-layout.ts`; `src/App.svelte` coordinates creation, preview, cancellation, and persistence. Svelte Flow measurements are used when available, with a 320×220 fallback.
+
+## Future direction
+
+Move placement primarily into the AI backend, with the owner steering organization through preferences. This is a direction to explore; the current layout is deterministic and client-side.
