@@ -21,16 +21,7 @@ const TOPIC_TAG_HUES = {
 type PrimaryTagKey = keyof typeof PRIMARY_TAG_HUES;
 type TopicTagKey = keyof typeof TOPIC_TAG_HUES;
 
-export type MemoryData = {
-  kind: Card["kind"];
-  title: string;
-  body: string;
-  createdAt: string;
-  updatedAt: string;
-  tags: string[];
-  topics: string[];
-  links: string[];
-};
+export type MemoryData = Omit<Card, "id" | "position" | "archived">;
 export type MemoryNode = Node<MemoryData, "memory">;
 function getPrimaryTagHue(tag: string): number | undefined {
   return PRIMARY_TAG_HUES[tag.toLowerCase() as PrimaryTagKey];

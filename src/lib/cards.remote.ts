@@ -53,12 +53,7 @@ export const getLiveCards = query.live(async function* () {
 export const createCard = form(createCardFormSchema, async (input) => {
   requirePrivateBoard();
 
-  let card;
-  try {
-    card = await insertCardInDatabase(input.card);
-  } catch (caught) {
-    databaseFailure(caught);
-  }
+  const card = await insertCardInDatabase(input.card).catch(databaseFailure);
 
   if (input.creation) {
     try {
@@ -73,12 +68,7 @@ export const createCard = form(createCardFormSchema, async (input) => {
 });
 
 async function persistCardChanges(id: string, changes: CardChanges) {
-  let card;
-  try {
-    card = await updateCardInDatabase(id, changes);
-  } catch (caught) {
-    databaseFailure(caught);
-  }
+  const card = await updateCardInDatabase(id, changes).catch(databaseFailure);
   if (!card) error(404, "Card not found");
   return card;
 }
@@ -98,12 +88,7 @@ export const updateCardPositions = command(
   async ({ positions }) => {
     requirePrivateBoard();
 
-    let cards;
-    try {
-      cards = await updateCardPositionsInDatabase(positions);
-    } catch {
-      databaseUnavailable();
-    }
+    const cards = await updateCardPositionsInDatabase(positions).catch(databaseUnavailable);
 
     if (!cards) error(404, "Card not found");
     return cards;
@@ -113,12 +98,7 @@ export const updateCardPositions = command(
 export const deleteCard = command(deleteCardCommandSchema, async ({ id }) => {
   requirePrivateBoard();
 
-  let removed;
-  try {
-    removed = await removeCardFromDatabase(id);
-  } catch {
-    databaseUnavailable();
-  }
+  const removed = await removeCardFromDatabase(id).catch(databaseUnavailable);
 
   if (!removed) error(404, "Card not found");
 });

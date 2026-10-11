@@ -192,7 +192,8 @@
   let cards = $derived(localCards.data ?? []);
   let vocabulary = $derived(labelsQuery.current ?? []);
   let labelsReady = $derived(labelsQuery.ready);
-  let nodes = $derived<MemoryNode[]>(cards.filter((card) => !card.archived).map(cardToMemoryNode));
+  let activeCards = $derived(cards.filter((card) => !card.archived));
+  let nodes = $derived<MemoryNode[]>(activeCards.map(cardToMemoryNode));
   let archivedCards = $derived(cards.filter((card) => card.archived));
   let viewport = $state<Viewport>({ x: 32, y: 32, zoom: 1 });
   let viewportStart = $state<ViewportController>();
@@ -274,7 +275,7 @@
       await savePositions(movedNodes.map(({ id, position }) => ({ id, position })));
     } catch (error) {
       persistenceError = getErrorMessage(error);
-      nodes = cards.filter((card) => !card.archived).map(cardToMemoryNode);
+      nodes = activeCards.map(cardToMemoryNode);
       void cardsQuery.reconnect().catch(() => {});
     }
   }
@@ -315,8 +316,7 @@
   async function applyReorganization(): Promise<void> {
     if (!reorganizeSnapshot) return;
 
-    const previousNodes = reorganizeSnapshot;
-    const previousPositions = new Map(previousNodes.map(({ id, position }) => [id, position]));
+    const previousPositions = new Map(reorganizeSnapshot.map(({ id, position }) => [id, position]));
     const positions = nodes.flatMap(({ id, position }) => {
       const previous = previousPositions.get(id);
       return previous?.x === position.x && previous.y === position.y ? [] : [{ id, position }];
@@ -330,15 +330,9 @@
       reorganizeStatus = "";
       saveViewport(undefined, viewport);
     } catch (error) {
-      const previousViewport = reorganizeViewport;
-      nodes = previousNodes;
-      reorganizeSnapshot = null;
-      reorganizeViewport = undefined;
-      reorganizeStatus = "";
       persistenceError = getErrorMessage(error);
-      await tick();
-      if (previousViewport) await viewportStart?.restore(previousViewport);
-      nodes = cards.filter((card) => !card.archived).map(cardToMemoryNode);
+      await cancelReorganization();
+      nodes = activeCards.map(cardToMemoryNode);
       void cardsQuery.reconnect().catch(() => {});
     }
   }
@@ -477,7 +471,7 @@
 
 {#if listOpen}
   <MemoryListDialog
-    cards={cards.filter((card) => !card.archived)}
+    cards={activeCards}
     onclose={() => (listOpen = false)}
     onlocate={locateMemory}
   />

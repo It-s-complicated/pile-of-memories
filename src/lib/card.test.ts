@@ -147,6 +147,8 @@ describe("card change validation", () => {
     ["tags without topics", { tags: ["Job"] }],
     ["topics without tags", { topics: ["CSS"] }],
     ["derived links", { body: "https://example.com", links: ["https://example.com"] }],
+    ["card IDs in patches", { id: CARD_ID, title: "Updated" }],
+    ["undefined-only patches", { kind: undefined }],
   ])("rejects %s", (_case, changes) => {
     expect(cardChangesSchema.safeParse(changes).success).toBe(false);
   });
@@ -164,6 +166,14 @@ describe("card change validation", () => {
     ).toBe(false);
     expect(deleteCardCommandSchema.safeParse({ id: CARD_ID }).success).toBe(true);
     expect(deleteCardCommandSchema.safeParse({ id: CARD_ID, extra: true }).success).toBe(false);
+  });
+
+  it("keeps omitted fields out of patches and enforces the combined label limit", () => {
+    expect(cardChangesSchema.parse({ title: " Updated " })).toEqual({ title: "Updated" });
+    const tags = Array.from({ length: 100 }, (_, index) => `Tag ${index}`);
+    const topics = Array.from({ length: 100 }, (_, index) => `Topic ${index}`);
+    expect(cardChangesSchema.parse({ tags, topics })).toEqual({ tags, topics });
+    expect(cardChangesSchema.safeParse({ tags: [...tags, "Extra"], topics }).success).toBe(false);
   });
 
   it("accepts reorganizations with more than 200 changed cards", () => {

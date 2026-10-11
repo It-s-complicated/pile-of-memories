@@ -33,7 +33,7 @@ vi.mock("$app/server", () => ({
     }),
   query: { live: () => Object.assign(vi.fn(), { __: { type: "query_live" } }) },
 }));
-import { updateCard } from "./cards.remote";
+import { deleteCard, updateCard, updateCardPositions } from "./cards.remote";
 
 const id = "00000000-0000-4000-8000-000000000001";
 const card = {
@@ -141,4 +141,35 @@ it("reports stale label assignments as conflicts for both forms and existing com
   await expect(
     updateCard({ id, changes: { tags: ["Old label"], topics: [] } }),
   ).rejects.toMatchObject(expected);
+});
+
+it("hides database failures and preserves missing-card errors", async () => {
+  const positions = [{ id, position: card.position }];
+  for (const operation of [
+    database.insertCard,
+    database.updateCard,
+    database.updateCardPositions,
+    database.removeCard,
+  ])
+    operation.mockRejectedValue(new Error("Private SQL details"));
+  const expected = { status: 503, body: { message: "Database unavailable" } };
+  await expect(
+    submitCreate({ card: { id, title: card.title, body: card.body, position: card.position } }),
+  ).rejects.toMatchObject(expected);
+  await expect(submitEdit({ id, changes: { title: card.title } })).rejects.toMatchObject(expected);
+  await expect(updateCard({ id, changes: { archived: true } })).rejects.toMatchObject(expected);
+  await expect(updateCardPositions({ positions })).rejects.toMatchObject(expected);
+  await expect(deleteCard({ id })).rejects.toMatchObject(expected);
+
+  database.updateCard.mockResolvedValue(null);
+  database.updateCardPositions.mockResolvedValue(null);
+  database.removeCard.mockResolvedValue(false);
+  await expect(submitEdit({ id, changes: { title: card.title } })).rejects.toMatchObject({
+    status: 404,
+  });
+  await expect(updateCard({ id, changes: { archived: true } })).rejects.toMatchObject({
+    status: 404,
+  });
+  await expect(updateCardPositions({ positions })).rejects.toMatchObject({ status: 404 });
+  await expect(deleteCard({ id })).rejects.toMatchObject({ status: 404 });
 });

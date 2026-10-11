@@ -43,11 +43,6 @@ export const saveLabel = form(saveLabelSchema, async ({ id, ...label }, issue) =
 
 export const deleteLabel = command(deleteLabelSchema, async ({ id }) => {
   requirePrivateBoard();
-  let removed;
-  try {
-    removed = await deleteLabelInDatabase(id);
-  } catch {
-    databaseFailure();
-  }
+  const removed = await deleteLabelInDatabase(id).catch(databaseFailure);
   if (!removed) error(404, "This tag or topic no longer exists.");
 });

@@ -1,6 +1,6 @@
 import * as z from "zod";
 import { cardCreationProvenanceSchema } from "./enrichment-analytics";
-import { labelsSchema } from "./labels";
+import { labelsSchema, MAX_LABELS } from "./labels";
 import { httpUrlSchema } from "./markdown";
 
 export const cardIdSchema = z.uuidv4();
@@ -22,7 +22,7 @@ export const cardInputSchema = z
     archived: z.boolean(),
   })
   .strict()
-  .refine(({ tags, topics }) => tags.length + topics.length <= 200, {
+  .refine(({ tags, topics }) => tags.length + topics.length <= MAX_LABELS, {
     message: "Too many labels",
     path: ["tags"],
   });
@@ -82,14 +82,11 @@ export function sortAndFilterCards(cards: Card[], settings: MemoryListSettings):
 
 export const cardChangesSchema = z
   .object({
-    kind: cardKindSchema.optional(),
-    title: z.string().trim().min(1).optional(),
-    body: z.string().optional(),
-    position: positionSchema.optional(),
-    tags: labelsSchema.optional(),
-    topics: labelsSchema.optional(),
-    archived: z.boolean().optional(),
+    ...cardInputSchema.shape,
+    kind: cardKindSchema,
   })
+  .omit({ id: true })
+  .partial()
   .strict()
   .refine((value) => Object.values(value).some((field) => field !== undefined), {
     message: "At least one card change is required",
@@ -98,7 +95,7 @@ export const cardChangesSchema = z
     message: "Tags and topics must be supplied together",
     path: ["tags"],
   })
-  .refine((value) => (value.tags?.length ?? 0) + (value.topics?.length ?? 0) <= 200, {
+  .refine((value) => (value.tags?.length ?? 0) + (value.topics?.length ?? 0) <= MAX_LABELS, {
     message: "Too many labels",
     path: ["tags"],
   });
