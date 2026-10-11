@@ -30,7 +30,7 @@
   let editForm = $derived(saveCard.for(id).preflight(updateCardFormSchema));
   const labelsQuery = getLiveLabels();
   let vocabulary = $derived(labelsQuery.current ?? []);
-  let labelsReady = $derived(labelsQuery.ready && !labelsQuery.error);
+  let labelsReady = $derived(labelsQuery.ready);
   let tagSuggestions = $derived(vocabulary.filter(({ kind }) => kind === "tag").map(({ name }) => name));
   let topicSuggestions = $derived(vocabulary.filter(({ kind }) => kind === "topic").map(({ name }) => name));
   let enrichmentGeneration = 0;

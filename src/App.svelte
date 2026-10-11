@@ -191,7 +191,7 @@
 
   let cards = $derived(localCards.data ?? []);
   let vocabulary = $derived(labelsQuery.current ?? []);
-  let labelsReady = $derived(labelsQuery.ready && !labelsQuery.error);
+  let labelsReady = $derived(labelsQuery.ready);
   let nodes = $derived<MemoryNode[]>(cards.filter((card) => !card.archived).map(cardToMemoryNode));
   let archivedCards = $derived(cards.filter((card) => card.archived));
   let viewport = $state<Viewport>({ x: 32, y: 32, zoom: 1 });
