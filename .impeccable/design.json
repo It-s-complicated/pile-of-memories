@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-30T17:28:43Z",
+  "generatedAt": "2026-10-11T17:11:12.553Z",
   "title": "Design System: Pile of Memories",
   "extensions": {
     "colorMeta": {
@@ -298,7 +298,7 @@
       "**Don't** add a topbar, sidebar, or any persistent chrome band.",
       "**Don't** use pill radii, dot grids, or a second accent hue in the chrome.",
       "**Don't** add a dark mode; the scene is a desk in daylight.",
-      "**Don't** animate canvas content or add hover effects to slips; motion   belongs to dialog entrances only."
+      "**Don't** animate canvas content or add hover effects to slips; motion belongs to dialog entrances only."
     ]
   }
 }

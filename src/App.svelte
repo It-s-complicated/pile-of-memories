@@ -265,6 +265,13 @@
       saved.position.x + DEFAULT_CARD_SIZE.width / 2,
       saved.position.y + DEFAULT_CARD_SIZE.height / 2,
     );
+    await tick();
+    // Include the confirmed card even if the local cache could not be updated.
+    if (!nodes.some(({ id }) => id === saved.id)) {
+      nodes = [...nodes, cardToMemoryNode(saved)];
+      await tick();
+    }
+    await previewReorganization();
     return true;
   }
 
