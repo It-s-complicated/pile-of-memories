@@ -2,8 +2,17 @@ import { readFile } from "node:fs/promises";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import type { Card, CardInput } from "../card";
-import { insertCard, listCards, removeCard, updateCard, updateCardPositions } from "./database";
+import {
+  insertCard,
+  listCards,
+  removeCard,
+  updateCard,
+  updateCardPositions,
+  updateLabel,
+  getBoardSnapshot,
+} from "./database";
 import { streamCardSnapshots } from "./card-changes";
+import { withDeadline } from "./deadline";
 
 const connectionString = process.env.DATABASE_CONNECTION_STRING;
 const runIntegration = process.env.DATABASE_INTEGRATION_TEST === "1" && connectionString;
@@ -27,24 +36,23 @@ function input(id: string): CardInput {
 }
 
 async function nextSnapshot(snapshots: AsyncGenerator<Card[]>): Promise<Card[]> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error("Timed out waiting for card snapshot")),
-      10_000,
-    );
-    snapshots.next().then(
-      ({ value, done }) => {
-        clearTimeout(timer);
-        if (done) reject(new Error("Card snapshot stream ended"));
-        else resolve(value);
-      },
-      (error) => {
-        clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
+  const { value, done } = await withDeadline(
+    snapshots.next(),
+    10_000,
+    () => new Error("Timed out waiting for card snapshot"),
+  );
+  if (done) throw new Error("Card snapshot stream ended");
+  return value;
 }
+
+it("returns snapshots and rejects an exhausted stream without a database", async () => {
+  async function* snapshots(): AsyncGenerator<Card[]> {
+    yield [];
+  }
+  const stream = snapshots();
+  await expect(nextSnapshot(stream)).resolves.toEqual([]);
+  await expect(nextSnapshot(stream)).rejects.toThrow("Card snapshot stream ended");
+});
 
 async function listenerCount(): Promise<number> {
   const [row] = await sql<{ count: number }[]>`
@@ -79,11 +87,126 @@ describeIntegration("PostgreSQL card integration", { concurrent: false }, () => 
         "utf8",
       ),
     );
+    await sql.unsafe(
+      await readFile(
+        new URL("../../../migrations/0006_managed_labels.sql", import.meta.url),
+        "utf8",
+      ),
+    );
     await sql`TRUNCATE cards CASCADE`;
   });
 
   afterAll(async () => {
     await sql?.end();
+  });
+
+  it("canonicalizes managed labels and cascades rename, retype, and deletion to archived cards", async () => {
+    await sql`TRUNCATE cards CASCADE`;
+    const [label] = await sql`INSERT INTO memory_labels (name, kind, description)
+      VALUES ('Integration area', 'tag', 'A test area') RETURNING id`;
+    const card = await insertCard({
+      ...input(FIRST_ID),
+      tags: [],
+      topics: [" integration AREA ", "Integration area"],
+      archived: true,
+    });
+    expect(card.tags).toEqual(["Integration area"]);
+    expect(card.topics).toEqual([]);
+    await sql`UPDATE memory_labels SET name = 'Integration topic', kind = 'topic' WHERE id = ${label.id}`;
+    expect((await listCards())[0]).toMatchObject({
+      tags: [],
+      topics: ["Integration topic"],
+      archived: true,
+    });
+    await expect(
+      updateCard(FIRST_ID, { tags: ["Unknown label"], topics: [] }),
+    ).rejects.toMatchObject({ code: "23503" });
+    expect((await listCards())[0].topics).toEqual(["Integration topic"]);
+    await sql`DELETE FROM memory_labels WHERE id = ${label.id}`;
+    expect((await listCards())[0]).toMatchObject({ tags: [], topics: [], archived: true });
+  });
+
+  it("persists concurrent edits to different labels on the same card after a deadlock", async () => {
+    await sql`TRUNCATE cards CASCADE`;
+    const labels = await sql`INSERT INTO memory_labels (name, kind) VALUES
+      ('Concurrent first', 'tag'), ('Concurrent second', 'topic') RETURNING *`;
+    await insertCard({ ...input(FIRST_ID), tags: [labels[0].name], topics: [labels[1].name] });
+    const blocker = postgres(connectionString!, { ssl: "require", max: 1 });
+    const locked = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const blocking = blocker.begin(async (transaction) => {
+      await transaction`SELECT id FROM cards WHERE id = ${FIRST_ID} FOR UPDATE`;
+      locked.resolve();
+      await release.promise;
+    });
+    await locked.promise;
+    const edits = Promise.allSettled(
+      labels.map((label) =>
+        updateLabel(label.id, {
+          name: `${label.name} renamed`,
+          kind: label.kind,
+          description: "Renamed concurrently",
+        }),
+      ),
+    );
+    try {
+      // Both edits hold their label row and wait for the same card before we release it.
+      await expect
+        .poll(async () => {
+          const [row] = await sql`SELECT count(*)::integer AS count FROM pg_stat_activity
+          WHERE datname = current_database() AND wait_event_type = 'Lock'
+          AND query LIKE '%UPDATE memory_labels SET name%'`;
+          return row.count;
+        })
+        .toBe(2);
+    } finally {
+      release.resolve();
+      await blocking;
+      await blocker.end();
+    }
+    expect(await edits).toMatchObject([{ status: "fulfilled" }, { status: "fulfilled" }]);
+    expect((await listCards())[0]).toMatchObject({
+      tags: ["Concurrent first renamed"],
+      topics: ["Concurrent second renamed"],
+    });
+    for (const { id } of labels) await sql`DELETE FROM memory_labels WHERE id = ${id}`;
+  }, 10_000);
+
+  it("exports one board state when a label rename commits between its reads", async () => {
+    await sql`TRUNCATE cards CASCADE`;
+    const [label] = await sql`INSERT INTO memory_labels (name, kind)
+      VALUES ('Snapshot before', 'tag') RETURNING id`;
+    await insertCard({ ...input(FIRST_ID), tags: ["Snapshot before"] });
+    const blocker = postgres(connectionString!, { ssl: "require", max: 1 });
+    const locked = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const blocking = blocker.begin(async (transaction) => {
+      await transaction`LOCK TABLE memory_labels IN ACCESS EXCLUSIVE MODE`;
+      locked.resolve();
+      await release.promise;
+      await transaction`UPDATE memory_labels SET name = 'Snapshot after' WHERE id = ${label.id}`;
+    });
+    await locked.promise;
+    const exporting = getBoardSnapshot();
+    try {
+      await expect
+        .poll(async () => {
+          const [row] = await sql`SELECT count(*)::integer AS count FROM pg_stat_activity
+          WHERE datname = current_database() AND wait_event_type = 'Lock'
+          AND query LIKE '%FROM memory_labels label%'`;
+          return row.count;
+        })
+        .toBe(1);
+    } finally {
+      release.resolve();
+      await blocking;
+      await blocker.end();
+    }
+    const { memories, vocabulary } = await exporting;
+    expect(memories[0].tags).toEqual(["Snapshot before"]);
+    expect(vocabulary.find(({ id }) => id === label.id)?.name).toBe("Snapshot before");
+    expect((await listCards())[0].tags).toEqual(["Snapshot after"]);
+    await sql`DELETE FROM memory_labels WHERE id = ${label.id}`;
   });
 
   it("updates a position batch atomically without changing content timestamps", async () => {

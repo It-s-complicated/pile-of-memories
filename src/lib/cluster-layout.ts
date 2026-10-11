@@ -166,13 +166,17 @@ export function getClusters<T extends ClusterNode>(nodes: T[]) {
 
   return groups.map((indices) => {
     const members = indices.map((index) => ordered[index]);
-    const counts = new Map<string, number>();
+    const counts = new Map<string, { label: string; count: number }>();
     for (const node of members) {
       for (const tag of canonicalizeLabels(node.data.tags)) {
-        counts.set(tag, (counts.get(tag) ?? 0) + 1);
+        const key = tag.toLowerCase();
+        const previous = counts.get(key);
+        counts.set(key, { label: previous?.label ?? tag, count: (previous?.count ?? 0) + 1 });
       }
     }
-    const tag = [...counts].toSorted((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0];
+    const tag = [...counts.values()].toSorted(
+      (a, b) => b.count - a.count || a.label.localeCompare(b.label),
+    )[0]?.label;
     return {
       members,
       tag,
@@ -186,7 +190,9 @@ export function getClusterLandmarks<T extends ClusterNode>(nodes: T[]) {
     .toSorted((a, b) => b.members.length - a.members.length)
     .filter(
       (cluster, index, clusters) =>
-        cluster.tag && clusters.findIndex((other) => other.tag === cluster.tag) === index,
+        cluster.tag &&
+        clusters.findIndex((other) => other.tag?.toLowerCase() === cluster.tag?.toLowerCase()) ===
+          index,
     );
 }
 

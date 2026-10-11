@@ -3,6 +3,7 @@ import { error } from "@sveltejs/kit";
 import { enrichmentInputSchema, enrichmentResponseSchema } from "#lib/enrichment.js";
 import type { EnrichmentUsage } from "#lib/enrichment-analytics.js";
 import {
+  listLabels,
   recordEnrichmentAttemptFailed,
   recordEnrichmentAttemptStarted,
   recordEnrichmentAttemptSucceeded,
@@ -31,8 +32,14 @@ const EMPTY_USAGE: EnrichmentUsage = {
 export const enrichMemory = command(enrichmentInputSchema, async (input) => {
   requirePrivateBoard();
 
+  let vocabulary;
+  try {
+    vocabulary = await listLabels();
+  } catch {
+    error(503, "Could not load tag and topic definitions.");
+  }
   const attemptId = crypto.randomUUID();
-  const started = buildAttemptStarted(attemptId, input);
+  const started = buildAttemptStarted(attemptId, input, vocabulary);
   void recordEnrichmentAttemptStarted(started).catch(() =>
     reportAnalyticsFailure("record_attempt_started"),
   );
@@ -42,7 +49,7 @@ export const enrichMemory = command(enrichmentInputSchema, async (input) => {
     // The provider call cooperatively aborts after 55 seconds. This outer race caps the response
     // at 60 seconds if upstream cancellation stalls, but does not itself cancel remaining work.
     execution = await withDeadline(
-      enrichMemoryWithProvider(input),
+      enrichMemoryWithProvider(input, vocabulary),
       RESPONSE_DEADLINE_MS,
       () => new EnrichmentExecutionError("provider_timeout", RESPONSE_DEADLINE_MS, EMPTY_USAGE),
     );
@@ -61,7 +68,7 @@ export const enrichMemory = command(enrichmentInputSchema, async (input) => {
   }
 
   try {
-    const succeeded = buildAttemptSucceeded(started, input, execution.output, execution);
+    const succeeded = buildAttemptSucceeded(started, vocabulary, execution.output, execution);
     if (!hasAnalyticsFingerprintKey()) reportAnalyticsFailure("fingerprint_key_missing");
     void recordEnrichmentAttemptSucceeded(succeeded).catch(() =>
       reportAnalyticsFailure("record_attempt_succeeded"),

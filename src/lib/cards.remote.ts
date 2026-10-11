@@ -1,7 +1,10 @@
-import { command, getRequestEvent, query } from "$app/server";
+import { command, form, getRequestEvent, query } from "$app/server";
+import * as z from "zod";
 import { error } from "@sveltejs/kit";
 import {
-  createCardRequestSchema,
+  createCardFormSchema,
+  updateCardFormSchema,
+  type CardChanges,
   deleteCardCommandSchema,
   updateCardCommandSchema,
   updateCardPositionsCommandSchema,
@@ -25,6 +28,17 @@ function databaseUnavailable(): never {
   error(503, "Database unavailable");
 }
 
+const databaseErrorSchema = z.object({ code: z.string() }).loose();
+function databaseFailure(caught: unknown): never {
+  if (databaseErrorSchema.safeParse(caught).data?.code === "23503") {
+    error(
+      409,
+      "A selected tag or topic was renamed or deleted. Remove the old selection and choose its current name. Your text has been kept.",
+    );
+  }
+  databaseUnavailable();
+}
+
 export const getLiveCards = query.live(async function* () {
   requirePrivateBoard();
   const signal = getRequestEvent().request.signal;
@@ -36,14 +50,14 @@ export const getLiveCards = query.live(async function* () {
   }
 });
 
-export const createCard = command(createCardRequestSchema, async (input) => {
+export const createCard = form(createCardFormSchema, async (input) => {
   requirePrivateBoard();
 
   let card;
   try {
     card = await insertCardInDatabase(input.card);
-  } catch {
-    databaseUnavailable();
+  } catch (caught) {
+    databaseFailure(caught);
   }
 
   if (input.creation) {
@@ -58,18 +72,25 @@ export const createCard = command(createCardRequestSchema, async (input) => {
   return card;
 });
 
-export const updateCard = command(updateCardCommandSchema, async ({ id, changes }) => {
-  requirePrivateBoard();
-
+async function persistCardChanges(id: string, changes: CardChanges) {
   let card;
   try {
     card = await updateCardInDatabase(id, changes);
-  } catch {
-    databaseUnavailable();
+  } catch (caught) {
+    databaseFailure(caught);
   }
-
   if (!card) error(404, "Card not found");
   return card;
+}
+
+export const saveCard = form(updateCardFormSchema, async ({ id, changes }) => {
+  requirePrivateBoard();
+  return persistCardChanges(id, changes);
+});
+
+export const updateCard = command(updateCardCommandSchema, async ({ id, changes }) => {
+  requirePrivateBoard();
+  return persistCardChanges(id, changes);
 });
 
 export const updateCardPositions = command(

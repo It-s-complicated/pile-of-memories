@@ -34,7 +34,7 @@ describe("card writes", () => {
       success: true,
       data: {
         title: "Capture",
-        tags: ["Personal development"],
+        tags: ["personal development"],
         topics: ["CSS"],
       },
     });
@@ -75,6 +75,8 @@ describe("card writes", () => {
       });
       expect(node.type).toBe("memory");
       expect(node.data.kind).toBe(kind);
+      expect(node.data).not.toHaveProperty("vocabulary");
+      expect(node.data).not.toHaveProperty("labelsReady");
       expect(node.data.links).toEqual(["https://example.com", "https://example.org"]);
       expect(cardChangesSchema.safeParse({ kind })).toEqual({ success: true, data: { kind } });
     }
