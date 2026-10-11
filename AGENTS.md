@@ -67,4 +67,4 @@ Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.de
 
 ## Auth for local development
 
-To pass the auth check: with the agent browser open a browser that I can access and log in to.
+To pass the auth check: with the agent browser open a browser that the user can access and log in to.
