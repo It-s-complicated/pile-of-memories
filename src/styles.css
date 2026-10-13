@@ -9,7 +9,8 @@ STORY: the owner reopens the drawer at the exact spot they left, captures in
 seconds via one inked button, and the memory lands in its cluster labeled.
 FIRST VIEWPORT: edge-to-edge canvas; specimen slips on the sheet; etched
 drawer label top-left; drawer index (minimap) bottom-left with split tag
-colors; round inked capture button with quiet chips bottom-right.
+colors; round inked capture button bottom-right; occasional actions tucked
+into Board tools below the drawer label.
 FORM: grounded candidate #4 (specimen/herbarium cabinet), assigned by roll
 41a4062b and confirmed by the user; staging: canvas-owns-viewport with
 floating controls; the Miura-sheet challenger was weighed and declined.
@@ -65,85 +66,6 @@ select {
   color: var(--muted);
 }
 
-.canvas {
-  position: relative;
-  height: 100%;
-}
-
-/* The drawer's inner edge: a fixed hairline frame around the sheet. */
-.canvas::after {
-  position: absolute;
-  z-index: 4;
-  inset: 0.6rem;
-  border: 1px solid color-mix(in oklch, var(--theme-ink) 42%, var(--sheet));
-  border-radius: 4px;
-  pointer-events: none;
-  content: "";
-}
-
-/* --- Floating chrome ------------------------------------------------- */
-
-.drawer-plate {
-  position: absolute;
-  z-index: 6;
-  top: 0.9rem;
-  left: 1rem;
-  border: 1px solid var(--hairline);
-  border-radius: 3px;
-  padding: 0.45rem 0.7rem;
-  background: var(--paper);
-  box-shadow: var(--shadow-slip);
-  pointer-events: none;
-}
-
-.drawer-plate h1 {
-  margin: 0;
-  font-family: var(--font-label);
-  font-size: 0.78rem;
-  font-weight: 400;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--text);
-}
-
-.drawer-plate p {
-  margin: 0.25rem 0 0;
-  font-family: var(--font-label);
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-}
-
-.capture-cluster {
-  position: absolute;
-  z-index: 6;
-  right: 1rem;
-  bottom: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.fab {
-  display: grid;
-  width: 3rem;
-  height: 3rem;
-  place-items: center;
-  border: 0;
-  border-radius: 50%;
-  padding: 0;
-  font-size: 1.4rem;
-  line-height: 1;
-  color: var(--paper);
-  background: var(--theme-ink);
-  box-shadow: var(--shadow-slip);
-  cursor: pointer;
-}
-
-.fab:hover:not(:disabled) {
-  background: var(--ink-strong);
-}
-
 .chip-button {
   display: inline-flex;
   align-items: center;
@@ -167,58 +89,9 @@ select {
   background: var(--ink-tint);
 }
 
-.fab:disabled,
 .chip-button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
-}
-
-.status-pill {
-  position: absolute;
-  z-index: 6;
-  top: 0.9rem;
-  left: 50%;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-  border: 1px solid var(--hairline);
-  border-radius: 3px;
-  padding: 0.4rem 0.7rem;
-  font-family: var(--font-label);
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  color: var(--text);
-  background: var(--paper);
-  box-shadow: var(--shadow-slip);
-  transform: translateX(-50%);
-}
-
-.status-pill[role="alert"] {
-  border-color: color-mix(in oklch, var(--danger) 45%, var(--paper));
-  color: var(--danger);
-}
-
-.status-pill button {
-  border: 0;
-  padding: 0;
-  font: inherit;
-  color: var(--theme-ink);
-  background: transparent;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.empty-hint {
-  position: absolute;
-  z-index: 5;
-  top: 50%;
-  left: 50%;
-  margin: 0;
-  pointer-events: none;
-  text-align: center;
-  transform: translate(-50%, -50%);
 }
 
 /* --- Svelte Flow overrides -------------------------------------------- */
@@ -446,46 +319,7 @@ select {
   opacity: 0.5;
 }
 
-.archive-list {
-  display: grid;
-  gap: 0.6rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.archive-list li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  border: 1px solid var(--hairline);
-  border-radius: 3px;
-  padding: 0.75rem;
-}
-
-.archive-list li div {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.4rem;
-}
-
 @media (max-width: 520px) {
-  .capture-cluster {
-    display: grid;
-    grid-template-columns: auto;
-    justify-items: end;
-  }
-
-  .capture-cluster .fab {
-    grid-column: 1 / -1;
-  }
-
-  .chip-button {
-    padding: 0.45rem 0.55rem;
-  }
-
   .svelte-flow__minimap {
     width: 8.5rem;
     height: 6.5rem;
@@ -496,18 +330,13 @@ select {
     height: 100%;
   }
 
+  .chip-button {
+    padding: 0.45rem 0.55rem;
+  }
+
   .memory-dialog form {
     padding: 1rem 1rem 0;
   }
-}
-
-.mode-button {
-  min-height: 44px;
-}
-
-.mode-button[aria-pressed="true"] {
-  color: var(--paper);
-  background: var(--theme-ink);
 }
 
 @media (pointer: coarse) {

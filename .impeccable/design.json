@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-11T17:11:12.553Z",
+  "generatedAt": "2026-10-13T19:39:52.051Z",
   "title": "Design System: Pile of Memories",
   "extensions": {
     "colorMeta": {
@@ -176,6 +176,10 @@
       {
         "name": "list-fullscreen",
         "value": "640px"
+      },
+      {
+        "name": "status-below-tools",
+        "value": "900px"
       }
     ]
   },
@@ -185,8 +189,8 @@
       "kind": "button",
       "refersTo": "fab-capture",
       "description": "The one round element: always-visible memory capture, bottom-right.",
-      "html": "<button class=\"ds-fab\" aria-label=\"New memory\">+</button>",
-      "css": ".ds-fab { display: grid; width: 3rem; height: 3rem; place-items: center; border: 0; border-radius: 50%; padding: 0; font-family: var(--font-body); font-size: 1.4rem; line-height: 1; color: var(--paper); background: var(--theme-ink); box-shadow: var(--shadow-slip); cursor: pointer; } .ds-fab:hover:not(:disabled) { background: var(--ink-strong); } .ds-fab:focus-visible { outline: auto; } .ds-fab:disabled { cursor: not-allowed; opacity: 0.5; }"
+      "html": "<button class=\"ds-fab\" aria-label=\"New memory\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M12 5v14M5 12h14\" /></svg></button>",
+      "css": ".ds-fab { display: grid; width: 3.5rem; height: 3.5rem; place-items: center; border: 0; border-radius: 50%; padding: 0; font-family: var(--font-body); line-height: 1; color: var(--paper); background: var(--theme-ink); box-shadow: var(--shadow-slip); cursor: pointer; } .ds-fab:hover:not(:disabled) { background: var(--ink-strong); } .ds-fab:focus-visible { outline: 2px solid var(--theme-ink); outline-offset: 3px; } .ds-fab:disabled { cursor: not-allowed; opacity: 0.5; }"
     },
     {
       "name": "Primary Button",
@@ -213,12 +217,12 @@
       "css": ".ds-btn-danger { font: 1rem var(--font-body); border: 1px solid var(--danger); border-radius: 3px; padding: 0.55rem 0.85rem; color: var(--danger); background: transparent; cursor: pointer; } .ds-btn-danger:hover:not(:disabled) { background: color-mix(in oklch, var(--danger) 8%, var(--paper)); } .ds-btn-danger:focus-visible { outline: auto; } .ds-btn-danger:disabled { cursor: not-allowed; opacity: 0.5; }"
     },
     {
-      "name": "Floating Chip",
-      "kind": "chip",
+      "name": "Board tools trigger",
+      "kind": "button",
       "refersTo": "chip-action",
-      "description": "Floating canvas/account action; Browse uses the inked pressed state.",
-      "html": "<button class=\"ds-chip ds-mode\" type=\"button\" aria-pressed=\"true\">Browse</button> <button class=\"ds-chip\" type=\"button\">Archive · 3</button>",
-      "css": ".ds-chip { border: 1px solid var(--hairline); border-radius: 3px; padding: 0.45rem 0.7rem; font-family: var(--font-label); font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text); background: var(--paper); box-shadow: var(--shadow-slip); cursor: pointer; } .ds-chip:hover:not(:disabled) { background: var(--ink-tint); } .ds-chip:focus-visible { outline: auto; } .ds-chip:disabled { cursor: not-allowed; opacity: 0.5; } .ds-mode { min-height: 44px; } .ds-mode[aria-pressed=\"true\"] { color: var(--paper); background: var(--theme-ink); } @media (max-width: 520px) { .ds-chip { padding: 0.45rem 0.55rem; } } @media (pointer: coarse) { .ds-chip { min-height: 44px; } }"
+      "description": "Quiet floating trigger below the drawer plate; opens occasional board and account actions.",
+      "html": "<button class=\"ds-chip\" type=\"button\">Board tools <svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"m6 9 6 6 6-6\" /></svg></button>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; gap: 0.5rem; border: 1px solid var(--hairline); border-radius: 3px; padding: 0.45rem 0.7rem; font-family: var(--font-label); font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text); background: var(--paper); box-shadow: var(--shadow-slip); cursor: pointer; } .ds-chip:hover:not(:disabled) { background: var(--ink-tint); } .ds-chip:focus-visible { outline: 2px solid var(--theme-ink); outline-offset: 3px; } .ds-chip:disabled { cursor: not-allowed; opacity: 0.5; } @media (max-width: 520px) { .ds-chip { padding: 0.45rem 0.55rem; } }"
     },
     {
       "name": "Specimen Slip",

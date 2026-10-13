@@ -5,6 +5,7 @@
   import { page } from "$app/state";
   import { initializeCaptureHistory } from "#lib/capture-navigation.js";
   import App from "../App.svelte";
+  import BoardNotice from "../components/BoardNotice.svelte";
   import { authClient } from "#lib/auth-client.js";
 
   let { data }: { data: PageData } = $props();
@@ -64,15 +65,9 @@
 
 {#if data.userId && !signedOut}
   {#key data.userId}
-    <App userId={data.userId} bind:this={board} />
+    <App userId={data.userId} onsignout={signOut} signingOut={working} bind:this={board} />
   {/key}
-  <div class="account-actions">
-    <button class="chip-button" type="button" onclick={signOut} disabled={working}>
-      {working ? "Closing…" : "Sign out"}
-    </button>
-    <a class="chip-button" href="/export" download data-sveltekit-reload>Export memories</a>
-  </div>
-  {#if authError}<p class="status-pill" role="alert">{authError}</p>{/if}
+  {#if authError}<BoardNotice message={authError} role="alert" />{/if}
 {:else}
   <main class="access-screen">
     <section class="access-slip" aria-labelledby="access-title">
@@ -165,15 +160,6 @@
     margin: 1rem 0 0;
     color: var(--danger);
     font-size: 0.85rem;
-  }
-
-  .account-actions {
-    display: flex;
-    gap: 0.5rem;
-    position: fixed;
-    z-index: 7;
-    top: 4.3rem;
-    left: 1rem;
   }
 
   @media (max-width: 520px) {

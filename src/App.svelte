@@ -35,9 +35,17 @@
   import { getLiveLabels } from "./lib/labels.remote";
   import { cardToMemoryNode, type MemoryNode } from "./lib/scene";
   import { getErrorMessage } from "./lib/errors";
-  import { showModal } from "./lib/dialog";
+  import BoardTools from "./components/BoardTools.svelte";
+  import CaptureButton from "./components/CaptureButton.svelte";
+  import LayoutReview from "./components/LayoutReview.svelte";
+  import BoardNotice from "./components/BoardNotice.svelte";
+  import ArchiveDialog from "./components/ArchiveDialog.svelte";
 
-  let { userId }: { userId: string } = $props();
+  let { userId, onsignout, signingOut }: {
+    userId: string;
+    onsignout: () => Promise<void>;
+    signingOut: boolean;
+  } = $props();
 
   const MIN_ZOOM = 0.1;
   const VIEWPORT_STORAGE_KEY = "pile-of-memories-viewport";
@@ -390,82 +398,58 @@
     {/if}
   </div>
 
-  <div class="capture-cluster">
-    <button
-      type="button"
-      class="chip-button mode-button"
-      aria-pressed={browseMode}
-      title={browseMode
-        ? "Browse: drag anywhere to pan. Switch to Arrange to move cards."
-        : "Arrange: drag cards to move them. Switch to Browse to pan over cards."}
-      onclick={toggleBrowseMode}
-      disabled={!!reorganizeSnapshot}
-    >{browseMode ? "Browse" : "Arrange"}</button>
-    {#if reorganizeSnapshot}
-      <button
-        type="button"
-        class="chip-button"
-        onclick={cancelReorganization}
-        disabled={reorganizeSaving}
-      >Cancel</button>
-      <button
-        type="button"
-        class="chip-button"
-        onclick={applyReorganization}
-        disabled={reorganizeSaving}
-      >{reorganizeSaving ? "Saving…" : "Apply layout"}</button>
-    {:else}
-      <button type="button" class="chip-button" onclick={() => (listOpen = true)} disabled={!boardReady}>
-        List
-      </button>
-      <button type="button" class="chip-button" onclick={openArchive} disabled={!boardReady}>
-        Archive · {archivedCards.length}
-      </button>
-      <button type="button" class="chip-button" onclick={() => (labelsOpen = true)}>
-        Tags & topics
-      </button>
-      <button
-        type="button"
-        class="chip-button"
-        onclick={previewReorganization}
-        disabled={!boardReady || nodes.length === 0}
-      >
-        Reorganize
-      </button>
-    {/if}
-    <button
-      type="button"
-      class="fab"
-      aria-label="New memory"
-      title="New memory"
-      onclick={() => {
-        persistenceError = "";
-        void openCapture();
-      }}
-      disabled={!!reorganizeSnapshot}
-    >+</button>
-  </div>
+  <BoardTools
+    ready={boardReady}
+    empty={nodes.length === 0}
+    previewing={!!reorganizeSnapshot}
+    {browseMode}
+    archivedCount={archivedCards.length}
+    {signingOut}
+    onlist={() => (listOpen = true)}
+    onarchive={openArchive}
+    onlabels={() => (labelsOpen = true)}
+    onmodechange={toggleBrowseMode}
+    onreorganize={previewReorganization}
+    {onsignout}
+  />
+
+  {#if reorganizeSnapshot}
+    <LayoutReview
+      saving={reorganizeSaving}
+      oncancel={cancelReorganization}
+      onapply={applyReorganization}
+    />
+  {/if}
+
+  <CaptureButton
+    disabled={!!reorganizeSnapshot}
+    onclick={() => {
+      persistenceError = "";
+      void openCapture();
+    }}
+  />
 
   {#if persistenceError}
-    <p class="status-pill" role="alert">{persistenceError}</p>
+    <BoardNotice message={persistenceError} role="alert" />
   {:else if reorganizeStatus}
-    <p class="status-pill" role="status">{reorganizeStatus}</p>
+    <BoardNotice message={reorganizeStatus} />
   {:else if cardsQuery.error && !boardReady}
-    <p class="status-pill" role="alert">Database unavailable</p>
+    <BoardNotice message="Database unavailable" role="alert" />
   {:else if !boardReady}
-    <p class="status-pill" role="status">Loading board…</p>
+    <BoardNotice message="Loading board…" />
   {:else if labelsQuery.error}
-    <p class="status-pill" role="alert">
-      Tags and topics unavailable.
-      <button type="button" onclick={() => labelsQuery.reconnect()}>Reconnect</button>
-    </p>
+    <BoardNotice
+      message="Tags and topics unavailable."
+      role="alert"
+      onreconnect={() => labelsQuery.reconnect()}
+    />
   {:else if cacheWarning}
-    <p class="status-pill" role="status">{cacheWarning}</p>
+    <BoardNotice message={cacheWarning} />
   {:else if !cardsQuery.connected || !labelsQuery.connected}
-    <p class="status-pill" role="status">
-      Live updates paused.
-      <button type="button" onclick={() => Promise.allSettled([cardsQuery.reconnect(), labelsQuery.reconnect()])}>Reconnect</button>
-    </p>
+    <BoardNotice
+      message="Live updates paused."
+      onreconnect={() => Promise.allSettled([cardsQuery.reconnect(), labelsQuery.reconnect()])}
+    />
   {/if}
 
   {#if boardReady && nodes.length === 0}
@@ -500,50 +484,16 @@
 {/if}
 
 {#if archiveOpen}
-  <dialog
-    class="memory-dialog archive-dialog"
-    aria-labelledby="archive-title"
+  <ArchiveDialog
+    cards={archivedCards}
+    busy={archiveBusy}
+    error={archiveError}
+    onrestore={restoreArchived}
+    ondelete={deleteArchived}
     onclose={() => (archiveOpen = false)}
-    {@attach showModal}
-  >
-    <form method="dialog">
-      <header>
-        <p>Archive</p>
-        <h2 id="archive-title">Archived memories</h2>
-      </header>
-
-      {#if archivedCards.length}
-        <ul class="archive-list">
-          {#each archivedCards as card (card.id)}
-            <li>
-              <strong>{card.title}</strong>
-              <div>
-                <button
-                  type="button"
-                  class="secondary-button"
-                  disabled={archiveBusy}
-                  onclick={() => restoreArchived(card.id)}
-                >Restore</button>
-                <button
-                  type="button"
-                  class="danger-button"
-                  disabled={archiveBusy}
-                  onclick={() => deleteArchived(card.id, card.title)}
-                >Delete permanently</button>
-              </div>
-            </li>
-          {/each}
-        </ul>
-      {:else}
-        <p>No archived memories.</p>
-      {/if}
-      {#if archiveError}<p role="alert">{archiveError}</p>{/if}
-      <footer>
-        <button type="submit" class="card-button">Done</button>
-      </footer>
-    </form>
-  </dialog>
+  />
 {/if}
+
 
 <style>
   .canvas {
@@ -551,8 +501,60 @@
     height: 100dvh;
   }
 
+  /* The drawer's inner edge: a fixed hairline frame around the sheet. */
+  .canvas::after {
+    position: absolute;
+    z-index: 4;
+    inset: 0.6rem;
+    border: 1px solid color-mix(in oklch, var(--theme-ink) 42%, var(--sheet));
+    border-radius: 4px;
+    pointer-events: none;
+    content: "";
+  }
+
+  /* --- Floating chrome ------------------------------------------------- */
+
+  .drawer-plate {
+    position: absolute;
+    z-index: 6;
+    top: 0.9rem;
+    left: 1rem;
+    border: 1px solid var(--hairline);
+    border-radius: 3px;
+    padding: 0.45rem 0.7rem;
+    background: var(--paper);
+    box-shadow: var(--shadow-slip);
+    pointer-events: none;
+  }
+
+  .drawer-plate h1 {
+    margin: 0;
+    font-family: var(--font-label);
+    font-size: 0.78rem;
+    font-weight: 400;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  .drawer-plate p {
+    margin: 0.25rem 0 0;
+    font-family: var(--font-label);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+
   .empty-hint {
+    position: absolute;
     display: grid;
     gap: 0.4rem;
+    z-index: 5;
+    top: 50%;
+    left: 50%;
+    margin: 0;
+    pointer-events: none;
+    text-align: center;
+    transform: translate(-50%, -50%);
   }
 </style>

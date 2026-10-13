@@ -65,16 +65,12 @@ components:
     backgroundColor: "{colors.theme-ink}"
     textColor: "{colors.paper}"
     rounded: "{rounded.fab}"
-    size: "3rem"
+    size: "3.5rem"
   chip-action:
     backgroundColor: "{colors.paper}"
     textColor: "{colors.text}"
     rounded: "{rounded.card}"
     padding: "0.45rem 0.7rem"
-  chip-mode-selected:
-    backgroundColor: "{colors.theme-ink}"
-    textColor: "{colors.paper}"
-    rounded: "{rounded.card}"
   specimen-slip:
     backgroundColor: "{colors.paper}"
     textColor: "{colors.text}"
@@ -125,7 +121,11 @@ mode cave, anything that slows capture.
 - One theme ink derives the entire UI palette via CSS `color-mix`.
 - Typed mono labels carry metadata; a grotesque carries reading text.
 
-Implementation sources: `src/styles.css` owns the global palette and chrome;
+Implementation sources: `src/styles.css` owns the global palette and shared
+button/dialog primitives and Svelte Flow vendor overrides; `src/App.svelte` owns
+the canvas frame, drawer plate, and empty state. `BoardTools.svelte`, `CaptureButton.svelte`,
+`LayoutReview.svelte`, `BoardNotice.svelte`, and `ArchiveDialog.svelte` own their
+scoped control and dialog styles;
 `src/components/MemoryNode.svelte`, `TagEditor.svelte`, and `MemoryListDialog.svelte`
 own scoped component styles; `src/routes/+page.svelte` owns the access screen;
 `src/lib/scene.ts` owns tag colors. Frontmatter records observed values, not a
@@ -237,12 +237,19 @@ the viewport — the drawer's inner edge. It carries no interaction.
   520px). Each card renders its primary tag colors as hard split segments via
   the MiniMap `nodeComponent`, framed by a 35% ink stroke.
 - **Top-right:** zoom/fit controls.
-- **Bottom-right:** the capture cluster — paper chips (Browse/Arrange, List,
-  Archive, Reorganize) beside the round inked FAB. During reorganization,
-  Cancel and Apply layout replace the list/archive/reorganize actions.
-  At 520px and below the chips stack above the FAB.
-- **Below the drawer plate:** Sign out and Export memories as floating chips.
-- **Top-center:** a rectangular status notice, only when there is something to say.
+- **Bottom-right:** the round inked capture FAB stands alone, inset at least
+  1.25rem from the viewport edges and respecting device safe areas.
+- **Below the drawer plate:** one quiet Board tools button opens a native,
+  dismissible popover. Memory list, Archive, and Tags & topics form one group;
+  Arrange mode and Reorganize form another; Export memories and Sign out
+  form the last. A muted Arrange mode label remains beside the closed trigger
+  while card dragging is enabled.
+- **During reorganization:** Cancel and an inked Apply layout action appear
+  at bottom-center. At 520px and below, they sit above the minimap and capture
+  button. Other board actions are disabled until the preview is resolved.
+- **Top-center:** a rectangular status notice, only when there is something to
+  say. At 900px and below, notices sit below the top-left controls, wrap within
+  the viewport, and leave the drawer plate readable.
 
 The app reopens at the exact spot the owner left: the world-space center and
 zoom are persisted to localStorage on `moveend` (Zod-validated on read), so
@@ -289,21 +296,24 @@ square corners and no outer border.
 
 ### Buttons
 
-- **Shape:** near-square (3px); the FAB alone is round (3rem, ink).
+- **Shape:** near-square (3px); the FAB alone is round (3.5rem, ink).
 - **Primary:** Archive Ink fill, Paper text (0.55rem 0.85rem); hover darkens
   to Ink Strong.
 - **Secondary:** transparent, ink text and hairline border; hover Ink Tint wash.
 - **Danger:** transparent, Cabinet Red text and border; hover 8% red wash.
-- **Floating chips:** paper, hairline, shadow-slip, Cutive Mono uppercase —
-  the quiet actions beside the FAB.
-- **Selected mode:** Browse uses Archive Ink fill and Paper text via
-  `aria-pressed="true"`; Arrange retains the Paper chip. The mode button is
-  at least 44px tall. Coarse pointers also give chips and dialog buttons a
-  44px minimum height.
+- **Board tools:** the trigger is a paper chip with a small line chevron,
+  hairline, shadow-slip, and Cutive Mono uppercase. Popover actions use
+  Archivo body type, transparent fills, and Ink Tint hover washes; hairlines
+  separate groups. Every trigger and popover action is at least 44px tall.
+- **Selected mode:** Arrange mode is a pressed-state popover button with
+  explicit On/Off text. Its selected state uses Archive Ink for the state
+  text, with a muted mode reminder outside the popover. Coarse pointers also
+  give chips and dialog buttons a 44px minimum height.
 - **Disabled:** action buttons use opacity 0.5 and a not-allowed cursor;
   hover fills apply only while enabled. Native focus remains on dialog
-  action buttons and floating chrome; custom ink outlines exist on fields,
-  list controls, and card/read targets. Do not remove visible focus.
+  action buttons; custom ink outlines exist on the capture FAB, Board tools
+  controls, fields, list controls, and card/read targets. Do not remove
+  visible focus.
 
 ### Cards / Slips
 
@@ -339,9 +349,11 @@ square corners and no outer border.
 
 The canvas and the drawer index (minimap) are the navigation. The minimap is
 click-to-center; each node shows all of its primary tag colors as hard
-vertical segments. A floating List chip opens a sortable/filterable catalog
-dialog with Locate on board actions. Browse/Arrange is a pressed-state button,
-not a tab bar. There are no navigation menus or breadcrumbs.
+vertical segments. Memory list in Board tools opens a sortable/filterable
+catalog dialog with Locate on board actions. Arrange mode is a pressed-state
+button in the same popover. The popover supports native keyboard focus,
+Escape, and outside-click dismissal; choosing an action closes it. There are
+no persistent navigation bars or breadcrumbs.
 
 ### Dialogs
 
