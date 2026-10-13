@@ -1,73 +1,30 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { invalidateAll } from "$app/navigation";
   import type { PageData } from "./$types";
-  import { page } from "$app/state";
   import { initializeCaptureHistory } from "#lib/capture-navigation.js";
+  import { createAccountControls } from "#lib/account-controls.svelte.js";
   import App from "../App.svelte";
   import BoardNotice from "../components/BoardNotice.svelte";
-  import { authClient } from "#lib/auth-client.js";
 
   let { data }: { data: PageData } = $props();
-  let board = $state<App>();
-  let signedOut = $state(false);
-  let working = $state(false);
-  let authError = $state("");
+  let boardView = $state<App>();
+  const account = createAccountControls(async () => {
+    await boardView?.clearCache();
+  });
 
   onMount(() => {
     void initializeCaptureHistory();
-    const channel = new BroadcastChannel("pile-of-memories-auth");
-    channel.onmessage = () => {
-      signedOut = true;
-      void invalidateAll();
-    };
-    return () => channel.close();
+    return account.mount();
   });
-
-  async function signIn(): Promise<void> {
-    working = true;
-    authError = "";
-    const url = page.shallow?.url ?? page.url;
-    const result = await authClient.signIn.social({
-      provider: "github",
-      callbackURL: url.pathname + url.search + url.hash,
-    });
-    if (result.error) {
-      authError = result.error.message ?? "GitHub sign-in failed.";
-      working = false;
-    }
-  }
-
-  async function signOut(): Promise<void> {
-    working = true;
-    authError = "";
-    try {
-      const result = await authClient.signOut();
-      if (result.error) throw new Error(result.error.message ?? "Sign-out failed.");
-      const channel = new BroadcastChannel("pile-of-memories-auth");
-      channel.postMessage("signed-out");
-      channel.close();
-      try {
-        await board?.clearCache();
-      } finally {
-        signedOut = true;
-        await invalidateAll();
-      }
-    } catch (error) {
-      authError = error instanceof Error ? error.message : "Sign-out failed.";
-    } finally {
-      working = false;
-    }
-  }
 </script>
 
 <svelte:head><title>Pile of Memories</title></svelte:head>
 
-{#if data.userId && !signedOut}
+{#if data.userId && !account.signedOut}
   {#key data.userId}
-    <App userId={data.userId} onsignout={signOut} signingOut={working} bind:this={board} />
+    <App userId={data.userId} bind:this={boardView} />
   {/key}
-  {#if authError}<BoardNotice message={authError} role="alert" />{/if}
+  {#if account.authError}<BoardNotice message={account.authError} role="alert" />{/if}
 {:else}
   <main class="access-screen">
     <section class="access-slip" aria-labelledby="access-title">
@@ -76,12 +33,12 @@
       <p class="access-copy">
         This drawer belongs to one collector. Continue with the approved GitHub account to open it.
       </p>
-      <button class="card-button login-button" type="button" onclick={signIn} disabled={working}>
-        {working ? "Redirecting…" : "Continue with GitHub"}
+      <button class="card-button login-button" type="button" onclick={account.signIn} disabled={account.working}>
+        {account.working ? "Redirecting…" : "Continue with GitHub"}
       </button>
-      {#if authError}
+      {#if account.authError}
         <p class="access-error" role="alert">
-          {authError}
+          {account.authError}
         </p>
       {/if}
       <p class="catalog-label access-note">No other GitHub account can access this board.</p>

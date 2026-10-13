@@ -2,7 +2,7 @@
 
 Researched 2026-10-13 against current official Svelte/SvelteKit documentation. The installed project uses Svelte 5.57.2 and SvelteKit 3.0.1. The recommendations below are architectural judgments for this repository, separate from framework behavior.
 
-## What the current code needs
+## Before the context refactor
 
 [BoardTools.svelte](src/components/BoardTools.svelte) receives six state values and six action callbacks directly from [App.svelte](src/App.svelte). This is a wide component interface; there are no intervening components forwarding those twelve props. Svelte describes prop drilling as passing values through intermediate component layers. [Context documentation](https://svelte.dev/docs/svelte/context).
 
@@ -21,12 +21,20 @@ The existing [card-persistence.ts](src/lib/card-persistence.ts) context serves a
 
 ## Recommendation for this repository
 
-My recommendation is a small typed board-controls context provided by `App`, following the existing card-persistence pattern. `BoardTools` is already specific to this board, and related board controls use the same mode and layout lifecycle. Expose live read access and named commands rather than every internal variable. Keep popover DOM behavior inside `BoardTools` and keep card persistence as its separate capability. A context consumer requires a provider when rendered in isolation, unlike the current prop-driven component.
+Use a per-board reactive model, shared through a small typed board-controls context provided by `App`. `BoardTools` is already specific to this board, and related board controls use the same mode and layout lifecycle. Expose live read access and named commands rather than every internal variable. Keep popover DOM behavior inside `BoardTools` and keep card persistence as its separate capability. A context consumer requires a provider when rendered in isolation, unlike a prop-driven component.
 
-Keep explicit props for small reusable components such as `BoardNotice`, `TagEditor`, `MemoryMarkdown`, and the two-prop `CaptureButton`. Compact dialog interfaces can also remain explicit; prop count alone does not justify context. A page-scoped account context could remove the account forwarding path while leaving sign-out orchestration with its current owner.
+Keep explicit props for small reusable components such as `BoardNotice`, `TagEditor`, `MemoryMarkdown`, and the two-prop `CaptureButton`. Compact dialog interfaces can also remain explicit; prop count alone does not justify context. A separate page-scoped account model owns authentication state and sign-out orchestration, and its context removes the account forwarding path.
 
 For a genuinely reusable tools component, two cohesive typed props (a state view and commands) are another option. Build the changing state view with `$derived` or live getters; do not construct a plain object once from current booleans. Grouping improves readability but does not reduce the toolbar's actual dependencies.
 
-Extract a per-board controller into `.svelte.ts` when cohesive behavior warrants it; changing how twelve props travel alone does not justify moving cache, dialogs, viewport, and reorganization together. Snippet composition is useful if a reusable popover shell becomes the desired boundary. Neither `$bindable` nor a new store is needed for toolbar commands such as opening dialogs or toggling a persisted mode.
+Moving state into `.svelte.ts` separates board coordination from rendering: the model owns cache synchronization, dialog state, viewport persistence, and the reorganization lifecycle; `App` wires its state to Svelte Flow and its commands to the rendered controls. This is a responsibility boundary beyond changing how props travel. Snippet composition remains useful if a reusable popover shell becomes the desired boundary. Neither `$bindable` nor a new store is needed for toolbar commands such as opening dialogs or toggling a persisted mode.
 
 [The root layout](src/routes/+layout.ts) currently disables SSR, so this research does not establish a current cross-request state leak. Nevertheless, prefer creating state per board instance: it follows the current user-keyed `App` lifecycle and keeps future multiple boards or account changes isolated. If SSR is enabled later, mutable module singletons can share user data across requests; context avoids that scope. [SvelteKit state management](https://svelte.dev/docs/kit/state-management), [Svelte best practices](https://svelte.dev/docs/svelte/best-practices#Context).
+
+## Applied in this repository
+
+[board-controls.svelte.ts](src/lib/board-controls.svelte.ts) owns `BoardState`, a reactive class containing board state and behavior. `App` calls `createBoardControls` once per user-keyed board, registers cache initialization/cleanup with `onMount`, and binds the model's nodes, viewport, and dimensions to Svelte Flow. The factory provides the same instance through a typed context whose interface exposes mode, archive count, layout-saving state, action availability, and named commands. `BoardTools` and `LayoutReview` consume that context directly without props.
+
+[account-controls.svelte.ts](src/lib/account-controls.svelte.ts) owns `AccountState`, including authentication progress, errors, sign-in/sign-out, and cross-tab sign-out notifications. The page creates and provides its instance, registers its subscription lifecycle, and supplies a callback to clear the current board's cache. `BoardTools` reads live sign-out progress and invokes the model's sign-out command without forwarding account props through `App`.
+
+Popover DOM state remains local to `BoardTools`. Card persistence retains its existing context, now supplied by the board model's factory, and reusable controls and compact dialogs retain explicit props. The modules export classes, factories, and context accessors, never mutable state singletons. Callback methods use arrow fields to preserve their instance when passed to components. Headless browser checks cover client reactivity; the existing test suite and type checks remain the automated baseline.

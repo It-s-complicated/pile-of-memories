@@ -1,31 +1,9 @@
 <script lang="ts">
-  let {
-    ready,
-    empty,
-    previewing,
-    browseMode,
-    archivedCount,
-    signingOut,
-    onlist,
-    onarchive,
-    onlabels,
-    onmodechange,
-    onreorganize,
-    onsignout,
-  }: {
-    ready: boolean;
-    empty: boolean;
-    previewing: boolean;
-    browseMode: boolean;
-    archivedCount: number;
-    signingOut: boolean;
-    onlist: () => void;
-    onarchive: () => void;
-    onlabels: () => void;
-    onmodechange: () => void;
-    onreorganize: () => void;
-    onsignout: () => void;
-  } = $props();
+  import { getBoardControls } from "../lib/board-controls.svelte.js";
+  import { getAccountControls } from "../lib/account-controls.svelte.js";
+
+  const board = getBoardControls();
+  const account = getAccountControls();
 
   const popoverId = $props.id();
   let popover: HTMLDivElement | undefined;
@@ -34,9 +12,9 @@
     popover?.hidePopover();
   }
 
-  function select(action: () => void): void {
+  function select(action: () => void | Promise<void>): void {
     closePopover();
-    action();
+    void action();
   }
 </script>
 
@@ -51,7 +29,7 @@
       <path d="m6 9 6 6 6-6" />
     </svg>
   </button>
-  {#if !browseMode}<span class="board-mode">Arrange mode</span>{/if}
+  {#if !board.browseMode}<span class="board-mode">Arrange mode</span>{/if}
 </div>
 
 <div id={popoverId} class="board-tools-popover" popover="auto" role="group" aria-label="Board tools" bind:this={popover}>
@@ -59,42 +37,42 @@
     <button
       type="button"
       class="board-tool"
-      onclick={() => select(onlist)}
-      disabled={!ready || previewing}
+      onclick={() => select(board.openList)}
+      disabled={!board.canOpenMemories}
     >Memory list</button>
     <button
       type="button"
       class="board-tool"
-      onclick={() => select(onarchive)}
-      disabled={!ready || previewing}
+      onclick={() => select(board.openArchive)}
+      disabled={!board.canOpenMemories}
     >
       <span>Archive</span>
-      <span class="tool-state">{archivedCount}</span>
+      <span class="tool-state">{board.archivedCount}</span>
     </button>
     <button
       type="button"
       class="board-tool"
-      onclick={() => select(onlabels)}
-      disabled={previewing}
+      onclick={() => select(board.openLabels)}
+      disabled={!board.canEditBoard}
     >Tags & topics</button>
   </div>
   <div class="board-tool-group">
     <button
       type="button"
       class="board-tool"
-      aria-pressed={!browseMode}
+      aria-pressed={!board.browseMode}
       title="Arrange: drag cards to move them. Turn off to browse and pan over cards."
-      onclick={() => select(onmodechange)}
-      disabled={previewing}
+      onclick={() => select(board.toggleBrowseMode)}
+      disabled={!board.canEditBoard}
     >
       <span>Arrange mode</span>
-      <span class="tool-state">{browseMode ? "Off" : "On"}</span>
+      <span class="tool-state">{board.browseMode ? "Off" : "On"}</span>
     </button>
     <button
       type="button"
       class="board-tool"
-      onclick={() => select(onreorganize)}
-      disabled={!ready || empty || previewing}
+      onclick={() => select(board.previewLayout)}
+      disabled={!board.canReorganize}
     >Reorganize</button>
   </div>
   <div class="board-tool-group">
@@ -102,9 +80,9 @@
     <button
       type="button"
       class="board-tool"
-      onclick={() => select(onsignout)}
-      disabled={signingOut}
-    >{signingOut ? "Closing…" : "Sign out"}</button>
+      onclick={() => select(account.signOut)}
+      disabled={account.signingOut}
+    >{account.signingOut ? "Closing…" : "Sign out"}</button>
   </div>
 </div>
 

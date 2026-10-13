@@ -10,7 +10,7 @@ Before saving, place the new card in a collision-free slot near its most similar
 
 Cancel restores the pre-preview positions and viewport while retaining a newly saved card. Apply persists only changed positions; failed persistence restores the confirmed board. Archived cards do not participate.
 
-Placement runs client-side in `src/lib/cluster-layout.ts`; `src/App.svelte` coordinates creation, preview, cancellation, and persistence. Svelte Flow measurements are used when available, with a 320×220 fallback.
+Placement runs client-side in `src/lib/cluster-layout.ts`; the per-board model in `src/lib/board-controls.svelte.ts` coordinates creation, preview, cancellation, and persistence. `src/App.svelte` connects that model to Svelte Flow. Svelte Flow measurements are used when available, with a 320×220 fallback.
 
 ## Future direction
 

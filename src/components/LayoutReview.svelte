@@ -1,24 +1,22 @@
 <script lang="ts">
-  let { saving, oncancel, onapply }: {
-    saving: boolean;
-    oncancel: () => void;
-    onapply: () => void;
-  } = $props();
+  import { getBoardControls } from "../lib/board-controls.svelte.js";
+
+  const board = getBoardControls();
 </script>
 
 <div class="layout-review" role="group" aria-label="Layout preview">
   <button
     type="button"
     class="chip-button"
-    onclick={oncancel}
-    disabled={saving}
+    onclick={board.cancelLayout}
+    disabled={board.savingLayout}
   >Cancel</button>
   <button
     type="button"
     class="card-button"
-    onclick={onapply}
-    disabled={saving}
-  >{saving ? "Saving…" : "Apply layout"}</button>
+    onclick={board.applyLayout}
+    disabled={board.savingLayout}
+  >{board.savingLayout ? "Saving…" : "Apply layout"}</button>
 </div>
 
 <style>
