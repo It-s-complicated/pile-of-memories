@@ -156,7 +156,7 @@ export async function enrichMemory(
     ]);
 
     const output = enrichmentOutputSchema.parse({
-      title: result,
+      title: result.text,
       tags: labels.tags,
       topics: labels.topics,
       kind: labels.kind,

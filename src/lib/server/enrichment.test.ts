@@ -18,7 +18,7 @@ const vocabulary = [
 ];
 
 it("combines a generated title with only vocabulary-selected labels, including no matches", async () => {
-  vi.mocked(chat).mockResolvedValue("A CSS note");
+  vi.mocked(chat).mockResolvedValue({ text: "A CSS note", chunks: [] });
   vi.stubGlobal(
     "fetch",
     vi.fn().mockImplementation(() =>
@@ -41,7 +41,7 @@ it("combines a generated title with only vocabulary-selected labels, including n
     defaultHeaders: { "x-opencode-session": "test" },
     baseURL: "https://opencode.ai/inference/openai/v1",
     apiKey: "test-zen",
-    models: ["gpt-5.6-luna"],
+    models: ["gpt-6-luna"],
     api: "responses",
   });
   expect(result.usage.providerCost).toBeNull();
