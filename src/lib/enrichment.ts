@@ -21,7 +21,7 @@ export const enrichmentOutputSchema = z
   });
 
 export const enrichmentResponseSchema = enrichmentOutputSchema.safeExtend({
-  attemptId: z.string().uuid(),
+  attemptId: z.uuid(),
 });
 
 export type EnrichmentInput = z.infer<typeof enrichmentInputSchema>;

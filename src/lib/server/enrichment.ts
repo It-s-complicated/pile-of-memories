@@ -1,4 +1,4 @@
-import { OPENCODE_GO_API_KEY } from "$app/env/private";
+import { OPENCODE_API_KEY } from "$app/env/private";
 import { chat, type ChatMiddleware, type TokenUsage, generateMessageId } from "@tanstack/ai";
 import { openaiCompatible } from "@tanstack/ai-openai/compatible";
 import { z, ZodError } from "zod";
@@ -16,10 +16,10 @@ import {
 import { LABEL_MODEL, selectMemoryLabels } from "./label-selection";
 import type { LabelDefinition } from "../labels";
 
-const TITLE_MODEL = "gpt-5.6-luna";
-export const ENRICHMENT_PROVIDER = "opencode-go+typesafe";
+const TITLE_MODEL = "gpt-6-luna";
+export const ENRICHMENT_PROVIDER = "opencode-zen+typesafe";
 export const ENRICHMENT_MODEL = `${TITLE_MODEL}+${LABEL_MODEL}`;
-export const ENRICHMENT_PROMPT_VERSION = "memory-enrichment-v11";
+export const ENRICHMENT_PROMPT_VERSION = "memory-enrichment-v12";
 const PROVIDER_TIMEOUT_MS = 55_000;
 
 export type EnrichmentExecution = {
@@ -132,12 +132,11 @@ export async function enrichMemory(
 
   try {
     const opencode = openaiCompatible({
-      name: "opencode-go",
+      name: "opencode-zen",
       defaultHeaders: { "x-opencode-session": generateMessageId() },
-      baseURL: "https://opencode.ai/zen/go/v1",
-      apiKey: OPENCODE_GO_API_KEY,
+      baseURL: "https://opencode.ai/inference/openai/v1",
+      apiKey: OPENCODE_API_KEY,
       models: [TITLE_MODEL],
-      // ponytail: gpt-5.6-luna 503s on go chat/completions; go responses works
       api: "responses",
     });
 

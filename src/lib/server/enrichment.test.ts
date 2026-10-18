@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import * as z from "zod";
 import { chat } from "@tanstack/ai";
+import { openaiCompatible } from "@tanstack/ai-openai/compatible";
 import { classifyEnrichmentError, enrichMemory } from "./enrichment";
 
-vi.mock("$app/env/private", () => ({ OPENCODE_GO_API_KEY: "test", TYPESAFE_API_KEY: "test" }));
+vi.mock("$app/env/private", () => ({ OPENCODE_API_KEY: "test-zen", TYPESAFE_API_KEY: "test" }));
 vi.mock("@tanstack/ai", () => ({ chat: vi.fn(), generateMessageId: () => "test" }));
+vi.mock("@tanstack/ai-openai/compatible", { spy: true });
 afterEach(() => vi.unstubAllGlobals());
 const vocabulary = [
   {
@@ -34,6 +36,14 @@ it("combines a generated title with only vocabulary-selected labels, including n
   );
   const result = await enrichMemory({ description: "Learning CSS grid" }, vocabulary);
   expect(result.output).toEqual({ kind: "note", title: "A CSS note", tags: [], topics: ["CSS"] });
+  expect(openaiCompatible).toHaveBeenCalledWith({
+    name: "opencode-zen",
+    defaultHeaders: { "x-opencode-session": "test" },
+    baseURL: "https://opencode.ai/inference/openai/v1",
+    apiKey: "test-zen",
+    models: ["gpt-5.6-luna"],
+    api: "responses",
+  });
   expect(result.usage.providerCost).toBeNull();
   expect((await enrichMemory({ description: "Learning CSS grid" }, [])).output).toEqual({
     kind: "note",

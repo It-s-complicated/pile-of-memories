@@ -10,6 +10,6 @@ export const variables = defineEnvVars({
   DATABASE_LISTEN_CONNECTION_STRING: { schema: z.string().trim().min(1) },
   GITHUB_CLIENT_ID: { schema: z.string().trim().min(1) },
   GITHUB_CLIENT_SECRET: { schema: z.string().trim().min(1) },
-  OPENCODE_GO_API_KEY: { schema: z.string().trim().min(1) },
+  OPENCODE_API_KEY: { schema: z.string().trim().min(1) },
   TYPESAFE_API_KEY: { schema: z.string().trim().min(1) },
 });

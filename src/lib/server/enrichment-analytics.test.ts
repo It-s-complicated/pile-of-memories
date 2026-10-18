@@ -45,6 +45,7 @@ describe("server enrichment analytics", () => {
       },
       key,
     );
+    expect(started.provider).toBe("opencode-zen+typesafe");
     expect(started.existingTagCount).toBe(2);
     expect(succeeded.generatedTitleFingerprint).toBe(hmac("Title", key));
     expect(succeeded.generatedTagFingerprints).toEqual([

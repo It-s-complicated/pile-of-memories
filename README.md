@@ -47,8 +47,11 @@ vp dev
 
 Set `DATABASE_CONNECTION_STRING` in `.env`. If it uses transaction pooling, set
 `DATABASE_LISTEN_CONNECTION_STRING` to a session-mode URL for live updates. Set
-`OPENCODE_GO_API_KEY` for title suggestions through OpenCode Go and `TYPESAFE_API_KEY` for
-card classification and tag suggestions through TypeSafe.
+`OPENCODE_API_KEY` to an OpenCode Console (Zen) service-account key for pay-as-you-go title
+suggestions, and set `TYPESAFE_API_KEY` for card classification and label suggestions through TypeSafe.
+Title generation uses the Responses API at `https://opencode.ai/inference/openai/v1/responses`.
+When migrating from Go, set the new key locally and in the deployment environment, then restart or
+redeploy; `OPENCODE_GO_API_KEY` is no longer used.
 
 ## Tags and topics
 

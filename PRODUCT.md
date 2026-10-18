@@ -24,7 +24,7 @@ Organization reflects card content through tags and topics. AI suggests metadata
 - Capture is description-first: the owner writes text, AI suggests title and tags (editable).
 - Cards are read as Markdown and edited (title, text, tags, derived links) in one dialog.
 - Runs on SvelteKit + Svelte Flow canvas, PostgreSQL on Supabase with `LISTEN/NOTIFY` live snapshots and a TanStack DB browser cache backed by SQLite.
-- AI title suggestions run through TanStack AI → OpenCode Go, enabled by `OPENCODE_GO_API_KEY`; TypeSafe suggests card kind and labels using `TYPESAFE_API_KEY` and the managed database vocabulary.
+- AI title suggestions run through TanStack AI → OpenCode Console (Zen), enabled by `OPENCODE_API_KEY`; TypeSafe suggests card kind and labels using `TYPESAFE_API_KEY` and the managed database vocabulary.
 
 ## Current Behavior and Constraints
 
