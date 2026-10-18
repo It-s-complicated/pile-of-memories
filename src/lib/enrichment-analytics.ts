@@ -18,7 +18,7 @@ export type EnrichmentResultSource = z.infer<typeof enrichmentResultSourceSchema
 
 export const cardCreationProvenanceSchema = z
   .object({
-    enrichmentAttemptId: z.string().uuid().nullable(),
+    enrichmentAttemptId: z.uuidv4().nullable(),
     resultSource: enrichmentResultSourceSchema,
     reviewStartedAt: z.iso.datetime({ offset: true }).optional(),
   })
