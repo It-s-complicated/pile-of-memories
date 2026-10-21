@@ -15,6 +15,7 @@ import { streamCardSnapshots } from "./card-changes";
 import { withDeadline } from "./deadline";
 
 const connectionString = process.env.DATABASE_CONNECTION_STRING;
+const ssl = process.env.DATABASE_SSL === "false" ? false : "require";
 const runIntegration = process.env.DATABASE_INTEGRATION_TEST === "1" && connectionString;
 const describeIntegration = runIntegration ? describe : describe.skip;
 const FIRST_ID = "00000000-0000-4000-8000-000000000001";
@@ -72,7 +73,7 @@ async function waitForListenerCount(expected: number): Promise<void> {
 
 describeIntegration("PostgreSQL card integration", { concurrent: false }, () => {
   beforeAll(async () => {
-    sql = postgres(connectionString!, { ssl: "require", max: 1 });
+    sql = postgres(connectionString!, { ssl, max: 1 });
     const migration = await readFile(
       new URL("../../../migrations/0001_cards.sql", import.meta.url),
       "utf8",
@@ -131,7 +132,7 @@ describeIntegration("PostgreSQL card integration", { concurrent: false }, () => 
     const labels = await sql`INSERT INTO memory_labels (name, kind) VALUES
       ('Concurrent first', 'tag'), ('Concurrent second', 'topic') RETURNING *`;
     await insertCard({ ...input(FIRST_ID), tags: [labels[0].name], topics: [labels[1].name] });
-    const blocker = postgres(connectionString!, { ssl: "require", max: 1 });
+    const blocker = postgres(connectionString!, { ssl, max: 1 });
     const locked = Promise.withResolvers<void>();
     const release = Promise.withResolvers<void>();
     const blocking = blocker.begin(async (transaction) => {
@@ -177,7 +178,7 @@ describeIntegration("PostgreSQL card integration", { concurrent: false }, () => 
     const [label] = await sql`INSERT INTO memory_labels (name, kind)
       VALUES ('Snapshot before', 'tag') RETURNING id`;
     await insertCard({ ...input(FIRST_ID), tags: ["Snapshot before"] });
-    const blocker = postgres(connectionString!, { ssl: "require", max: 1 });
+    const blocker = postgres(connectionString!, { ssl, max: 1 });
     const locked = Promise.withResolvers<void>();
     const release = Promise.withResolvers<void>();
     const blocking = blocker.begin(async (transaction) => {

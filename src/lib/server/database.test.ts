@@ -2,7 +2,7 @@ import { expect, it, vi } from "vite-plus/test";
 
 const { sql } = vi.hoisted(() => ({ sql: Object.assign(vi.fn(), { begin: vi.fn() }) }));
 vi.mock("postgres", () => ({ default: () => sql }));
-vi.mock("$app/env/private", () => ({ DATABASE_CONNECTION_STRING: "test" }));
+vi.mock("$app/env/private", () => ({ DATABASE_CONNECTION_STRING: "test", DATABASE_SSL: "true" }));
 
 import {
   insertCard,

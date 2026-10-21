@@ -10,11 +10,12 @@ import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { Pool } from "pg";
 import { isApprovedGitHubAccount } from "./auth-policy";
+import { databaseSsl } from "./database-options.js";
 
 const pool = new Pool({
   connectionString: DATABASE_CONNECTION_STRING,
   max: 2,
-  ssl: { rejectUnauthorized: false },
+  ssl: databaseSsl ? { rejectUnauthorized: false } : false,
 });
 
 export const auth = betterAuth({

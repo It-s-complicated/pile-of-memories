@@ -8,6 +8,11 @@ export const variables = defineEnvVars({
   BETTER_AUTH_URL: { schema: z.url() },
   DATABASE_CONNECTION_STRING: { schema: z.string().trim().min(1) },
   DATABASE_LISTEN_CONNECTION_STRING: { schema: z.string().trim().min(1) },
+  DATABASE_SSL: {
+    description:
+      "Set to false only when the database does not serve TLS, such as a database on a private container network.",
+    schema: z.enum(["true", "false"]),
+  },
   GITHUB_CLIENT_ID: { schema: z.string().trim().min(1) },
   GITHUB_CLIENT_SECRET: { schema: z.string().trim().min(1) },
   OPENCODE_API_KEY: { schema: z.string().trim().min(1) },

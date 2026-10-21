@@ -1,6 +1,7 @@
 import { DATABASE_CONNECTION_STRING } from "$app/env/private";
 import postgres from "postgres";
 import * as z from "zod";
+import { databaseSsl } from "./database-options.js";
 import type { Card, CardChanges, CardInput, CardPositionUpdate } from "../card";
 import {
   compareTagFingerprints,
@@ -18,7 +19,9 @@ function getSql(): ReturnType<typeof postgres> {
   if (!DATABASE_CONNECTION_STRING) {
     throw new Error("DATABASE_CONNECTION_STRING is not set");
   }
-  return (database ??= postgres(DATABASE_CONNECTION_STRING, { ssl: "require" }));
+  return (database ??= postgres(DATABASE_CONNECTION_STRING, {
+    ssl: databaseSsl ? "require" : false,
+  }));
 }
 
 const databaseErrorSchema = z.object({ code: z.string() }).loose();
