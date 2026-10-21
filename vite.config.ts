@@ -1,4 +1,4 @@
-import adapter from "@sveltejs/adapter-netlify";
+import adapter from "@sveltejs/adapter-node";
 import { defineConfig, lazyPlugins } from "vite-plus";
 
 export default defineConfig({

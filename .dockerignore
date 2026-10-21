@@ -1,0 +1,13 @@
+node_modules
+.svelte-kit
+build
+dist
+.netlify
+.data
+.vitest
+.git
+.env
+.env.*
+!.env.example
+.agents
+docs
