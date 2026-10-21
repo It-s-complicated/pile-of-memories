@@ -46,9 +46,10 @@ vp dev
 ```
 
 Set `DATABASE_CONNECTION_STRING` in `.env`. If it uses transaction pooling, set
-`DATABASE_LISTEN_CONNECTION_STRING` to a session-mode URL for live updates. Set
-`OPENCODE_API_KEY` to an OpenCode Console (Zen) service-account key for pay-as-you-go title
-suggestions, and set `TYPESAFE_API_KEY` for card classification and label suggestions through TypeSafe.
+`DATABASE_LISTEN_CONNECTION_STRING` to a session-mode URL for live updates. Set `DATABASE_SSL=false`
+when a local PostgreSQL server does not serve TLS. Set `OPENCODE_API_KEY` to an OpenCode Console
+(Zen) service-account key for pay-as-you-go title suggestions, and set `TYPESAFE_API_KEY` for card
+classification and label suggestions through TypeSafe.
 Title generation uses the Responses API at `https://opencode.ai/inference/openai/v1/responses`.
 When migrating from Go, set the new key locally and in the deployment environment, then restart or
 redeploy; `OPENCODE_GO_API_KEY` is no longer used.
@@ -117,9 +118,26 @@ An iOS Shortcut can open the capture URL instead. There is no service worker or 
 opening the app, authenticating, and saving memories still require a connection. The SQLite cache
 speeds up card loading after authentication.
 
-Live queries require the configured Node adapter, a persistent runtime, unbuffered SSE, and responses
-with `Cache-Control: no-store`. Each active card stream uses Postgres.js's automatically reconnecting
-dedicated listener; SvelteKit owns client connection sharing, reconnects, and stream cancellation.
+Live queries require the Node adapter and a persistent runtime: each open tab holds an unbuffered
+`text/event-stream` response and a dedicated Postgres.js listener. SvelteKit sets
+`Cache-Control: no-store`, sends a keep-alive comment every 30 seconds, and owns client connection
+sharing and stream cancellation. The client restarts a stream that ended cleanly, such as one cut by
+a server restart.
+
+### Self-hosting
+
+`vp build` writes a standalone Node server to `build/`. Run it with `node build` (or
+`vp run start`). `PORT` defaults to 3000, `BETTER_AUTH_URL` must match the public origin, and the
+GitHub OAuth callback stays `<BETTER_AUTH_URL>/api/auth/callback/github`.
+
+The included `Dockerfile` builds the app and installs `psql` for migrations. On Coolify, choose the
+Dockerfile build pack, expose port 3000, and set the variables listed in `.env.example`. Point both
+`DATABASE_CONNECTION_STRING` and `DATABASE_LISTEN_CONNECTION_STRING` at the direct (session-mode)
+database URL. Set `DATABASE_SSL=false` when the database does not serve TLS, as on Coolify's private
+network.
+
+Run `node scripts/migrate.mjs` once per release before the new container starts. Backups are yours
+to arrange; a self-hosted Postgres has no point-in-time recovery unless you build it.
 
 Run the database integration check with:
 

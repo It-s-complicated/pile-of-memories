@@ -15,7 +15,7 @@ The first product loop is intentionally small:
 
 - Vite+ + SvelteKit 3 (pre-release) / Svelte 5
 - Svelte Flow for the canvas
-- PostgreSQL on Supabase
+- PostgreSQL (Supabase or self-hosted)
 - pnpm for package management
 
 Memory cards are Svelte Flow nodes with `type === "memory"`.
