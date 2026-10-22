@@ -89,6 +89,9 @@ export class BoardState implements BoardControls {
   #cache = $state.raw<CardCache>();
   #stopped = false;
   #reconnectAttempt = 0;
+  #reconnectSnapshots:
+    | [typeof this.cardsQuery.current, typeof this.labelsQuery.current]
+    | undefined;
   #reconnectTimer: ReturnType<typeof setTimeout> | undefined;
   #closeCache: (() => Promise<void>) | undefined;
   #opening: Promise<void> = Promise.resolve();
@@ -251,8 +254,10 @@ export class BoardState implements BoardControls {
   closeCapture = closeCapture;
   reconnectLabels = (): Promise<void> => this.labelsQuery.reconnect().catch(() => {});
 
-  #reconnectQueries = (): Promise<PromiseSettledResult<void>[]> =>
-    Promise.allSettled([this.cardsQuery.reconnect(), this.labelsQuery.reconnect()]);
+  #reconnectQueries = (): Promise<PromiseSettledResult<void>[]> => {
+    this.#reconnectSnapshots = [this.cardsQuery.current, this.labelsQuery.current];
+    return Promise.allSettled([this.cardsQuery.reconnect(), this.labelsQuery.reconnect()]);
+  };
 
   #cancelReconnect = (): void => {
     clearTimeout(this.#reconnectTimer);
@@ -273,27 +278,39 @@ export class BoardState implements BoardControls {
   async #reclaimStreams(): Promise<void> {
     this.#reconnectTimer = undefined;
     if (this.#stopped) return;
+    this.#reconnectAttempt += 1;
     const results = await this.#reconnectQueries();
     if (this.#stopped) return;
-    if (results.every(({ status }) => status === "fulfilled")) {
-      this.#reconnectAttempt = 0;
-      this.reconnecting = false;
-      return;
-    }
-    this.#reconnectAttempt += 1;
     this.reconnecting = false;
-    this.#scheduleReconnect();
+    if (results.some(({ status }) => status === "rejected")) this.#scheduleReconnect();
   }
 
   /** Restarts SvelteKit's live streams after a clean end, such as a server restart. */
   keepLiveUpdatesFlowing = (): (() => void) => {
-    if (this.cardsQuery.done || this.labelsQuery.done) this.#scheduleReconnect();
+    const cards = this.cardsQuery.current;
+    const labels = this.labelsQuery.current;
+    const done = this.cardsQuery.done || this.labelsQuery.done;
+    // A successful reconnect() only means the response body opened. Even ready stays
+    // true for stale data, so wait for fresh snapshots from both streams before resetting.
+    if (
+      !done &&
+      this.#reconnectSnapshots &&
+      cards !== this.#reconnectSnapshots[0] &&
+      labels !== this.#reconnectSnapshots[1] &&
+      !this.cardsQuery.error &&
+      !this.labelsQuery.error
+    ) {
+      this.#reconnectAttempt = 0;
+      this.#reconnectSnapshots = undefined;
+      this.reconnecting = false;
+    }
+    if (done) this.#scheduleReconnect();
     return this.#cancelReconnect;
   };
 
   reconnect = async (): Promise<void> => {
     this.#cancelReconnect();
-    this.#reconnectAttempt = 0;
+    this.#reconnectAttempt = 1;
     this.reconnecting = true;
     const results = await this.#reconnectQueries();
     if (this.#stopped) return;
