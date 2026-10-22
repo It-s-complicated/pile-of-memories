@@ -130,20 +130,31 @@ a server restart.
 `vp run start`). `PORT` defaults to 3000, `BETTER_AUTH_URL` must match the public origin, and the
 GitHub OAuth callback stays `<BETTER_AUTH_URL>/api/auth/callback/github`.
 
-The included `Dockerfile` builds the app and installs `psql` for migrations. On Coolify, choose the
-Dockerfile build pack, expose port 3000, and set the variables listed in `.env.example`. Point both
+The included `Dockerfile` builds without production secrets and installs `psql` for migrations.
+On Coolify, use the app-only `compose.coolify.yaml` to map Coolify's generated service URL and
+secrets to the application's environment variables. PostgreSQL stays a separate Coolify resource.
+Provision the remaining configuration at **runtime only**; when migrating, seed the generated secret
+slots with the existing auth and analytics keys. Direct Dockerfile deployment is also supported
+using every variable in `.env.example`. Point both
 `DATABASE_CONNECTION_STRING` and `DATABASE_LISTEN_CONNECTION_STRING` at the direct (session-mode)
 database URL. Set `DATABASE_SSL=false` when the database does not serve TLS, as on Coolify's private
 network.
 
-Run `node scripts/migrate.mjs` once per release before the new container starts. Backups are yours
+The image includes a Node-based health check; curl/wget are not installed. Behind the trusted Coolify
+proxy, set `PROTOCOL_HEADER=x-forwarded-proto` and preserve the public Host header.
+
+See [COOLIFY.md](COOLIFY.md) for the deployment checklist, release-image migration command, and
+**Supabase → Coolify PostgreSQL migration** with a write freeze, data verification, and rollback.
+Move hosting first while keeping Supabase, then move the database separately. Backups are yours
 to arrange; a self-hosted Postgres has no point-in-time recovery unless you build it.
 
-Run the database integration check with:
+Run the database integration check **only against a disposable test database**. It truncates cards
+and changes labels; never point it at production or the migrated board:
 
 ```sh
 DATABASE_INTEGRATION_TEST=1 \
-DATABASE_CONNECTION_STRING='postgresql://…' \
-DATABASE_LISTEN_CONNECTION_STRING='postgresql://…' \
+DATABASE_SSL=false \
+DATABASE_CONNECTION_STRING='postgresql://…/memories_test' \
+DATABASE_LISTEN_CONNECTION_STRING='postgresql://…/memories_test' \
 vp test src/lib/server/database.integration.test.ts
 ```
