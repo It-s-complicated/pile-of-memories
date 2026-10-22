@@ -158,6 +158,7 @@ export class BoardState implements BoardControls {
     })();
     return () => {
       this.#stopped = true;
+      this.#cancelReconnect();
       void this.#opening.then(() => this.#closeCache?.()).catch(console.error);
     };
   };
@@ -180,6 +181,7 @@ export class BoardState implements BoardControls {
 
   clearCache = async (): Promise<void> => {
     this.#stopped = true;
+    this.#cancelReconnect();
     await this.#opening;
     await this.#cacheToClear?.replace([]);
   };
@@ -286,7 +288,7 @@ export class BoardState implements BoardControls {
   }
 
   /** Restarts SvelteKit's live streams after a clean end, such as a server restart. */
-  keepLiveUpdatesFlowing = (): (() => void) => {
+  keepLiveUpdatesFlowing = (): void => {
     const cards = this.cardsQuery.current;
     const labels = this.labelsQuery.current;
     const done = this.cardsQuery.done || this.labelsQuery.done;
@@ -300,12 +302,13 @@ export class BoardState implements BoardControls {
       !this.cardsQuery.error &&
       !this.labelsQuery.error
     ) {
+      this.#cancelReconnect();
       this.#reconnectAttempt = 0;
       this.#reconnectSnapshots = undefined;
       this.reconnecting = false;
     }
+    // Snapshot reruns must not cancel the board's pending retry.
     if (done) this.#scheduleReconnect();
-    return this.#cancelReconnect;
   };
 
   reconnect = async (): Promise<void> => {

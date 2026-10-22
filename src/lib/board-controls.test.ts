@@ -18,6 +18,9 @@ vi.mock("./cards.remote", () => ({
   updateCardPositions: { pending: 0 },
 }));
 vi.mock("./labels.remote", () => ({ getLiveLabels: () => labels }));
+vi.mock("./card-collection", () => ({
+  openCardCache: async () => ({ close: vi.fn(), replace: vi.fn() }),
+}));
 vi.mock("$app/state", () => ({ page: { url: new URL("https://memories.example.com") } }));
 vi.mock("@tanstack/svelte-db", () => ({
   useLiveQuery: () => ({ data: [], isReady: true }),
@@ -82,15 +85,69 @@ it("resets backoff only after both streams yield fresh snapshots", async () => {
   expect(cards.reconnect).toHaveBeenCalledTimes(3);
 });
 
-it("retries rejected handshakes and cancels scheduled work on cleanup", async () => {
+it.each(["cards", "labels"] as const)(
+  "keeps retry deadlines while the other stream updates and %s has ended",
+  async (endedStream) => {
+    const board = new BoardState("owner");
+    const ended = endedStream === "cards" ? cards : labels;
+    const live = endedStream === "cards" ? labels : cards;
+    let cleanup: (() => void) | void;
+    const rerunEffect = () => {
+      cleanup?.();
+      cleanup = board.keepLiveUpdatesFlowing();
+    };
+
+    for (const [attempt, delay] of [5_000, 10_000].entries()) {
+      ended.done = true;
+      rerunEffect();
+      for (let elapsed = 1_000; elapsed < delay; elapsed += 1_000) {
+        await vi.advanceTimersByTimeAsync(1_000);
+        live.current = [];
+        rerunEffect();
+        expect(ended.reconnect).toHaveBeenCalledTimes(attempt);
+      }
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(ended.reconnect).toHaveBeenCalledTimes(attempt + 1);
+      expect(live.reconnect).toHaveBeenCalledTimes(attempt + 1);
+    }
+  },
+);
+
+it("cancels a pending retry when both streams recover", async () => {
   const board = new BoardState("owner");
-  cards.reconnect.mockRejectedValue(new Error("Connection refused"));
   cards.done = true;
-  const cleanup = board.keepLiveUpdatesFlowing();
+  board.keepLiveUpdatesFlowing();
   await vi.advanceTimersByTimeAsync(5_000);
-  await vi.advanceTimersByTimeAsync(10_000);
-  expect(cards.reconnect).toHaveBeenCalledTimes(2);
-  cleanup();
+  cards.done = true;
+  board.keepLiveUpdatesFlowing();
+  expect(vi.getTimerCount()).toBe(1);
+
+  cards.done = false;
+  cards.current = [];
+  labels.current = [];
+  board.keepLiveUpdatesFlowing();
+  expect(vi.getTimerCount()).toBe(0);
   await vi.advanceTimersByTimeAsync(60_000);
-  expect(cards.reconnect).toHaveBeenCalledTimes(2);
+  expect(cards.reconnect).toHaveBeenCalledTimes(1);
 });
+
+it.each(["unmount", "sign out"])(
+  "retries rejected handshakes and cancels scheduled work on %s",
+  async (action) => {
+    const board = new BoardState("owner");
+    const unmount = board.mount();
+    cards.reconnect.mockRejectedValue(new Error("Connection refused"));
+    cards.done = true;
+    board.keepLiveUpdatesFlowing();
+    await vi.advanceTimersByTimeAsync(5_000);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(cards.reconnect).toHaveBeenCalledTimes(2);
+    expect(vi.getTimerCount()).toBe(1);
+
+    if (action === "unmount") unmount();
+    else await board.clearCache();
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(cards.reconnect).toHaveBeenCalledTimes(2);
+  },
+);
