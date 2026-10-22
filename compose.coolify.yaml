@@ -1,0 +1,27 @@
+# Coolify generates SERVICE_* values; plain Docker Compose does not generate them.
+# PostgreSQL is a separate Coolify resource, not part of this application's lifecycle.
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      # The suffix selects the container port, not a public :3000 URL.
+      SERVICE_URL_APP_3000: /
+      BETTER_AUTH_URL: ${SERVICE_URL_APP_3000:?}
+      # When migrating, replace these generated values with the EXISTING keys in Coolify.
+      BETTER_AUTH_SECRET: ${SERVICE_BASE64_64_APP:?}
+      ANALYTICS_FINGERPRINT_KEY: ${SERVICE_BASE64_64_ANALYTICS:?}
+      APPROVED_GITHUB_PROVIDER_ID: ${APPROVED_GITHUB_PROVIDER_ID:?}
+      DATABASE_CONNECTION_STRING: ${DATABASE_CONNECTION_STRING:?}
+      DATABASE_LISTEN_CONNECTION_STRING: ${DATABASE_LISTEN_CONNECTION_STRING:?}
+      DATABASE_SSL: ${DATABASE_SSL:-true}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:?}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:?}
+      OPENCODE_API_KEY: ${OPENCODE_API_KEY:?}
+      TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:?}
+      PROTOCOL_HEADER: x-forwarded-proto

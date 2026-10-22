@@ -28,6 +28,8 @@
   const board = createBoardControls(untrack(() => userId));
   const nodeTypes = { memory: MemoryNodeComponent } satisfies NodeTypes;
   onMount(board.mount);
+  // Reclaim live streams that SvelteKit ended cleanly, for example after a server restart.
+  $effect(() => board.keepLiveUpdatesFlowing());
 
   export async function clearCache(): Promise<void> {
     await board.clearCache();
@@ -103,7 +105,7 @@
     />
   {:else if board.cacheWarning}
     <BoardNotice message={board.cacheWarning} />
-  {:else if !board.cardsQuery.connected || !board.labelsQuery.connected}
+  {:else if !board.reconnecting && (!board.cardsQuery.connected || !board.labelsQuery.connected)}
     <BoardNotice message="Live updates paused." onreconnect={board.reconnect} />
   {/if}
 

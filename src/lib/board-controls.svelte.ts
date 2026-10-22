@@ -21,6 +21,11 @@ import { getLiveLabels } from "./labels.remote";
 import { cardToMemoryNode, type MemoryNode } from "./scene";
 
 export const MIN_ZOOM = 0.1;
+// SvelteKit ends a live stream cleanly (rather than erroring) when the server stops or a proxy
+// closes the connection, and does not restart it. Retry on a short backoff so a restart does not
+// leave the board permanently paused.
+const RECONNECT_DELAY_MS = 5_000;
+const RECONNECT_MAX_DELAY_MS = 60_000;
 const VIEWPORT_STORAGE_KEY = "pile-of-memories-viewport";
 const MODE_STORAGE_KEY = "pile-of-memories-mode";
 const storedViewportSchema = z.object({
@@ -83,6 +88,11 @@ export class BoardState implements BoardControls {
   #userId: string;
   #cache = $state.raw<CardCache>();
   #stopped = false;
+  #reconnectAttempt = 0;
+  #reconnectSnapshots:
+    | [typeof this.cardsQuery.current, typeof this.labelsQuery.current]
+    | undefined;
+  #reconnectTimer: ReturnType<typeof setTimeout> | undefined;
   #closeCache: (() => Promise<void>) | undefined;
   #opening: Promise<void> = Promise.resolve();
   #cacheToClear: CardCache | undefined;
@@ -95,6 +105,7 @@ export class BoardState implements BoardControls {
 
   browseMode = $state(initialBrowseMode());
   cacheWarning = $state("");
+  reconnecting = $state(false);
   vocabulary = $derived(this.labelsQuery.current ?? []);
   labelsReady = $derived(this.labelsQuery.ready);
   activeCards = $derived(this.#cards.filter((card) => !card.archived));
@@ -147,6 +158,7 @@ export class BoardState implements BoardControls {
     })();
     return () => {
       this.#stopped = true;
+      this.#cancelReconnect();
       void this.#opening.then(() => this.#closeCache?.()).catch(console.error);
     };
   };
@@ -169,6 +181,7 @@ export class BoardState implements BoardControls {
 
   clearCache = async (): Promise<void> => {
     this.#stopped = true;
+    this.#cancelReconnect();
     await this.#opening;
     await this.#cacheToClear?.replace([]);
   };
@@ -242,7 +255,73 @@ export class BoardState implements BoardControls {
   };
   closeCapture = closeCapture;
   reconnectLabels = (): Promise<void> => this.labelsQuery.reconnect().catch(() => {});
-  reconnect = () => Promise.allSettled([this.cardsQuery.reconnect(), this.labelsQuery.reconnect()]);
+
+  #reconnectQueries = (): Promise<PromiseSettledResult<void>[]> => {
+    this.#reconnectSnapshots = [this.cardsQuery.current, this.labelsQuery.current];
+    return Promise.allSettled([this.cardsQuery.reconnect(), this.labelsQuery.reconnect()]);
+  };
+
+  #cancelReconnect = (): void => {
+    clearTimeout(this.#reconnectTimer);
+    this.#reconnectTimer = undefined;
+  };
+
+  #scheduleReconnect = (): void => {
+    if (this.#stopped || this.#reconnectTimer !== undefined) return;
+    // Hide the paused notice on the first attempt; a later retry keeps it visible.
+    this.reconnecting = this.#reconnectAttempt === 0;
+    const delay = Math.min(
+      RECONNECT_DELAY_MS * 2 ** this.#reconnectAttempt,
+      RECONNECT_MAX_DELAY_MS,
+    );
+    this.#reconnectTimer = setTimeout(() => void this.#reclaimStreams(), delay);
+  };
+
+  async #reclaimStreams(): Promise<void> {
+    this.#reconnectTimer = undefined;
+    if (this.#stopped) return;
+    this.#reconnectAttempt += 1;
+    const results = await this.#reconnectQueries();
+    if (this.#stopped) return;
+    this.reconnecting = false;
+    if (results.some(({ status }) => status === "rejected")) this.#scheduleReconnect();
+  }
+
+  /** Restarts SvelteKit's live streams after a clean end, such as a server restart. */
+  keepLiveUpdatesFlowing = (): void => {
+    const cards = this.cardsQuery.current;
+    const labels = this.labelsQuery.current;
+    const done = this.cardsQuery.done || this.labelsQuery.done;
+    // A successful reconnect() only means the response body opened. Even ready stays
+    // true for stale data, so wait for fresh snapshots from both streams before resetting.
+    if (
+      !done &&
+      this.#reconnectSnapshots &&
+      cards !== this.#reconnectSnapshots[0] &&
+      labels !== this.#reconnectSnapshots[1] &&
+      !this.cardsQuery.error &&
+      !this.labelsQuery.error
+    ) {
+      this.#cancelReconnect();
+      this.#reconnectAttempt = 0;
+      this.#reconnectSnapshots = undefined;
+      this.reconnecting = false;
+    }
+    // Snapshot reruns must not cancel the board's pending retry.
+    if (done) this.#scheduleReconnect();
+  };
+
+  reconnect = async (): Promise<void> => {
+    this.#cancelReconnect();
+    this.#reconnectAttempt = 1;
+    this.reconnecting = true;
+    const results = await this.#reconnectQueries();
+    if (this.#stopped) return;
+    this.reconnecting = false;
+    if (results.every(({ status }) => status === "fulfilled")) return;
+    this.#reconnectAttempt = 1;
+    this.#scheduleReconnect();
+  };
 
   locateMemory = (card: Card): void => {
     this.listOpen = false;

@@ -15,7 +15,7 @@ The first product loop is intentionally small:
 
 - Vite+ + SvelteKit 3 (pre-release) / Svelte 5
 - Svelte Flow for the canvas
-- PostgreSQL on Supabase
+- PostgreSQL (Supabase or self-hosted)
 - pnpm for package management
 
 Memory cards are Svelte Flow nodes with `type === "memory"`.
@@ -32,6 +32,7 @@ Memory cards are Svelte Flow nodes with `type === "memory"`.
 - When changing visual design or background cluster labels, read [DESIGN.md](DESIGN.md).
 - When changing persistence or schema, read [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) and [README.md — Browser cache](README.md#browser-cache).
 - When running locally, configuring authentication, or deploying, read [README.md — Development](README.md#development), [Authentication](README.md#authentication), and [Deployment](README.md#deployment).
+- For Coolify deployment or moving the Supabase database, read [COOLIFY.md](COOLIFY.md).
 - When deciding product scope, read [PRODUCT.md](PRODUCT.md), which separates current behavior from future direction.
 
 ## Agent Tools

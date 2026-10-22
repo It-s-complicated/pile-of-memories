@@ -11,6 +11,7 @@ const { listen, unlisten, end } = vi.hoisted(() => {
 vi.mock("postgres", () => ({ default: () => ({ listen, end }) }));
 vi.mock("$app/env/private", () => ({
   DATABASE_LISTEN_CONNECTION_STRING: "test",
+  DATABASE_SSL: "true",
 }));
 
 import { streamCardSnapshots } from "./card-changes";

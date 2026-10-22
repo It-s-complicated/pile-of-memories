@@ -1,0 +1,81 @@
+name: Container
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: memories
+          POSTGRES_PASSWORD: container-test
+          POSTGRES_DB: memories
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U memories -d memories"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build without production secrets or a database
+        run: docker build --tag memories:check .
+      - name: Reject missing runtime configuration
+        shell: bash
+        run: |
+          set +e
+          timeout 15s docker run --rm memories:check > startup.log 2>&1
+          status=$?
+          set -e
+          cat startup.log
+          test "$status" -ne 0
+          test "$status" -ne 124
+          grep -q env_invalid startup.log
+      - name: Migrate the disposable database from the release image
+        env:
+          DATABASE_CONNECTION_STRING: postgresql://memories:container-test@host.docker.internal:5432/memories?sslmode=disable
+        run: |
+          docker run --rm --add-host host.docker.internal:host-gateway \
+            --env DATABASE_CONNECTION_STRING memories:check node scripts/migrate.mjs
+      - name: Resolve Compose aliases and check the runtime image
+        env:
+          # Coolify generates these in production; CI supplies synthetic resolved values.
+          SERVICE_BASE64_64_ANALYTICS: runtime-test-analytics-key-not-a-secret
+          SERVICE_BASE64_64_APP: runtime-test-authentication-key-not-a-secret
+          SERVICE_URL_APP_3000: https://runtime.example.invalid
+          APPROVED_GITHUB_PROVIDER_ID: "0"
+          DATABASE_CONNECTION_STRING: postgresql://memories:container-test@host.docker.internal:5432/memories?sslmode=disable
+          DATABASE_LISTEN_CONNECTION_STRING: postgresql://memories:container-test@host.docker.internal:5432/memories?sslmode=disable
+          DATABASE_SSL: "false"
+          GITHUB_CLIENT_ID: runtime-test
+          GITHUB_CLIENT_SECRET: runtime-test
+          OPENCODE_API_KEY: runtime-test
+          TYPESAFE_API_KEY: runtime-test
+        run: |
+          docker compose --file compose.coolify.yaml config --format json \
+            | jq -r '.services.app.environment | to_entries[] | "\(.key)=\(.value)"' \
+            > "$RUNNER_TEMP/memories.runtime.env"
+          docker run --detach --name memories --publish 127.0.0.1:3000:3000 \
+            --add-host host.docker.internal:host-gateway \
+            --env-file "$RUNNER_TEMP/memories.runtime.env" memories:check
+          # Docker can reset (not just refuse) the first connection before Node is listening.
+          curl --fail --silent --show-error --max-time 5 \
+            --retry 10 --retry-delay 1 --retry-all-errors --output /dev/null \
+            http://127.0.0.1:3000/
+          test "$(docker exec memories id -u)" -ne 0
+          docker exec memories psql --version
+          # Execute the exact image health check without waiting for its scheduled interval.
+          docker exec memories sh -c "$(docker inspect --format '{{index .Config.Healthcheck.Test 1}}' memories)"
+      - name: Container logs and cleanup
+        if: always()
+        run: |
+          docker logs memories || true
+          docker rm --force memories || true

@@ -1,5 +1,6 @@
 import { DATABASE_LISTEN_CONNECTION_STRING } from "$app/env/private";
 import postgres from "postgres";
+import { databaseSsl } from "./database-options.js";
 
 const CARD_CHANGE_CHANNEL = "cards_changed";
 
@@ -7,7 +8,10 @@ export async function* streamCardSnapshots<T>(
   readSnapshot: () => Promise<T>,
   signal: AbortSignal,
 ): AsyncGenerator<T> {
-  const sql = postgres(DATABASE_LISTEN_CONNECTION_STRING, { ssl: "require", max: 1 });
+  const sql = postgres(DATABASE_LISTEN_CONNECTION_STRING, {
+    ssl: databaseSsl ? "require" : false,
+    max: 1,
+  });
   let changed = Promise.withResolvers<void>();
   let connected = false;
   const notify = () => changed.resolve();
