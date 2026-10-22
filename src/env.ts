@@ -10,8 +10,8 @@ export const variables = defineEnvVars({
   DATABASE_LISTEN_CONNECTION_STRING: { schema: z.string().trim().min(1) },
   DATABASE_SSL: {
     description:
-      "Set to false only when the database does not serve TLS, such as a database on a private container network.",
-    schema: z.enum(["true", "false"]),
+      "Defaults to true. Set to false only when the database does not serve TLS, such as a database on a private container network.",
+    schema: z.enum(["true", "false"]).default("true"),
   },
   GITHUB_CLIENT_ID: { schema: z.string().trim().min(1) },
   GITHUB_CLIENT_SECRET: { schema: z.string().trim().min(1) },

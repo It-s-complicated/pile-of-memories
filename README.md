@@ -135,7 +135,7 @@ On Coolify, use the app-only `compose.coolify.yaml` to map Coolify's generated s
 secrets to the application's environment variables. PostgreSQL stays a separate Coolify resource.
 Provision the remaining configuration at **runtime only**; when migrating, seed the generated secret
 slots with the existing auth and analytics keys. Direct Dockerfile deployment is also supported
-using every variable in `.env.example`. Point both
+using the variables in `.env.example` (`DATABASE_SSL` is optional and defaults to `true`). Point both
 `DATABASE_CONNECTION_STRING` and `DATABASE_LISTEN_CONNECTION_STRING` at the direct (session-mode)
 database URL. Set `DATABASE_SSL=false` when the database does not serve TLS, as on Coolify's private
 network.

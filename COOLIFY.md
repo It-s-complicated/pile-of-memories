@@ -85,8 +85,9 @@ URL matches that preview OAuth App's callback. Do not point automated previews a
 ### Direct Dockerfile alternative
 
 If you prefer the Dockerfile build strategy without Compose, use `/Dockerfile`, stage `runtime`,
-and internal port `3000`. Provision every variable in `.env.example` at runtime, including the real
-`BETTER_AUTH_URL`, `BETTER_AUTH_SECRET`, and `ANALYTICS_FINGERPRINT_KEY`. The mappings above belong to
+and internal port `3000`. Provision the required variables in `.env.example` at runtime, including
+the real `BETTER_AUTH_URL`, `BETTER_AUTH_SECRET`, and `ANALYTICS_FINGERPRINT_KEY`. `DATABASE_SSL` is
+optional and defaults to `true`. The mappings above belong to
 the Compose definition; the Dockerfile does not generate or resolve `SERVICE_*` values itself.
 
 ### Migrations before each release
