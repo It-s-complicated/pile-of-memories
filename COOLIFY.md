@@ -163,7 +163,20 @@ the Coolify server, using the PostgreSQL network or an SSH tunnel). Do not publi
 just for this move. Supply credentials through a password manager / protected libpq password file,
 not committed files, chat, or literal shell history. URL-encode special characters in URL passwords.
 
-Set these shell variables privately, then run the snippets below in the same Bash shell:
+### Importing through the Coolify UI (no SSH)
+
+Coolify 4.5 can restore a PostgreSQL archive from the database's **Import Backup** page. Build an
+application-only archive from the frozen source with a matching `pg_dump` (custom format, selected
+tables, schema included) and verify it locally by restoring it into an empty same-or-newer-major
+database and comparing `scripts/verify-migration.sql`. Upload it, choose "backup contains one
+database", leave **Replace objects** and **Keep owners and privileges** off, and import. The target
+is then owned by `postgres`; create a non-superuser login role, transfer ownership of the database
+and application tables, views, and functions to it, and set its password privately (for example in
+the database's Coolify terminal). Point both connection strings at that role and set
+`DATABASE_SSL=false` only for a TLS-free private network.
+
+Set these shell variables privately for the manual commands below, then run the snippets in the
+same Bash shell:
 
 - `SOURCE_DB_URL`: Supabase direct/session URL with the source database owner and `sslmode=require`.
 - `TARGET_DB_URL`: **new empty target** URL as `memories_app` (for migration and verification).
