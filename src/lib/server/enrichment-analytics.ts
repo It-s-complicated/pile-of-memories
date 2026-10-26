@@ -17,6 +17,7 @@ import {
   ENRICHMENT_PROVIDER,
   type EnrichmentExecution,
 } from "./enrichment";
+import { LABEL_MODEL } from "./label-selection";
 
 const fingerprintKeySchema = z.string().min(32).nullable().catch(null);
 const MAX_REVIEW_DURATION_MS = 2_147_483_647;
@@ -40,8 +41,15 @@ export function buildAttemptStarted(
 ): EnrichmentAttemptStarted {
   return {
     id: attemptId,
-    provider: ENRICHMENT_PROVIDER,
-    model: ENRICHMENT_MODEL,
+    provider: input.title ? "typesafe" : ENRICHMENT_PROVIDER,
+    model: input.title ? LABEL_MODEL : ENRICHMENT_MODEL,
+    titleSource: input.title ? "supplied" : "generated",
+    ...(input.exploration
+      ? {
+          explorationSessionId: input.exploration.sessionId,
+          explorationRunId: input.exploration.runId,
+        }
+      : {}),
     promptVersion: ENRICHMENT_PROMPT_VERSION,
     inputCharacterCount: input.description.length,
     existingTagCount: vocabulary.length,

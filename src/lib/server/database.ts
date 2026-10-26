@@ -11,6 +11,11 @@ import {
   type EnrichmentReviewJob,
 } from "../enrichment-analytics";
 import { parseMarkdown } from "../markdown";
+import type {
+  CompletedExplorationRun,
+  ExplorationEvent,
+  ExplorationRun,
+} from "../exploration-analytics";
 import { managedLabelSchema, type LabelInput, type ManagedLabel } from "../labels";
 
 let database: ReturnType<typeof postgres> | undefined;
@@ -222,13 +227,44 @@ export async function recordEnrichmentAttemptStarted(
   const sql = getSql();
   await sql`
     INSERT INTO analytics_ai_enrichment_attempts (
-      id, status, provider, model, prompt_version, input_character_count, existing_tag_count
+      id, status, provider, model, prompt_version, input_character_count, existing_tag_count, title_source,
+      exploration_session_id, exploration_run_id
     ) VALUES (
       ${attempt.id}, 'started', ${attempt.provider}, ${attempt.model}, ${attempt.promptVersion},
-      ${attempt.inputCharacterCount}, ${attempt.existingTagCount}
+      ${attempt.inputCharacterCount}, ${attempt.existingTagCount}, ${attempt.titleSource ?? "generated"},
+      ${attempt.explorationSessionId ?? null}, ${attempt.explorationRunId ?? null}
     )
     ON CONFLICT (id) DO NOTHING
   `;
+}
+
+export async function recordExplorationRunStarted(run: ExplorationRun): Promise<void> {
+  await getSql()`INSERT INTO analytics_ai_exploration_runs
+    (id, session_id, operation, status, provider, model, selected_card_count, question_character_count)
+    VALUES (${run.id}, ${run.sessionId}, ${run.operation}, 'started', ${run.provider}, ${run.model}, ${run.selectedCardCount}, ${run.questionCharacterCount})
+    ON CONFLICT (id) DO NOTHING`;
+}
+
+export async function recordExplorationRunCompleted(run: CompletedExplorationRun): Promise<void> {
+  await getSql()`UPDATE analytics_ai_exploration_runs SET
+    status = ${run.status}, latency_ms = ${run.latencyMs}, error_code = ${run.errorCode},
+    candidate_count = ${run.metrics.candidateCount ?? null}, suggestion_count = ${run.metrics.suggestionCount ?? null},
+    observation_count = ${run.metrics.observationCount ?? null}, idea_count = ${run.metrics.ideaCount ?? null},
+    prompt_tokens = ${run.usage.promptTokens}, completion_tokens = ${run.usage.completionTokens},
+    total_tokens = ${run.usage.totalTokens}, provider_cost = ${run.usage.providerCost}, completed_at = now()
+    WHERE id = ${run.id}`;
+}
+
+export async function recordExplorationEvent(
+  event: ExplorationEvent & { cardId?: string },
+): Promise<void> {
+  await getSql()`INSERT INTO analytics_ai_exploration_events
+    (id, session_id, event, run_id, card_id, selected_card_count, selection_source, idea_index)
+    SELECT ${crypto.randomUUID()}, ${event.sessionId}, ${event.event}, ${event.runId ?? null},
+      ${event.cardId ?? null}, ${event.selectedCardCount ?? null}, ${event.selectionSource ?? null}, ${event.ideaIndex ?? null}
+    WHERE ${event.runId ?? null}::uuid IS NULL OR EXISTS (
+      SELECT 1 FROM analytics_ai_exploration_runs WHERE id = ${event.runId ?? null} AND session_id = ${event.sessionId}
+    ) ON CONFLICT DO NOTHING`;
 }
 
 async function recordEnrichmentAttemptCompleted(
@@ -243,6 +279,9 @@ async function recordEnrichmentAttemptCompleted(
     provider: attempt.provider,
     model: attempt.model,
     prompt_version: attempt.promptVersion,
+    title_source: attempt.titleSource ?? "generated",
+    exploration_session_id: attempt.explorationSessionId ?? null,
+    exploration_run_id: attempt.explorationRunId ?? null,
     error_code: attempt.status === "failed" ? attempt.errorCode : null,
     latency_ms: attempt.latencyMs,
     input_character_count: attempt.inputCharacterCount,

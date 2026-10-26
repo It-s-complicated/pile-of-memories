@@ -44,6 +44,9 @@ export type EnrichmentAttemptStarted = {
   promptVersion: string;
   inputCharacterCount: number;
   existingTagCount: number;
+  titleSource?: "generated" | "supplied";
+  explorationSessionId?: string;
+  explorationRunId?: string;
 };
 
 export type EnrichmentAttemptCompleted = EnrichmentAttemptStarted & {

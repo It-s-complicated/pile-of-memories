@@ -13,6 +13,7 @@ import {
   insertCard as insertCardInDatabase,
   listCards,
   recordEnrichmentReview,
+  recordExplorationEvent,
   removeCard as removeCardFromDatabase,
   updateCard as updateCardInDatabase,
   updateCardPositions as updateCardPositionsInDatabase,
@@ -54,6 +55,17 @@ export const createCard = form(createCardFormSchema, async (input) => {
   requirePrivateBoard();
 
   const card = await insertCardInDatabase(input.card).catch(databaseFailure);
+
+  if (input.exploration) {
+    await recordExplorationEvent({
+      sessionId: input.exploration.sessionId,
+      runId: input.exploration.runId,
+      ideaIndex: input.exploration.ideaIndex,
+      selectedCardCount: input.exploration.sourceCardCount,
+      event: "idea_saved",
+      cardId: card.id,
+    }).catch(() => reportAnalyticsFailure("exploration_idea_saved"));
+  }
 
   if (input.creation) {
     try {

@@ -1,10 +1,15 @@
 import * as z from "zod";
-import { cardKindSchema } from "./card";
+import { cardIdSchema, cardKindSchema } from "./card";
 import { canonicalizeLabels, labelSchema } from "./labels";
+import { explorationOriginSchema } from "./exploration-analytics";
 
 export const enrichmentInputSchema = z
   .object({
     description: z.string().trim().min(1).max(8_000),
+    title: z.string().trim().min(1).max(80).optional(),
+    kind: cardKindSchema.optional(),
+    sourceIds: z.array(cardIdSchema).max(8).optional(),
+    exploration: explorationOriginSchema.optional(),
   })
   .strict();
 
@@ -27,6 +32,17 @@ export const enrichmentResponseSchema = enrichmentOutputSchema.safeExtend({
 export type EnrichmentInput = z.infer<typeof enrichmentInputSchema>;
 export type EnrichmentOutput = z.infer<typeof enrichmentOutputSchema>;
 export type EnrichmentResponse = z.infer<typeof enrichmentResponseSchema>;
+
+export function memorySourceIds(description: string): string[] {
+  return [
+    ...new Set(
+      Array.from(description.matchAll(/\]\(\?memory=([^\s)]+)\)/g)).flatMap((match) => {
+        const parsed = cardIdSchema.safeParse(match[1]);
+        return parsed.success ? [parsed.data] : [];
+      }),
+    ),
+  ].slice(0, 8);
+}
 
 export function fallbackTitle(description: string): string {
   return (

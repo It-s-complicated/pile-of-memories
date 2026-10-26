@@ -58,6 +58,33 @@ Svelte Inspector is enabled during `vp dev`. Hold **Alt+X** and hover over an el
 source location; click to open it in your editor, or right-click for the component stack. The
 inspector is excluded from production builds.
 
+## Explore existing cards
+
+Choose **Explore** on a canvas card, or **Explore from here** while reading it. TypeSafe
+suggests related cards, including complementary perspectives and counterpoints. Choose up to
+eight cards and optionally add a question, then choose **Reflect**. You can also search the pile
+and add cards yourself. For larger piles, related suggestions consider a bounded shortlist of
+24 cards; the dialog reports when only part of the pile was considered.
+
+Reflections separate observations from new possibilities and reference the selected source
+cards. Change the context or use a suggested question to reflect again. **Save as new card**
+starts tag/topic enrichment immediately and opens the editable review, reusing the idea's existing
+title and type. The classifier uses the idea and its source-card context; source labels are not
+automatically copied. Source links remain in the Markdown body. Failed tag suggestions can be
+retried, or the card can be finished manually.
+Canceling a draft returns to the exploration; after saving, it returns once the layout preview is resolved.
+Saved source links reopen the original card using `?memory=<card UUID>`.
+
+Exploration uses the existing `TYPESAFE_API_KEY` and `OPENCODE_API_KEY`. Nothing is written until
+you save a card, apart from private analytics. Exploration sessions are temporary and close when
+you leave the board. Run migration **0007** before deploying this update.
+
+Private analytics now track related-card/reflection runs, latency, token usage, context/result
+counts, draft selection/cancellation, and saved ideas. The database views
+`analytics_ai_exploration_daily` and `analytics_ai_exploration_funnel` summarize activity.
+Supplied idea titles are measured separately from newly generated titles. Question and card
+text are not stored in these analytics. See [Database schema](DATABASE_SCHEMA.md#exploration-analytics).
+
 ## Tags and topics
 
 Choose **Tags & topics** in **Board tools** to create, edit, or delete labels. **Tags** are broad areas;

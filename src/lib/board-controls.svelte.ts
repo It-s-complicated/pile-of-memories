@@ -17,6 +17,7 @@ import { deleteCard, getLiveCards, updateCard, updateCardPositions } from "./car
 import { openCapture, closeCapture } from "./capture-navigation";
 import { DEFAULT_CARD_SIZE, findClusterPosition, reflowClusters } from "./cluster-layout";
 import { getErrorMessage } from "./errors";
+import type { IdeaDraft } from "./exploration";
 import { getLiveLabels } from "./labels.remote";
 import { cardToMemoryNode, type MemoryNode } from "./scene";
 
@@ -70,6 +71,7 @@ export type BoardControls = {
   readonly canEditBoard: boolean;
   readonly canReorganize: boolean;
   readonly savingLayout: boolean;
+  openExploration(id: string): void;
   openList(): void;
   openArchive(): void;
   openLabels(): void;
@@ -126,6 +128,8 @@ export class BoardState implements BoardControls {
   archiveOpen = $state(false);
   listOpen = $state(false);
   labelsOpen = $state(false);
+  explorationSeedId = $state<string | null>(null);
+  captureDraft = $state.raw<IdeaDraft>();
   archiveError = $state("");
   archiveBusy = $derived(updateCard.pending > 0 || deleteCard.pending > 0);
   savingLayout = $derived(updateCardPositions.pending > 0);
@@ -251,6 +255,19 @@ export class BoardState implements BoardControls {
   };
   openCapture = (): void => {
     this.persistenceError = "";
+    this.captureDraft = undefined;
+    void openCapture();
+  };
+  openExploration = (id: string): void => {
+    if (!this.canOpenMemories || !this.activeCards.some((card) => card.id === id)) return;
+    this.explorationSeedId = id;
+  };
+  closeExploration = (): void => {
+    this.explorationSeedId = null;
+  };
+  captureIdea = (draft: IdeaDraft): void => {
+    this.persistenceError = "";
+    this.captureDraft = draft;
     void openCapture();
   };
   closeCapture = closeCapture;

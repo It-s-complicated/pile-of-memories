@@ -3,6 +3,7 @@ import * as z from "zod";
 import { chat } from "@tanstack/ai";
 import { openaiCompatible } from "@tanstack/ai-openai/compatible";
 import { classifyEnrichmentError, enrichMemory } from "./enrichment";
+import { memorySourceIds } from "../enrichment";
 
 vi.mock("$app/env/private", () => ({ OPENCODE_API_KEY: "test-zen", TYPESAFE_API_KEY: "test" }));
 vi.mock("@tanstack/ai", async (importOriginal) => ({
@@ -20,6 +21,15 @@ const vocabulary = [
     description: "CSS layout and styling.",
   },
 ];
+
+it("extracts only valid, unique source-card IDs from generated Markdown", () => {
+  const id = "00000000-0000-4000-8000-000000000001";
+  expect(
+    memorySourceIds(
+      `[Source](?memory=${id}) [Again](?memory=${id}) [Invalid](?memory=bad) [External](https://example.com)`,
+    ),
+  ).toEqual([id]);
+});
 
 it("combines a generated title with only vocabulary-selected labels, including no matches", async () => {
   vi.mocked(chat).mockResolvedValue({ text: "A CSS note", chunks: [] });
@@ -62,6 +72,47 @@ it("combines a generated title with only vocabulary-selected labels, including n
     tags: [],
     topics: [],
   });
+});
+
+it("reuses an idea title and kind without calling the title provider, retaining source context and exact usage", async () => {
+  vi.mocked(chat).mockClear();
+  const fetchMock = vi.fn().mockResolvedValue(
+    Response.json({
+      model: "jev-1.13.0",
+      answers: { label_0: { type: "noul", noul: 0.9 } },
+      usage: { input_tokens: 120, output_tokens: 3 },
+    }),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  const sourceContext = [
+    { title: "Layout experiments", body: "CSS grid techniques", tags: [], topics: ["CSS"] },
+  ];
+  const result = await enrichMemory(
+    {
+      description: "Make a reusable layout checklist",
+      title: "My existing idea title",
+      kind: "idea",
+      sourceContext,
+    },
+    vocabulary,
+  );
+  expect(result.output).toEqual({
+    title: "My existing idea title",
+    kind: "idea",
+    tags: [],
+    topics: ["CSS"],
+  });
+  expect(chat).not.toHaveBeenCalled();
+  expect(result.usage).toEqual({
+    promptTokens: 120,
+    completionTokens: 3,
+    totalTokens: 123,
+    providerCost: null,
+  });
+  const request = JSON.parse(fetchMock.mock.calls[0]![1].body);
+  expect(request.state.sourceContext).toEqual(sourceContext);
+  expect(request.state.title).toBe("My existing idea title");
+  expect(request.questions.kind).toBeUndefined();
 });
 
 it("cancels the other provider on failure so the caller can use its manual fallback", async () => {
