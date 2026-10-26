@@ -54,6 +54,10 @@ Title generation uses the Responses API at `https://opencode.ai/inference/openai
 When migrating from Go, set the new key locally and in the deployment environment, then restart or
 redeploy; `OPENCODE_GO_API_KEY` is no longer used.
 
+Svelte Inspector is enabled during `vp dev`. Hold **Alt+X** and hover over an element to see its
+source location; click to open it in your editor, or right-click for the component stack. The
+inspector is excluded from production builds.
+
 ## Tags and topics
 
 Choose **Tags & topics** in **Board tools** to create, edit, or delete labels. **Tags** are broad areas;

@@ -20,6 +20,7 @@ export default defineConfig({
   plugins: lazyPlugins(async () => {
     const { sveltekit } = await import("@sveltejs/kit/vite");
     return sveltekit({
+      inspector: true,
       adapter: adapter(),
       experimental: { remoteFunctions: true },
       compilerOptions: { experimental: { async: true } },
