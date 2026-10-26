@@ -13,6 +13,7 @@
   import { showModal } from "../lib/dialog";
   import type { IdeaDraft } from "../lib/exploration";
   import { trackExplorationEvent } from "../lib/exploration-analytics.remote";
+  import { createDraftLifecycle } from "../lib/draft-lifecycle";
 
   let {
     vocabulary,
@@ -57,7 +58,11 @@
   let creationProvenance = $state<CardCreationProvenance>();
   let enrichmentGeneration = 0;
   let enrichmentInFlight = false;
-  let cancelled = false;
+  const draftLifecycle = createDraftLifecycle(() => {
+    if (!draft?.exploration) return;
+    const { sessionId, runId, ideaIndex, sourceCardCount } = draft.exploration;
+    void trackExplorationEvent({ sessionId, runId, ideaIndex, selectedCardCount: sourceCardCount, event: "draft_cancelled" }).catch(() => {});
+  });
   let enriching = $state(!!draft);
   let saving = $derived(createForm.pending > 0);
   let position = $derived(getPosition({ tags: memoryTags, topics: memoryTopics }));
@@ -68,6 +73,7 @@
       setCardFields();
       void continueMemory();
     }
+    return draftLifecycle.dismiss;
   });
 
   onDestroy(() => {
@@ -82,11 +88,7 @@
   function cancelCapture(): void {
     if (saving) return;
     enrichmentGeneration += 1;
-    if (draft?.exploration && !cancelled) {
-      cancelled = true;
-      const { sessionId, runId, ideaIndex, sourceCardCount } = draft.exploration;
-      void trackExplorationEvent({ sessionId, runId, ideaIndex, selectedCardCount: sourceCardCount, event: "draft_cancelled" }).catch(() => {});
-    }
+    draftLifecycle.dismiss();
     onclose();
   }
 
@@ -168,9 +170,9 @@
     const generation = enrichmentGeneration;
     persistenceError = "";
     try {
-      if (await oncreate(form) && generation === enrichmentGeneration) onclose();
+      if (await draftLifecycle.save(() => oncreate(form)) && generation === enrichmentGeneration) onclose();
     } catch (error) {
-      persistenceError = getErrorMessage(error);
+      if (generation === enrichmentGeneration) persistenceError = getErrorMessage(error);
     }
   }
 </script>

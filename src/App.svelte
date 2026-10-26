@@ -23,6 +23,7 @@
   import BoardNotice from "./components/BoardNotice.svelte";
   import ArchiveDialog from "./components/ArchiveDialog.svelte";
   import ExploreDialog from "./components/ExploreDialog.svelte";
+  import LinkedMemoryReader from "./components/LinkedMemoryReader.svelte";
 
   let { userId }: { userId: string } = $props();
   // The page keys this component by user, giving each account its own board model.
@@ -169,6 +170,14 @@
     onclose={board.closeArchive}
   />
 {/if}
+
+<LinkedMemoryReader
+  cards={[...board.activeCards, ...board.archivedCards]}
+  ready={board.cardsQuery.ready}
+  loadError={!!board.cardsQuery.error}
+  canExplore={board.canOpenMemories}
+  onexplore={board.openExploration}
+/>
 
 <style>
   .canvas {

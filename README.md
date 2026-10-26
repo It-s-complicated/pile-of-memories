@@ -50,6 +50,12 @@ Set `DATABASE_CONNECTION_STRING` in `.env`. If it uses transaction pooling, set
 when a local PostgreSQL server does not serve TLS. Set `OPENCODE_API_KEY` to an OpenCode Console
 (Zen) service-account key for pay-as-you-go title suggestions, and set `TYPESAFE_API_KEY` for card
 classification and label suggestions through TypeSafe.
+
+To use a private Coolify database locally, configure the restricted SSH connection described in
+[COOLIFY.md — Local development](COOLIFY.md#local-development-against-the-coolify-database).
+Run `vp run db:tunnel` in a separate terminal before `vp dev`. Local changes then affect the same
+board as the deployed app. Keep database integration tests pointed at a disposable database.
+
 Title generation uses the Responses API at `https://opencode.ai/inference/openai/v1/responses`.
 When migrating from Go, set the new key locally and in the deployment environment, then restart or
 redeploy; `OPENCODE_GO_API_KEY` is no longer used.

@@ -115,6 +115,36 @@ first and use the same image for the migration and deployment. Abort deployment 
 For future incompatible schema changes, use a maintenance window or expand/contract migrations;
 a rolling application deploy does not make schema changes safe automatically.
 
+### Local development against the Coolify database
+
+For an intentionally shared board, local development can reach PostgreSQL through SSH without
+publishing a database port. Keep both local database URLs in the ignored `.env`, using the existing
+application role/password/database with host `127.0.0.1`, port `15432`, and `sslmode=disable`.
+Set `DATABASE_SSL=false` and `DATABASE_SSH_HOST=USER@YOUR_SERVER`. Preserve the local OAuth URL and
+credentials. The `.env` must be readable only by its owner.
+
+`vp run db:tunnel` listens only on loopback and carries each PostgreSQL connection over SSH.
+Run it in a separate terminal before `vp dev`, and restart it after reboot. SSH host-key checking
+and noninteractive authentication stay enabled; verify the server key through a trusted channel
+before adding it to your known hosts.
+
+The SSH account/key must have a **forced command limited to the database stream**, rather than a
+shell. For a Coolify host with Docker access and an Alpine PostgreSQL container, an administrator
+can append this restricted entry to the account's `authorized_keys`, using the developer's public
+key and the actual database container name:
+
+```text
+restrict,command="exec docker exec -i YOUR_DATABASE_CONTAINER nc 127.0.0.1 5432" ssh-ed25519 YOUR_PUBLIC_KEY memories-local-db-only
+```
+
+This also works when `AllowTcpForwarding` is disabled. Confirm `nc` exists in that container first.
+The command resolves the container by name on every connection, so changing Docker IPs does not
+break access. Remove that authorized-key entry to revoke access. Never copy Coolify's private SSH
+key to a workstation. The script is intended only for a key with this forced command.
+
+Local and preview writes now affect the deployed board when they share its database. Use a
+disposable database for destructive integration tests, schema experiments, and untrusted previews.
+
 ### Verify before moving data
 
 - Sign in as the approved GitHub account; confirm other accounts cannot open the board.

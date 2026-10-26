@@ -117,6 +117,35 @@ it("needs no provider call for an otherwise empty pile", async () => {
   expect(fetchMock).not.toHaveBeenCalled();
 });
 
+it("retains reported usage when TypeSafe answer mapping fails", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(
+      Response.json({
+        model: "jev-1.13.0",
+        usage: { input_tokens: 150, output_tokens: 6 },
+        answers: {
+          relevance_0: {
+            type: "score",
+            score: 2,
+            confidence: 0.9,
+            legend: {},
+            probabilities: { "0": 0, "1": 0, "2": 1, "3": 0 },
+          },
+        },
+      }),
+    ),
+  );
+  const onUsage = vi.fn();
+  await expect(
+    suggestRelatedCards(card(1), [card(1), card(2)], "", new AbortController().signal, onUsage),
+  ).rejects.toThrow();
+  expect(onUsage).toHaveBeenCalledOnce();
+  expect(onUsage).toHaveBeenCalledWith(
+    expect.objectContaining({ promptTokens: 150, completionTokens: 6, totalTokens: 156 }),
+  );
+});
+
 it("rejects invented reflection sources and accepts cited proposals", async () => {
   const cards = [card(1), card(2)];
   const reflection = {

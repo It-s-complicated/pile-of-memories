@@ -6,8 +6,6 @@
 
 <script lang="ts">
   import { type NodeProps } from "@xyflow/svelte";
-  import { goto } from "$app/navigation";
-  import { page } from "$app/state";
   import type { RemoteFormEnhanceInstance } from "$app/server";
   import { cardKindLabels, updateCardFormSchema, type Card, type UpdateCardFormInput } from "#lib/card.js";
   import { deleteCard, saveCard, updateCard } from "#lib/cards.remote.js";
@@ -27,7 +25,6 @@
   const board = getBoardControls();
   let browse = $derived(cardPersistence.browse());
   let readOpen = $state(false);
-  let linkedReadOpen = $derived((page.shallow?.url ?? page.url).searchParams.get("memory") === id);
   let parsedBody = $derived(parseMarkdown(data.body));
   let createdDate = $derived(compactDateFormatter.format(new Date(data.createdAt)));
   let updatedDate = $derived(compactDateFormatter.format(new Date(data.updatedAt)));
@@ -46,11 +43,6 @@
 
   function closeReader(): void {
     readOpen = false;
-    if (linkedReadOpen) {
-      const url = new URL((page.shallow?.url ?? page.url).href);
-      url.searchParams.delete("memory");
-      void goto(url, { shallow: true, replace: true, state: page.state });
-    }
   }
 
   function explore(): void {
@@ -205,7 +197,7 @@
   {/if}
 </article>
 
-{#if readOpen || linkedReadOpen}
+{#if readOpen}
   <dialog
     class="memory-dialog nodrag nopan nowheel"
     aria-labelledby={`read-memory-${id}`}

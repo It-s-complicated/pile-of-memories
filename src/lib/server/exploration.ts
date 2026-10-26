@@ -61,6 +61,7 @@ export async function suggestRelatedCards(
   }
   const answers = await decide({
     adapter: createTypesafeDecider(LABEL_MODEL, TYPESAFE_API_KEY),
+    middleware: [{ name: "related-card-usage", onUsage: (_context, usage) => onUsage?.(usage) }],
     abortSignal: signal,
     state: {
       seed: { title: seed.title, body: seed.body.slice(0, 8_000) },
@@ -104,7 +105,6 @@ export async function suggestRelatedCards(
       }),
     ),
   });
-  onUsage?.(answers.meta.usage);
   const ranked = candidates
     .flatMap((card, index) => {
       const relevance = rankedAnswerSchema.parse(answers[`relevance_${index}`]).score;
