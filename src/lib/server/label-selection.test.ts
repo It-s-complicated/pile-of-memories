@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { selectMemoryLabels } from "./label-selection";
 import type { LabelDefinition, LabelKind } from "../labels";
 
+vi.mock("$app/env/private", () => ({ TYPESAFE_API_KEY: "test-typesafe" }));
 afterEach(() => vi.unstubAllGlobals());
 
 function vocabulary(names: string[], kind: LabelKind = "topic"): LabelDefinition[] {
@@ -16,8 +17,14 @@ function vocabulary(names: string[], kind: LabelKind = "topic"): LabelDefinition
 function mockAnswers(probabilities: number[], kind = "note") {
   const fetchMock = vi.fn().mockImplementation(() =>
     Response.json({
+      model: "jev-1.13.0",
       answers: {
-        kind: { type: "choice", choice: kind },
+        kind: {
+          type: "choice",
+          choice: kind,
+          probabilities: { memory: 0, idea: 0, note: 0, [kind]: 1 },
+          confidence: 1,
+        },
         ...Object.fromEntries(
           probabilities.map((noul, index) => [`label_${index}`, { type: "noul", noul }]),
         ),
@@ -53,9 +60,12 @@ describe("managed label selection", () => {
       outputTokens: 10,
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]![0]).toBe("https://api.typesafe.ai/v1/systemone");
     const request = fetchMock.mock.calls[0]![1];
     expect(request.signal).toBe(signal);
+    expect(request.headers.Authorization).toBe("Bearer test-typesafe");
     const body = JSON.parse(request.body);
+    expect(body.model).toBe("jev-latest");
     expect(body.state).toEqual({ memory: input.description });
     expect(Object.keys(body.questions)).toHaveLength(9);
     expect(Object.keys(body.questions.kind.criteria)).toEqual(["memory", "idea", "note"]);

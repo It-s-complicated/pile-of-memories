@@ -5,7 +5,11 @@ import { openaiCompatible } from "@tanstack/ai-openai/compatible";
 import { classifyEnrichmentError, enrichMemory } from "./enrichment";
 
 vi.mock("$app/env/private", () => ({ OPENCODE_API_KEY: "test-zen", TYPESAFE_API_KEY: "test" }));
-vi.mock("@tanstack/ai", () => ({ chat: vi.fn(), generateMessageId: () => "test" }));
+vi.mock("@tanstack/ai", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/ai")>()),
+  chat: vi.fn(),
+  generateMessageId: () => "test",
+}));
 vi.mock("@tanstack/ai-openai/compatible", { spy: true });
 afterEach(() => vi.unstubAllGlobals());
 const vocabulary = [
@@ -23,8 +27,14 @@ it("combines a generated title with only vocabulary-selected labels, including n
     "fetch",
     vi.fn().mockImplementation(() =>
       Response.json({
+        model: "jev-1.13.0",
         answers: {
-          kind: { type: "choice", choice: "note" },
+          kind: {
+            type: "choice",
+            choice: "note",
+            probabilities: { memory: 0, idea: 0, note: 1 },
+            confidence: 1,
+          },
           label_0: {
             type: "noul",
             noul: 0.9,

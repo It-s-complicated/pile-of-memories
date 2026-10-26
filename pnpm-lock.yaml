@@ -193,6 +193,9 @@ importers:
       '@tanstack/ai-openai':
         specifier: ^1.0.0
         version: 1.0.0(@tanstack/ai@1.0.0(zod@4.6.7))(ws@8.22.0)(zod@4.6.7)
+      '@tanstack/ai-typesafe':
+        specifier: ^1.0.0
+        version: 1.0.0(@tanstack/ai@1.0.0(zod@4.6.7))
       '@tanstack/browser-db-sqlite-persistence':
         specifier: ^0.2.37
         version: 0.2.37(@journeyapps/wa-sqlite@1.7.2)(typescript@6.0.3)
@@ -202,9 +205,6 @@ importers:
       '@xyflow/svelte':
         specifier: ^1.7.0
         version: 1.7.0(svelte@5.57.2)
-      advocaat:
-        specifier: ^0.0.6
-        version: 0.0.6
       better-auth:
         specifier: ^1.7.12
         version: 1.7.12(@sveltejs/kit@3.1.0(@sveltejs/vite-plugin-svelte@7.2.0(@voidzero-dev/vite-plus-core@1.4.0(@types/node@26.6.5)(jiti@2.7.0)(typescript@6.0.3)(typescript@7.0.2))(svelte@5.57.2))(@voidzero-dev/vite-plus-core@1.4.0(@types/node@26.6.5)(jiti@2.7.0)(typescript@6.0.3)(typescript@7.0.2))(svelte@5.57.2)(typescript@6.0.3))(pg@8.23.1)(svelte@5.57.2)(vitest@5.0.5)
@@ -762,6 +762,11 @@ packages:
     peerDependencies:
       '@tanstack/ai': ^1.0.0
 
+  '@tanstack/ai-typesafe@1.0.0':
+    resolution: {integrity: sha512-pifx8pzxwoKX9vm7xaUmecERYAnawzHvqpePmfT6zBeJLRgRJb2rga9H/iZUhgV1pBWfMbP/6Ea+qDagl2haVQ==}
+    peerDependencies:
+      '@tanstack/ai': ^1.0.0
+
   '@tanstack/ai-utils@1.0.0':
     resolution: {integrity: sha512-0Nl9rUmS3zTGKP8dPmyS2zJ18mieAheKqS9V+390vjViJvD6kpP+1gdCdHkNUqQsSzSFvb32QW8bkTVCAOv0qA==}
 
@@ -1220,9 +1225,6 @@ packages:
     resolution: {integrity: sha512-lGq+9yr1/GuAWaVYIHRjvvySG5/4VfKIvC8EWxStPdcDh/Ka7FG3twP6v4d5BkravUilhIAsG4Qj83t02LWUPQ==}
     engines: {node: '>=0.4.0'}
     hasBin: true
-
-  advocaat@0.0.6:
-    resolution: {integrity: sha512-mZomE2RzphVc23Uaa6bupoJvO2R3Bnnq7XQnSUshX2FEYrqh6dGt46zOvYYXnDczHV1JEGM6Wuz+u8aDN3nwNA==}
 
   agent-browser@0.39.2:
     resolution: {integrity: sha512-8zh5Dj4r/Lo14nDw+8jUViTlmZV5ON3qmrGp1wppmB87NhMqmSXUqVIeNith9xjIJNr/00wHxhCqH/2lATezYQ==}
@@ -2239,6 +2241,11 @@ snapshots:
       - ws
       - zod
 
+  '@tanstack/ai-typesafe@1.0.0(@tanstack/ai@1.0.0(zod@4.6.7))':
+    dependencies:
+      '@tanstack/ai': 1.0.0(zod@4.6.7)
+      '@tanstack/ai-utils': 1.0.0
+
   '@tanstack/ai-utils@1.0.0': {}
 
   '@tanstack/ai@1.0.0(zod@4.6.7)':
@@ -2589,8 +2596,6 @@ snapshots:
   '@yuku-toolchain/types@0.19.0': {}
 
   acorn@8.18.0: {}
-
-  advocaat@0.0.6: {}
 
   agent-browser@0.39.2: {}
 
