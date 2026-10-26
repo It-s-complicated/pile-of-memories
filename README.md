@@ -50,6 +50,12 @@ Set `DATABASE_CONNECTION_STRING` in `.env`. If it uses transaction pooling, set
 when a local PostgreSQL server does not serve TLS. Set `OPENCODE_API_KEY` to an OpenCode Console
 (Zen) service-account key for pay-as-you-go title suggestions, and set `TYPESAFE_API_KEY` for card
 classification and label suggestions through TypeSafe.
+
+To use a private Coolify database locally, configure the restricted SSH connection described in
+[COOLIFY.md — Local development](COOLIFY.md#local-development-against-the-coolify-database).
+Run `vp run db:tunnel` in a separate terminal before `vp dev`. Local changes then affect the same
+board as the deployed app. Keep database integration tests pointed at a disposable database.
+
 Title generation uses the Responses API at `https://opencode.ai/inference/openai/v1/responses`.
 When migrating from Go, set the new key locally and in the deployment environment, then restart or
 redeploy; `OPENCODE_GO_API_KEY` is no longer used.
@@ -57,6 +63,33 @@ redeploy; `OPENCODE_GO_API_KEY` is no longer used.
 Svelte Inspector is enabled during `vp dev`. Hold **Alt+X** and hover over an element to see its
 source location; click to open it in your editor, or right-click for the component stack. The
 inspector is excluded from production builds.
+
+## Explore existing cards
+
+Choose **Explore** on a canvas card, or **Explore from here** while reading it. TypeSafe
+suggests related cards, including complementary perspectives and counterpoints. Choose up to
+eight cards and optionally add a question, then choose **Reflect**. You can also search the pile
+and add cards yourself. For larger piles, related suggestions consider a bounded shortlist of
+24 cards; the dialog reports when only part of the pile was considered.
+
+Reflections separate observations from new possibilities and reference the selected source
+cards. Change the context or use a suggested question to reflect again. **Save as new card**
+starts tag/topic enrichment immediately and opens the editable review, reusing the idea's existing
+title and type. The classifier uses the idea and its source-card context; source labels are not
+automatically copied. Source links remain in the Markdown body. Failed tag suggestions can be
+retried, or the card can be finished manually.
+Canceling a draft returns to the exploration; after saving, it returns once the layout preview is resolved.
+Saved source links reopen the original card using `?memory=<card UUID>`.
+
+Exploration uses the existing `TYPESAFE_API_KEY` and `OPENCODE_API_KEY`. Nothing is written until
+you save a card, apart from private analytics. Exploration sessions are temporary and close when
+you leave the board. Run migration **0007** before deploying this update.
+
+Private analytics now track related-card/reflection runs, latency, token usage, context/result
+counts, draft selection/cancellation, and saved ideas. The database views
+`analytics_ai_exploration_daily` and `analytics_ai_exploration_funnel` summarize activity.
+Supplied idea titles are measured separately from newly generated titles. Question and card
+text are not stored in these analytics. See [Database schema](DATABASE_SCHEMA.md#exploration-analytics).
 
 ## Tags and topics
 

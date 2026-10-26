@@ -15,11 +15,12 @@ import {
 
 import { LABEL_MODEL, selectMemoryLabels } from "./label-selection";
 import type { LabelDefinition } from "../labels";
+import type { Card } from "../card";
 
 const TITLE_MODEL = "gpt-6-luna";
 export const ENRICHMENT_PROVIDER = "opencode-zen+typesafe";
 export const ENRICHMENT_MODEL = `${TITLE_MODEL}+${LABEL_MODEL}`;
-export const ENRICHMENT_PROMPT_VERSION = "memory-enrichment-v12";
+export const ENRICHMENT_PROMPT_VERSION = "memory-enrichment-v13";
 const PROVIDER_TIMEOUT_MS = 55_000;
 
 export type EnrichmentExecution = {
@@ -61,7 +62,7 @@ const providerErrorSchema = z
 
 const reportedTokenCountSchema = z.number().int().nonnegative().nullable().catch(null);
 const reportedCostSchema = z.number().finite().nonnegative().nullable().catch(null);
-const reportedUsageSchema = z
+export const reportedUsageSchema = z
   .object({
     promptTokens: reportedTokenCountSchema,
     completionTokens: reportedTokenCountSchema,
@@ -99,7 +100,7 @@ export function classifyEnrichmentError(
 }
 
 export async function enrichMemory(
-  input: EnrichmentInput,
+  input: EnrichmentInput & { sourceContext?: Pick<Card, "title" | "body" | "tags" | "topics">[] },
   vocabulary: LabelDefinition[],
 ): Promise<EnrichmentExecution> {
   const startedAt = Date.now();
@@ -142,18 +143,20 @@ export async function enrichMemory(
     });
 
     const [result, labels] = await Promise.all([
-      chat({
-        adapter: opencode(TITLE_MODEL),
-        threadId,
-        stream: false,
-        abortController,
-        middleware: [analyticsMiddleware],
-        modelOptions: { reasoning: { effort: "medium" } },
-        systemPrompts: [
-          "Create a concise title of at most 80 characters for a private memory. Return only the title.",
-        ],
-        messages: [{ role: "user", content: `Memory:\n${input.description}` }],
-      }),
+      input.title
+        ? Promise.resolve({ text: input.title })
+        : chat({
+            adapter: opencode(TITLE_MODEL),
+            threadId,
+            stream: false,
+            abortController,
+            middleware: [analyticsMiddleware],
+            modelOptions: { reasoning: { effort: "medium" } },
+            systemPrompts: [
+              "Create a concise title of at most 80 characters for a private memory. Return only the title.",
+            ],
+            messages: [{ role: "user", content: `Memory:\n${input.description}` }],
+          }),
       selectMemoryLabels(input, vocabulary, abortController.signal),
     ]);
 
@@ -161,9 +164,17 @@ export async function enrichMemory(
       title: result.text,
       tags: labels.tags,
       topics: labels.topics,
-      kind: labels.kind,
+      kind: input.kind ?? labels.kind,
     });
-    const titleUsage = reportedUsageSchema.parse(usage ?? {});
+    const titleUsage = reportedUsageSchema.parse(
+      input.title
+        ? {
+            promptTokens: 0,
+            completionTokens: 0,
+            totalTokens: 0,
+          }
+        : (usage ?? {}),
+    );
     return {
       output,
       latencyMs: Math.max(Date.now() - startedAt, middlewareDurationMs ?? 0),

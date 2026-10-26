@@ -1,5 +1,6 @@
 import * as z from "zod";
 import { cardCreationProvenanceSchema } from "./enrichment-analytics";
+import { explorationOriginSchema } from "./exploration-analytics";
 import { labelsSchema, MAX_LABELS } from "./labels";
 import { httpUrlSchema } from "./markdown";
 
@@ -112,6 +113,7 @@ export const createCardFormSchema = z
   .object({
     // @ts-expect-error Zod safeExtend rejects wider default inputs; outputs and refinements stay intact.
     card: cardInputSchema.safeExtend(createCardDefaults),
+    exploration: explorationOriginSchema.optional(),
     creation: cardCreationProvenanceSchema
       .extend({
         enrichmentAttemptId: cardCreationProvenanceSchema.shape.enrichmentAttemptId

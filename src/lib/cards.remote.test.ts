@@ -8,6 +8,7 @@ const database = vi.hoisted(() => ({
   removeCard: vi.fn(),
   updateCardPositions: vi.fn(),
   recordEnrichmentReview: vi.fn(),
+  recordExplorationEvent: vi.fn(),
 }));
 const { getRequestEvent, submitCreate, submitEdit } = vi.hoisted(() => ({
   getRequestEvent: vi.fn(),
@@ -55,6 +56,32 @@ beforeEach(() => {
   getRequestEvent.mockReturnValue({ locals: { user: { id: "owner" } } });
   database.insertCard.mockResolvedValue(card);
   database.updateCard.mockResolvedValue(card);
+  database.recordExplorationEvent.mockResolvedValue(undefined);
+});
+
+it("records an idea save only after persistence succeeds", async () => {
+  const exploration = { sessionId: id, runId: id, ideaIndex: 1, sourceCardCount: 2 };
+  await submitCreate({
+    card: { id, title: card.title, body: card.body, position: card.position, kind: "idea" },
+    exploration,
+  });
+  expect(database.recordExplorationEvent).toHaveBeenCalledWith({
+    sessionId: id,
+    runId: id,
+    ideaIndex: 1,
+    selectedCardCount: 2,
+    event: "idea_saved",
+    cardId: id,
+  });
+  database.recordExplorationEvent.mockClear();
+  database.insertCard.mockRejectedValueOnce(new Error("Database down"));
+  await expect(
+    submitCreate({
+      card: { id, title: "Idea", body: "Text", position: card.position },
+      exploration,
+    }),
+  ).rejects.toMatchObject({ status: 503 });
+  expect(database.recordExplorationEvent).not.toHaveBeenCalled();
 });
 
 it("authenticates both card forms before database access", async () => {

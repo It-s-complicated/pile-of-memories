@@ -13,6 +13,7 @@
     "preview": "vp preview",
     "start": "node build",
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
+    "db:tunnel": "node --env-file-if-exists=.env scripts/database-tunnel.mjs",
     "svelte-check": "svelte-check --tsconfig ./tsconfig.json --tsgo-experimental-api",
     "prepare": "svelte-kit sync"
   },

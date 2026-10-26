@@ -18,6 +18,7 @@ vi.mock("./cards.remote", () => ({
   updateCardPositions: { pending: 0 },
 }));
 vi.mock("./labels.remote", () => ({ getLiveLabels: () => labels }));
+vi.mock("./capture-navigation", () => ({ openCapture: vi.fn(), closeCapture: vi.fn() }));
 vi.mock("./card-collection", () => ({
   openCardCache: async () => ({ close: vi.fn(), replace: vi.fn() }),
 }));
@@ -27,6 +28,21 @@ vi.mock("@tanstack/svelte-db", () => ({
 }));
 
 import { BoardState } from "./board-controls.svelte";
+
+it("preserves exploration context while reviewing an idea draft", () => {
+  const board = new BoardState("owner");
+  board.explorationSeedId = "source-card";
+  const draft = {
+    title: "New possibility",
+    body: "An idea inspired by the cards.",
+    kind: "idea" as const,
+  };
+  board.captureIdea(draft);
+  expect(board.explorationSeedId).toBe("source-card");
+  expect(board.captureDraft).toEqual(draft);
+  board.openCapture();
+  expect(board.captureDraft).toBeUndefined();
+});
 
 beforeEach(() => {
   vi.useFakeTimers();

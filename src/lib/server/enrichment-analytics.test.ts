@@ -25,6 +25,26 @@ describe("server enrichment analytics", () => {
     },
   ];
 
+  it("attributes supplied-title enrichment to TypeSafe and its exploration session", () => {
+    const started = buildAttemptStarted(
+      attemptId,
+      {
+        description: "A proposed checklist",
+        title: "Existing idea title",
+        kind: "idea",
+        exploration: { sessionId: attemptId, runId: attemptId, ideaIndex: 0, sourceCardCount: 2 },
+      },
+      vocabulary,
+    );
+    expect(started).toMatchObject({
+      provider: "typesafe",
+      model: "jev-latest",
+      titleSource: "supplied",
+      explorationSessionId: attemptId,
+      explorationRunId: attemptId,
+    });
+  });
+
   it("fingerprints and counts both tags and topics without retaining private text", () => {
     const key = "a-secure-analytics-key-with-32-characters";
     const started = buildAttemptStarted(attemptId, input, vocabulary);

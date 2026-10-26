@@ -1,9 +1,14 @@
 import { command } from "$app/server";
 import { error } from "@sveltejs/kit";
-import { enrichmentInputSchema, enrichmentResponseSchema } from "#lib/enrichment.js";
+import {
+  enrichmentInputSchema,
+  enrichmentResponseSchema,
+  memorySourceIds,
+} from "#lib/enrichment.js";
 import type { EnrichmentUsage } from "#lib/enrichment-analytics.js";
 import {
   listLabels,
+  listCards,
   recordEnrichmentAttemptFailed,
   recordEnrichmentAttemptStarted,
   recordEnrichmentAttemptSucceeded,
@@ -46,10 +51,20 @@ export const enrichMemory = command(enrichmentInputSchema, async (input) => {
 
   let execution;
   try {
+    const sourceIds = input.sourceIds ?? memorySourceIds(input.description);
+    const sources = sourceIds.length ? await listCards() : [];
+    const sourceContext = sources
+      .filter((card) => sourceIds.includes(card.id))
+      .map(({ title, body, tags, topics }) => ({
+        title,
+        body: body.slice(0, 2_000),
+        tags,
+        topics,
+      }));
     // The provider call cooperatively aborts after 55 seconds. This outer race caps the response
     // at 60 seconds if upstream cancellation stalls, but does not itself cancel remaining work.
     execution = await withDeadline(
-      enrichMemoryWithProvider(input, vocabulary),
+      enrichMemoryWithProvider({ ...input, sourceContext }, vocabulary),
       RESPONSE_DEADLINE_MS,
       () => new EnrichmentExecutionError("provider_timeout", RESPONSE_DEADLINE_MS, EMPTY_USAGE),
     );

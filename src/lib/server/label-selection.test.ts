@@ -125,6 +125,25 @@ describe("managed label selection", () => {
     ).rejects.toThrow();
   });
 
+  it("needs no provider request when an idea's kind is known and the vocabulary is empty", async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error("Unexpected provider request"));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(
+      await selectMemoryLabels(
+        { description: "An idea", title: "Existing title", kind: "idea" },
+        [],
+        new AbortController().signal,
+      ),
+    ).toEqual({
+      kind: "idea",
+      tags: [],
+      topics: [],
+      inputTokens: 0,
+      outputTokens: 0,
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it.each([[], [1.1], [-0.1]])(
     "rejects missing or out-of-range answers: %j",
     async (...probabilities) => {

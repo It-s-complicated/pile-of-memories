@@ -91,6 +91,50 @@ const examples = [
   },
 ];
 
+it.runIf(process.env.TEST_LIVE_ENRICHMENT === "1")(
+  "uses source context for an exploration idea",
+  async () => {
+    const input = {
+      description:
+        "For each proposed component, check reliability, safety, observability, and cost before choosing the stack. Use the checklist in product reviews.",
+      sourceContext: [
+        {
+          title: "AI product requirements",
+          body: "An AI product must be reliable, safe, observable, and affordable. Use these qualities when choosing models and tools.",
+          tags: [],
+          topics: ["AI"],
+        },
+      ],
+    };
+    const result = await selectMemoryLabels(input, vocabulary, AbortSignal.timeout(10_000));
+    expect([...result.tags, ...result.topics]).toContain("AI");
+  },
+  15_000,
+);
+
+it.runIf(process.env.TEST_LIVE_ENRICHMENT === "1")(
+  "does not inherit unrelated labels from a source",
+  async () => {
+    const input = {
+      description: "Bake a chocolate cake for my sister's birthday, with strawberries on top.",
+      title: "A birthday cake",
+      kind: "idea" as const,
+      sourceContext: [
+        {
+          title: "AI product requirements",
+          body: "Language models need reliability, safety, and cost checks.",
+          tags: [],
+          topics: ["AI"],
+        },
+      ],
+    };
+    const result = await selectMemoryLabels(input, vocabulary, AbortSignal.timeout(10_000));
+    // Planning a cake may qualify as Project; it must not inherit the source's AI topic.
+    expect([...result.tags, ...result.topics]).not.toContain("AI");
+  },
+  15_000,
+);
+
 // Opt in: TEST_LIVE_ENRICHMENT=1 vp test src/lib/server/label-selection.live.test.ts
 // Uses the configured provider and synthetic text only. Label order is not part of quality.
 it.runIf(process.env.TEST_LIVE_ENRICHMENT === "1").each(examples)(

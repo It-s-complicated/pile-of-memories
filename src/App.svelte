@@ -22,6 +22,8 @@
   import LayoutReview from "./components/LayoutReview.svelte";
   import BoardNotice from "./components/BoardNotice.svelte";
   import ArchiveDialog from "./components/ArchiveDialog.svelte";
+  import ExploreDialog from "./components/ExploreDialog.svelte";
+  import LinkedMemoryReader from "./components/LinkedMemoryReader.svelte";
 
   let { userId }: { userId: string } = $props();
   // The page keys this component by user, giving each account its own board model.
@@ -127,12 +129,23 @@
 
 {#if board.captureOpen}
   <CaptureDialog
+    initialDraft={board.captureDraft}
     vocabulary={board.vocabulary}
     labelsReady={board.labelsReady}
     boardReady={board.captureReady}
     oncreate={board.addMemory}
     getPosition={board.getCapturePosition}
     onclose={board.closeCapture}
+  />
+{/if}
+
+{#if board.explorationSeedId}
+  <ExploreDialog
+    active={!board.captureOpen && !board.previewingLayout}
+    seedId={board.explorationSeedId}
+    cards={board.activeCards}
+    onclose={board.closeExploration}
+    onsave={board.captureIdea}
   />
 {/if}
 
@@ -157,6 +170,14 @@
     onclose={board.closeArchive}
   />
 {/if}
+
+<LinkedMemoryReader
+  cards={[...board.activeCards, ...board.archivedCards]}
+  ready={board.cardsQuery.ready}
+  loadError={!!board.cardsQuery.error}
+  canExplore={board.canOpenMemories}
+  onexplore={board.openExploration}
+/>
 
 <style>
   .canvas {

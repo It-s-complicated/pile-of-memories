@@ -11,6 +11,7 @@
   import { deleteCard, saveCard, updateCard } from "#lib/cards.remote.js";
   import { getLiveLabels } from "#lib/labels.remote.js";
   import { getCardPersistence } from "#lib/card-persistence.js";
+  import { getBoardControls } from "#lib/board-controls.svelte.js";
   import { getErrorMessage } from "#lib/errors.js";
   import { showModal } from "#lib/dialog.js";
   import { enrichMemory } from "#lib/enrichment.remote.js";
@@ -21,6 +22,7 @@
 
   let { id, data }: NodeProps<MemoryNode> = $props();
   const cardPersistence = getCardPersistence();
+  const board = getBoardControls();
   let browse = $derived(cardPersistence.browse());
   let readOpen = $state(false);
   let parsedBody = $derived(parseMarkdown(data.body));
@@ -38,6 +40,15 @@
   let busy = $derived(editForm.pending > 0 || updateCard.pending > 0 || deleteCard.pending > 0);
   let enrichmentStatus = $state("");
   let saveError = $state("");
+
+  function closeReader(): void {
+    readOpen = false;
+  }
+
+  function explore(): void {
+    closeReader();
+    board.openExploration(id);
+  }
 
   function openEditor(): void {
     enrichmentGeneration += 1;
@@ -144,7 +155,10 @@
     </p>
     <h2>{data.title || "Untitled memory"}</h2>
     {#if !browse}
-      <button type="button" class="edit-button nodrag" onclick={openEditor}>Edit</button>
+      <div class="card-actions nodrag">
+        <button type="button" class="edit-button" onclick={explore} disabled={!board.canOpenMemories}>Explore</button>
+        <button type="button" class="edit-button" onclick={openEditor}>Edit</button>
+      </div>
     {/if}
   </header>
 
@@ -187,18 +201,19 @@
   <dialog
     class="memory-dialog nodrag nopan nowheel"
     aria-labelledby={`read-memory-${id}`}
-    onclose={() => (readOpen = false)}
+    onclose={closeReader}
     {@attach showModal}
   >
     <form method="dialog">
       <header><h2 id={`read-memory-${id}`}>{data.title || "Untitled memory"}</h2></header>
       <div class="read-body"><MemoryMarkdown parsed={parsedBody} /></div>
       <footer>
+        <button type="button" class="secondary-button" onclick={explore} disabled={!board.canOpenMemories}>Explore from here</button>
         <button
           type="button"
           class="secondary-button"
           onclick={() => {
-            readOpen = false;
+            closeReader();
             openEditor();
           }}
         >Edit memory</button>
@@ -373,6 +388,11 @@
     font-size: 1.05rem;
     font-weight: 600;
     letter-spacing: -0.01em;
+  }
+
+  .card-actions {
+    display: flex;
+    gap: 0.5rem;
   }
 
   .edit-button {
