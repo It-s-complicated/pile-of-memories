@@ -36,9 +36,6 @@
   "devDependencies": {
     "@sveltejs/adapter-node": "6.0.0",
     "@sveltejs/kit": "3.1.0",
-    "@tanstack/devtools-vite": "^0.8.5",
-    "@tanstack/svelte-ai-devtools": "^1.0.0",
-    "@tanstack/svelte-devtools": "^0.1.7",
     "@types/node": "^26.6.5",
     "@types/pg": "^8.23.1",
     "@typescript/native-preview": "npm:typescript@7.0.2",
@@ -66,10 +63,6 @@
     "skills": [
       "@tanstack/ai",
       "@tanstack/db",
-      "@tanstack/devtools",
-      "@tanstack/devtools-event-client",
-      "@tanstack/devtools-utils",
-      "@tanstack/devtools-vite",
       "@tanstack/svelte-db"
     ]
   }

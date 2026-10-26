@@ -4,14 +4,6 @@
   import "../styles.css";
 
   let { children } = $props();
-
-  const devtools = import.meta.env.DEV ? import("../components/AiDevtools.svelte") : null;
 </script>
 
 {@render children()}
-
-{#if devtools}
-  {#await devtools then { default: AiDevtools }}
-    <AiDevtools />
-  {/await}
-{/if}

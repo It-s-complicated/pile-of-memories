@@ -18,19 +18,11 @@ export default defineConfig({
     options: { typeAware: true, typeCheck: true },
   },
   plugins: lazyPlugins(async () => {
-    const { devtools } = await import("@tanstack/devtools-vite");
     const { sveltekit } = await import("@sveltejs/kit/vite");
-    return [
-      devtools({
-        consolePiping: { enabled: false },
-        enhancedLogs: { enabled: false },
-        injectSource: { enabled: false },
-      }),
-      sveltekit({
-        adapter: adapter(),
-        experimental: { remoteFunctions: true },
-        compilerOptions: { experimental: { async: true } },
-      }),
-    ];
+    return sveltekit({
+      adapter: adapter(),
+      experimental: { remoteFunctions: true },
+      compilerOptions: { experimental: { async: true } },
+    });
   }),
 });
