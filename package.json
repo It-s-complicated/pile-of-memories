@@ -36,6 +36,9 @@
   "devDependencies": {
     "@sveltejs/adapter-node": "6.0.0",
     "@sveltejs/kit": "3.1.0",
+    "@tanstack/devtools-vite": "^0.8.5",
+    "@tanstack/svelte-ai-devtools": "^1.0.0",
+    "@tanstack/svelte-devtools": "^0.1.7",
     "@types/node": "^26.6.5",
     "@types/pg": "^8.23.1",
     "@typescript/native-preview": "npm:typescript@7.0.2",
@@ -58,5 +61,16 @@
   "allowScripts": {
     "file:../../lightningcss@1.32.0/node_modules/lightningcss": true,
     "file:../../browser-fs-access@0.29.1/node_modules/browser-fs-access": true
+  },
+  "intent": {
+    "skills": [
+      "@tanstack/ai",
+      "@tanstack/db",
+      "@tanstack/devtools",
+      "@tanstack/devtools-event-client",
+      "@tanstack/devtools-utils",
+      "@tanstack/devtools-vite",
+      "@tanstack/svelte-db"
+    ]
   }
 }

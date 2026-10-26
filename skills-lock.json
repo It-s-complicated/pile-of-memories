@@ -1,11 +1,11 @@
 {
   "version": 1,
   "skills": {
-    "advocaat": {
-      "source": "pithings/advocaat",
+    "tanstack-ai": {
+      "source": "TanStack/ai",
       "sourceType": "github",
-      "skillPath": "skills/advocaat/SKILL.md",
-      "computedHash": "e6797533eadd20455c10f0ae59904d200ba9e2e3a39035f321ccc21d400423f4"
+      "skillPath": "skills/tanstack-ai/SKILL.md",
+      "computedHash": "ae5833375e48f07b2a1eeb9b57f6d57a5ec9d1fc8e2d091f7c4808bdbb48301f"
     },
     "typesafe-ai": {
       "source": "typesafe-ai/skills",

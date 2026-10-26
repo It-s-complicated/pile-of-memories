@@ -54,6 +54,13 @@ Title generation uses the Responses API at `https://opencode.ai/inference/openai
 When migrating from Go, set the new key locally and in the deployment environment, then restart or
 redeploy; `OPENCODE_GO_API_KEY` is no longer used.
 
+During `vp dev`, open the floating TanStack Devtools button and select **TanStack AI**. The Vite
+plugin connects server AI events to the panel automatically, and the panel is excluded from
+production builds. The current official panel shows activity totals for server-only enrichment;
+its detailed inspector requires a browser AI hook and otherwise shows "No AI hooks registered yet."
+TypeSafe `decide()` events report lifecycle and usage metadata without label questions, answers, or
+probabilities. Existing persisted enrichment analytics remain available independently.
+
 ## Tags and topics
 
 Choose **Tags & topics** in **Board tools** to create, edit, or delete labels. **Tags** are broad areas;
