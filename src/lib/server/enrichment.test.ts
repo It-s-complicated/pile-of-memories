@@ -44,6 +44,7 @@ it("combines a generated title with only vocabulary-selected labels, including n
     models: ["gpt-6-luna"],
     api: "responses",
   });
+  expect(chat).toHaveBeenCalledWith(expect.objectContaining({ threadId: "test", stream: false }));
   expect(result.usage.providerCost).toBeNull();
   expect((await enrichMemory({ description: "Learning CSS grid" }, [])).output).toEqual({
     kind: "note",

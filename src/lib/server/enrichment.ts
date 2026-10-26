@@ -131,9 +131,10 @@ export async function enrichMemory(
   }, PROVIDER_TIMEOUT_MS);
 
   try {
+    const threadId = generateMessageId();
     const opencode = openaiCompatible({
       name: "opencode-zen",
-      defaultHeaders: { "x-opencode-session": generateMessageId() },
+      defaultHeaders: { "x-opencode-session": threadId },
       baseURL: "https://opencode.ai/inference/openai/v1",
       apiKey: OPENCODE_API_KEY,
       models: [TITLE_MODEL],
@@ -143,6 +144,7 @@ export async function enrichMemory(
     const [result, labels] = await Promise.all([
       chat({
         adapter: opencode(TITLE_MODEL),
+        threadId,
         stream: false,
         abortController,
         middleware: [analyticsMiddleware],
