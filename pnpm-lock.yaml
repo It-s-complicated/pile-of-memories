@@ -197,11 +197,11 @@ importers:
         specifier: ^1.0.0
         version: 1.0.0(@tanstack/ai@1.0.1(zod@4.6.7))
       '@tanstack/browser-db-sqlite-persistence':
-        specifier: ^0.2.37
-        version: 0.2.37(@journeyapps/wa-sqlite@1.7.2)(typescript@6.0.3)
+        specifier: ^1.0.0-rc.1
+        version: 1.0.0-rc.1(@journeyapps/wa-sqlite@1.7.2)(typescript@6.0.3)
       '@tanstack/svelte-db':
-        specifier: ^0.5.12
-        version: 0.5.12(svelte@5.57.3)(typescript@6.0.3)
+        specifier: ^1.0.0-rc.1
+        version: 1.0.0-rc.1(svelte@5.57.3)(typescript@6.0.3)
       '@xyflow/svelte':
         specifier: ^1.7.0
         version: 1.7.0(svelte@5.57.3)
@@ -788,24 +788,24 @@ packages:
       '@opentelemetry/api':
         optional: true
 
-  '@tanstack/browser-db-sqlite-persistence@0.2.37':
-    resolution: {integrity: sha512-ftGMP5X906NoOi/S9TSwSQJ3saemgdF9kJbD9016kGQFSXwYwlvLFZx1QxoHh+AI5bpWGqxq8WwKbJaYcNrJ0A==}
+  '@tanstack/browser-db-sqlite-persistence@1.0.0-rc.1':
+    resolution: {integrity: sha512-kW008FnEkO1AduRrcZRRxh1qNy+U4oC0j0IP/HRwzKDzcMgtv3Tzf2ltMgmtwKsvxt4l6NcM9gHZnbp+28KN9Q==}
     peerDependencies:
       '@journeyapps/wa-sqlite': ^1.4.1
       typescript: '>=4.7'
 
-  '@tanstack/db-ivm@0.2.0':
-    resolution: {integrity: sha512-AuMuGzVdWR5qzJPRYajmrUp95vMo0duvMZ0zBjMOvaI9rkh2GHZWCsJ/p7s81UN4Lep6HHJjahnYUF+XVL0+AQ==}
+  '@tanstack/db-ivm@1.0.0-rc.1':
+    resolution: {integrity: sha512-Se2n19f/Ydl+j9/CFCybvQJuRYGPGv2ERm+x0uD8VjnSoRjvez74YS9P0ywyAbVNSAU3k+hwZF3AWXh23gltOA==}
     peerDependencies:
       typescript: '>=4.7'
 
-  '@tanstack/db-sqlite-persistence-core@0.4.12':
-    resolution: {integrity: sha512-lGBkWTtnKB5ZE7rN87S3O1SSNNhGRDokHGil3UyR+YRcjk52JeZzVYufXJGs12I31L+6srTRM6/sWBUPg3e27Q==}
+  '@tanstack/db-sqlite-persistence-core@1.0.0-rc.1':
+    resolution: {integrity: sha512-RcdVHzmRjdpqLMrdyFRCkvstjgl9o18nA+m+KAGEh1JgljGcuL9HjPbbwE8fCBz83h5PannicjBqET4M8pAyjg==}
     peerDependencies:
       typescript: '>=4.7'
 
-  '@tanstack/db@0.15.2':
-    resolution: {integrity: sha512-s7CR8kOgkF1oPEGyKWItWHsg7U3hhQQu+k9CPjjAWwS6wzWVvjCbHbu/xnJvO1aPe7v3SBwo1tf6CMyKjNPNxg==}
+  '@tanstack/db@1.0.0-rc.1':
+    resolution: {integrity: sha512-Kwk4bMDr2XkYCkIyA8h2rEbqACspvLhiGFeciz1FHWFrR4Oqa8IrJjUAJgpKEtBXdLbYinxDcFv0rxvbTtz/MQ==}
     peerDependencies:
       typescript: '>=4.7'
 
@@ -823,8 +823,8 @@ packages:
     resolution: {integrity: sha512-eQ1MyLKCHyXiH7NbdmB80W77OhiMgGBUb+qDx/8WMGbwg5Lf/NlfD0TfNYAqY77i8V3AxoDoYdICrQE5ADw4Yw==}
     engines: {node: '>=18'}
 
-  '@tanstack/svelte-db@0.5.12':
-    resolution: {integrity: sha512-LIpzRLlU8pZU4Vkj7NayabeRt7elt4qumGCxx3zRL8PJYVMaP5YJxutuddngk/kFHTmQPWzFct9DYS0Ujyo9pw==}
+  '@tanstack/svelte-db@1.0.0-rc.1':
+    resolution: {integrity: sha512-B1ZggrrYpvHdwvcv3PPvdSBOf79ONZz2vg79oFHq/i2WvYubAPP+MC0pGdNWdu+5b+/AsNRJhJtSxemvAxVbew==}
     peerDependencies:
       svelte: ^5.0.0
 
@@ -2285,27 +2285,27 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  '@tanstack/browser-db-sqlite-persistence@0.2.37(@journeyapps/wa-sqlite@1.7.2)(typescript@6.0.3)':
+  '@tanstack/browser-db-sqlite-persistence@1.0.0-rc.1(@journeyapps/wa-sqlite@1.7.2)(typescript@6.0.3)':
     dependencies:
       '@journeyapps/wa-sqlite': 1.7.2
-      '@tanstack/db-sqlite-persistence-core': 0.4.12(typescript@6.0.3)
+      '@tanstack/db-sqlite-persistence-core': 1.0.0-rc.1(typescript@6.0.3)
       typescript: 6.0.3
 
-  '@tanstack/db-ivm@0.2.0(typescript@6.0.3)':
+  '@tanstack/db-ivm@1.0.0-rc.1(typescript@6.0.3)':
     dependencies:
       fractional-indexing: 3.4.0
       typescript: 6.0.3
 
-  '@tanstack/db-sqlite-persistence-core@0.4.12(typescript@6.0.3)':
+  '@tanstack/db-sqlite-persistence-core@1.0.0-rc.1(typescript@6.0.3)':
     dependencies:
       '@standard-schema/spec': 1.1.0
-      '@tanstack/db': 0.15.2(typescript@6.0.3)
+      '@tanstack/db': 1.0.0-rc.1(typescript@6.0.3)
       typescript: 6.0.3
 
-  '@tanstack/db@0.15.2(typescript@6.0.3)':
+  '@tanstack/db@1.0.0-rc.1(typescript@6.0.3)':
     dependencies:
       '@standard-schema/spec': 1.1.0
-      '@tanstack/db-ivm': 0.2.0(typescript@6.0.3)
+      '@tanstack/db-ivm': 1.0.0-rc.1(typescript@6.0.3)
       '@tanstack/pacer-lite': 0.2.2
       typescript: 6.0.3
 
@@ -2326,9 +2326,9 @@ snapshots:
 
   '@tanstack/pacer-lite@0.2.2': {}
 
-  '@tanstack/svelte-db@0.5.12(svelte@5.57.3)(typescript@6.0.3)':
+  '@tanstack/svelte-db@1.0.0-rc.1(svelte@5.57.3)(typescript@6.0.3)':
     dependencies:
-      '@tanstack/db': 0.15.2(typescript@6.0.3)
+      '@tanstack/db': 1.0.0-rc.1(typescript@6.0.3)
       svelte: 5.57.3
     transitivePeerDependencies:
       - typescript

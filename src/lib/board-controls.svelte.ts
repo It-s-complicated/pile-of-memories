@@ -156,7 +156,7 @@ export class BoardState implements BoardControls {
         this.cacheWarning = "Local storage unavailable. Changes still save to the server.";
         const memory = await createCardCollection();
         this.#cacheToClear = memory;
-        this.#closeCache = () => memory.collection.cleanup();
+        this.#closeCache = () => memory.collection.cleanup({ dependents: true });
         if (!this.#stopped) this.#cache = memory;
       }
     })();

@@ -137,8 +137,9 @@ Dragging and layout previews stay in Svelte Flow until saved; failed moves rever
 If OPFS is unavailable, the app uses an in-memory collection and reports that caching is unavailable.
 Multiple tabs coordinate SQLite access through TanStack's browser coordinator.
 
-SQLite runs in a bundled worker with WASM; HTTPS (or localhost) is required. The unused PowerSync
-extension download in `@journeyapps/wa-sqlite`'s install script is deliberately disabled. Bump
+SQLite runs in a bundled worker with a separate WASM asset; Vite emits both for deployment.
+HTTPS (or localhost) is required. The unused PowerSync extension download in
+`@journeyapps/wa-sqlite`'s install script is deliberately disabled. Bump
 `schemaVersion` in `src/lib/card-collection.ts` when the cached card shape changes to reset and
 refresh the local replica. Browser storage can be evicted; PostgreSQL remains the source of truth.
 

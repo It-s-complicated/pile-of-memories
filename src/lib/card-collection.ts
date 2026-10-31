@@ -82,7 +82,7 @@ export async function openCardCache(userId: string) {
     return {
       ...board,
       async close() {
-        await board.collection.cleanup();
+        await board.collection.cleanup({ dependents: true });
         coordinator.dispose();
         await database.close?.();
       },

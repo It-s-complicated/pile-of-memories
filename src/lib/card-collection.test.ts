@@ -1,6 +1,35 @@
-import { expect, it } from "vite-plus/test";
-import { createCardCollection } from "./card-collection";
+import { createLiveQueryCollection } from "@tanstack/svelte-db";
+import { expect, it, vi } from "vite-plus/test";
+import { createCardCollection, openCardCache } from "./card-collection";
 import type { Card } from "./card";
+
+const cacheResources = vi.hoisted(() => ({ close: vi.fn(), dispose: vi.fn() }));
+
+vi.mock("@tanstack/browser-db-sqlite-persistence", () => ({
+  openBrowserWASQLiteOPFSDatabase: async () => ({ close: cacheResources.close }),
+  BrowserCollectionCoordinator: class {
+    dispose = cacheResources.dispose;
+  },
+  createBrowserWASQLitePersistence: () => ({}),
+  persistedCollectionOptions: (options: object) => options,
+}));
+
+it("closes the cache and its resources while a live query is reading cards", async () => {
+  const board = await openCardCache("test-user");
+  const query = createLiveQueryCollection((q) => q.from({ card: board.collection }));
+  await query.preload();
+
+  try {
+    await board.close();
+    expect(query.status).toBe("cleaned-up");
+    expect(board.collection.status).toBe("cleaned-up");
+    expect(cacheResources.dispose).toHaveBeenCalledOnce();
+    expect(cacheResources.close).toHaveBeenCalledOnce();
+  } finally {
+    await query.cleanup();
+    await board.collection.cleanup({ dependents: true });
+  }
+});
 
 it("reconciles server snapshots, confirmed writes and deletions without accepting invalid cards", async () => {
   const board = await createCardCollection();
