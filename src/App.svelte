@@ -24,8 +24,16 @@
   import ArchiveDialog from "./components/ArchiveDialog.svelte";
   import ExploreDialog from "./components/ExploreDialog.svelte";
   import LinkedMemoryReader from "./components/LinkedMemoryReader.svelte";
+  import type { SharedMemoryDraft } from "./lib/shared-memory";
 
-  let { userId }: { userId: string } = $props();
+  let { userId, sharedDraft, sharedDraftCount, sharedStorageAvailable, onsharedchange, onsharedfinish }: {
+    userId: string;
+    sharedDraft?: SharedMemoryDraft;
+    sharedDraftCount: number;
+    sharedStorageAvailable: boolean;
+    onsharedchange: (draft: SharedMemoryDraft) => void;
+    onsharedfinish: (id: string) => void;
+  } = $props();
   // The page keys this component by user, giving each account its own board model.
   const board = createBoardControls(untrack(() => userId));
   const nodeTypes = { memory: MemoryNodeComponent } satisfies NodeTypes;
@@ -130,6 +138,11 @@
 {#if board.captureOpen}
   <CaptureDialog
     initialDraft={board.captureDraft}
+    initialSharedDraft={board.captureDraft ? undefined : sharedDraft}
+    {sharedDraftCount}
+    {sharedStorageAvailable}
+    {onsharedchange}
+    {onsharedfinish}
     vocabulary={board.vocabulary}
     labelsReady={board.labelsReady}
     boardReady={board.captureReady}

@@ -150,6 +150,33 @@ The web app manifest supports home-screen installation and a **New memory** shor
 capture and Forward reopens it. Direct launches return to the board on Back, and GitHub sign-in
 preserves the capture URL. Reloading or closing capture discards its unsaved draft.
 
+### Receive shared text and links
+
+On supported Android browsers, install the HTTPS app and choose **Pile of Memories** from another
+app's Share sheet. Shared titles, text, and links open in the existing capture dialog for editing;
+**Continue** runs the usual AI suggestions and review. Nothing is saved until **Create card**.
+Creation uses the normal placement and reorganization preview. Files and images are not accepted.
+
+Shared drafts, including edits in review, are kept in `sessionStorage` in the receiving tab through
+reloads and GitHub sign-in. Shared content is removed from the URL once stored, before sign-in.
+Browser Back keeps the draft; **Cancel** discards it; a successful save removes it. Additional shares
+in the same tab queue behind unfinished ones; use **+** for the next draft after saving or cancelling.
+Closing the tab ends draft retention. Normal and exploration drafts remain temporary.
+If browser storage is blocked or full, a warning explains that edits cannot survive reloads; the
+original incoming text stays in the URL when it cannot be stored before sign-in. Shares over the
+8,000-character capture limit stay intact for editing and must be shortened before continuing.
+
+The manifest uses Web Share Target with a GET launch at `/?action=new-memory` and fields
+`share_title`, `share_text`, and `share_url`. For a browser smoke test, open
+`/?action=new-memory&share_title=Read%20this&share_text=A%20note&share_url=https%3A%2F%2Fexample.com`.
+Test while signed out, sign in, edit, reload, then save or cancel. Confirm that saving creates one
+card containing the text/link and opens the normal layout review when positions change.
+Existing Android installs may need a manifest update or reinstallation to register the share target.
+Verify the native Share sheet on a physical Android device after deployment; iOS installed web apps
+do not support this incoming share target.
+
+### Installation and runtime
+
 Install the deployed HTTPS site from the browser's install/add-to-home-screen menu. Manifest
 shortcuts depend on the platform (supported on Android, not as custom long-press actions on iOS).
 An iOS Shortcut can open the capture URL instead. There is no service worker or offline app shell;
