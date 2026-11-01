@@ -32,6 +32,30 @@ it("ignores unrelated and empty fields, and uses the first repeated field", () =
   );
 });
 
+it.each([
+  "https://example.com/article",
+  "https://example.com?read=1",
+  "https://example.com#section",
+  "https://example.com.other.test",
+])("preserves a distinct shared URL when text contains %s", (text) => {
+  const url = "https://example.com";
+  expect(getSharedMemoryBody(new URLSearchParams({ share_text: text, share_url: url }))).toBe(
+    `${text}\n\n${url}`,
+  );
+});
+
+it("recognizes a complete URL already present in a Markdown link", () => {
+  const text = "Read [this article](https://example.com/article).";
+  expect(
+    getSharedMemoryBody(
+      new URLSearchParams({
+        share_text: text,
+        share_url: "https://example.com/article",
+      }),
+    ),
+  ).toBe(text);
+});
+
 it("keeps oversized text intact for editing rather than silently truncating it", () => {
   const body = `First line\n${"a".repeat(9000)}`;
   expect(getSharedMemoryBody(new URLSearchParams({ share_text: body }))).toBe(body);
