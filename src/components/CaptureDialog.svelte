@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount, untrack } from "svelte";
   import { SvelteMap } from "svelte/reactivity";
+  import { page } from "$app/state";
   import TagEditor from "./TagEditor.svelte";
   import type { RemoteFormEnhanceInstance } from "$app/server";
   import { createCardFormSchema, cardKindLabels, type Card, type CardInput, type CardKind, type CreateCardFormInput } from "../lib/card";
@@ -14,6 +15,8 @@
   import type { IdeaDraft } from "../lib/exploration";
   import { trackExplorationEvent } from "../lib/exploration-analytics.remote";
   import { createDraftLifecycle } from "../lib/draft-lifecycle";
+  import { getSharedMemoryBody } from "../lib/shared-memory";
+  import { clearSharedMemoryUrl } from "../lib/capture-navigation";
 
   let {
     vocabulary,
@@ -49,7 +52,9 @@
   let newMemoryStep = $state<"capture" | "review">(draft ? "review" : "capture");
   let memoryTitle = $state(draft?.title ?? "");
   let memoryKind = $state<CardKind>(draft?.kind ?? "note");
-  let memoryBody = $state(draft?.body ?? "");
+  let memoryBody = $state(
+    draft?.body ?? untrack(() => getSharedMemoryBody((page.shallow?.url ?? page.url).searchParams)) ?? "",
+  );
   let memoryTags = $state<string[]>([]);
   let memoryTopics = $state<string[]>([]);
   let tagSuggestions = $derived(vocabulary.filter(({ kind }) => kind === "tag").map(({ name }) => name));
@@ -69,6 +74,7 @@
   let persistenceError = $state("");
 
   onMount(() => {
+    void clearSharedMemoryUrl();
     if (draft) {
       setCardFields();
       void continueMemory();
@@ -105,7 +111,7 @@
   async function continueMemory(event?: SubmitEvent): Promise<void> {
     event?.preventDefault();
     const description = memoryBody.trim();
-    if (!description || enrichmentInFlight) return;
+    if (!description || description.length > 8000 || enrichmentInFlight) return;
     enrichmentInFlight = true;
     enriching = true;
     const title = draft ? memoryTitle.trim() : undefined;
@@ -170,7 +176,9 @@
     const generation = enrichmentGeneration;
     persistenceError = "";
     try {
-      if (await draftLifecycle.save(() => oncreate(form)) && generation === enrichmentGeneration) onclose();
+      if (await draftLifecycle.save(() => oncreate(form))) {
+        if (generation === enrichmentGeneration) onclose();
+      }
     } catch (error) {
       if (generation === enrichmentGeneration) persistenceError = getErrorMessage(error);
     }
@@ -203,11 +211,14 @@
             {@attach focusCapture}
           ></textarea>
         </label>
+        {#if memoryBody.length > 8000}
+          <p class="placement-note" role="alert">This text is {memoryBody.length} characters. Shorten it to 8,000 characters to continue.</p>
+        {/if}
         <footer>
           <button type="button" class="secondary-button" onclick={cancelCapture}>
             Cancel
           </button>
-          <button type="submit" class="card-button" disabled={enriching || !labelsReady}>
+          <button type="submit" class="card-button" disabled={enriching || !labelsReady || !memoryBody.trim() || memoryBody.length > 8000}>
             {enriching ? "Thinking…" : labelsReady ? "Continue" : "Loading labels…"}
           </button>
         </footer>

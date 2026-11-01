@@ -8,19 +8,24 @@
 
   let { data }: { data: PageData } = $props();
   let boardView = $state<App>();
+  let initialized = $state(false);
   const account = createAccountControls(async () => {
     await boardView?.clearCache();
   });
 
   onMount(() => {
-    void initializeCaptureHistory();
+    void initializeCaptureHistory().then(() => {
+      initialized = true;
+    });
     return account.mount();
   });
 </script>
 
 <svelte:head><title>Pile of Memories</title></svelte:head>
 
-{#if data.userId && !account.signedOut}
+{#if !initialized}
+  <BoardNotice message="Opening memories…" />
+{:else if data.userId && !account.signedOut}
   {#key data.userId}
     <App userId={data.userId} bind:this={boardView} />
   {/key}
