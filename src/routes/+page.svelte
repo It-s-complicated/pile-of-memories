@@ -1,49 +1,24 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { goto } from "$app/navigation";
-  import { page } from "$app/state";
   import type { PageData } from "./$types";
   import { initializeCaptureHistory } from "#lib/capture-navigation.js";
   import { createAccountControls } from "#lib/account-controls.svelte.js";
-  import { prepareSharedMemoryCapture, storeSharedMemoryDrafts, type SharedMemoryDraft } from "#lib/shared-memory.js";
   import App from "../App.svelte";
   import BoardNotice from "../components/BoardNotice.svelte";
 
   let { data }: { data: PageData } = $props();
   let boardView = $state<App>();
   let initialized = $state(false);
-  let sharedDrafts = $state.raw<SharedMemoryDraft[]>([]);
-  let sharedStorageAvailable = $state(true);
-  let draftStorage: Storage | undefined;
   const account = createAccountControls(async () => {
     await boardView?.clearCache();
   });
 
   onMount(() => {
-    try { draftStorage = sessionStorage; } catch { /* Storage may be blocked. */ }
-    const source = page.shallow?.url ?? page.url;
-    const prepared = prepareSharedMemoryCapture(new URL(source.href), draftStorage);
-    sharedDrafts = prepared.drafts;
-    sharedStorageAvailable = prepared.persisted;
-    void (async () => {
-      if (prepared.url.href !== source.href) {
-        await goto(prepared.url, { shallow: true, replace: true, state: page.state });
-      }
-      await initializeCaptureHistory();
+    void initializeCaptureHistory().then(() => {
       initialized = true;
-    })();
+    });
     return account.mount();
   });
-
-  function updateSharedDraft(draft: SharedMemoryDraft): void {
-    sharedDrafts = sharedDrafts.map((item) => item.id === draft.id ? draft : item);
-    sharedStorageAvailable = storeSharedMemoryDrafts(sharedDrafts, draftStorage);
-  }
-
-  function finishSharedDraft(id: string): void {
-    sharedDrafts = sharedDrafts.filter((item) => item.id !== id);
-    sharedStorageAvailable = storeSharedMemoryDrafts(sharedDrafts, draftStorage);
-  }
 </script>
 
 <svelte:head><title>Pile of Memories</title></svelte:head>
@@ -52,15 +27,7 @@
   <BoardNotice message="Opening memories…" />
 {:else if data.userId && !account.signedOut}
   {#key data.userId}
-    <App
-      userId={data.userId}
-      sharedDraft={sharedDrafts[0]}
-      sharedDraftCount={sharedDrafts.length}
-      {sharedStorageAvailable}
-      onsharedchange={updateSharedDraft}
-      onsharedfinish={finishSharedDraft}
-      bind:this={boardView}
-    />
+    <App userId={data.userId} bind:this={boardView} />
   {/key}
   {#if account.authError}<BoardNotice message={account.authError} role="alert" />{/if}
 {:else}
@@ -71,13 +38,6 @@
       <p class="access-copy">
         This drawer belongs to one collector. Continue with the approved GitHub account to open it.
       </p>
-      {#if sharedDrafts.length}
-        <p class="access-copy" role="status">
-          {sharedStorageAvailable
-            ? "Your shared text is kept in this tab. Sign in to review it before saving."
-            : "Sign in to review your shared text. Browser storage is blocked; edits will not survive a reload."}
-        </p>
-      {/if}
       <button class="card-button login-button" type="button" onclick={account.signIn} disabled={account.working}>
         {account.working ? "Redirecting…" : "Continue with GitHub"}
       </button>

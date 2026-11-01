@@ -157,20 +157,17 @@ app's Share sheet. Shared titles, text, and links open in the existing capture d
 **Continue** runs the usual AI suggestions and review. Nothing is saved until **Create card**.
 Creation uses the normal placement and reorganization preview. Files and images are not accepted.
 
-Shared drafts, including edits in review, are kept in `sessionStorage` in the receiving tab through
-reloads and GitHub sign-in. Shared content is removed from the URL once stored, before sign-in.
-Browser Back keeps the draft; **Cancel** discards it; a successful save removes it. Additional shares
-in the same tab queue behind unfinished ones; use **+** for the next draft after saving or cancelling.
-Closing the tab ends draft retention. Normal and exploration drafts remain temporary.
-If browser storage is blocked or full, a warning explains that edits cannot survive reloads; the
-original incoming text stays in the URL when it cannot be stored before sign-in. Shares over the
+Shared content prefills the normal capture dialog. The incoming parameters remain in the URL through
+GitHub sign-in, then are removed when the dialog opens. Editing, review, saving, and cancellation work
+as they do for any new memory. Reloading or closing capture discards unsaved content. Shares over the
 8,000-character capture limit stay intact for editing and must be shortened before continuing.
 
 The manifest uses Web Share Target with a GET launch at `/?action=new-memory` and fields
 `share_title`, `share_text`, and `share_url`. For a browser smoke test, open
 `/?action=new-memory&share_title=Read%20this&share_text=A%20note&share_url=https%3A%2F%2Fexample.com`.
-Test while signed out, sign in, edit, reload, then save or cancel. Confirm that saving creates one
-card containing the text/link and opens the normal layout review when positions change.
+Test while signed out, sign in, edit, then save or cancel. Confirm that saving creates one card
+containing the text/link and opens the normal layout review when positions change. Reload or reopen
+capture after cancellation and confirm that the shared content does not return.
 Existing Android installs may need a manifest update or reinstallation to register the share target.
 Verify the native Share sheet on a physical Android device after deployment; iOS installed web apps
 do not support this incoming share target.

@@ -22,7 +22,7 @@ Organization reflects card content through tags and topics. AI suggests metadata
 
 - Single-user, private instance protected by Better Auth with GitHub; only the configured approved account can access the board, exports, and remote functions.
 - Capture is description-first: the owner writes text, AI suggests title and tags (editable).
-- Installed Android sharing can open text and links in capture. Shared drafts survive same-tab reloads and sign-in until saved or explicitly cancelled; additional shares in that tab queue for the next capture.
+- Installed Android sharing prefills normal memory capture with text and links. Incoming content survives sign-in in the URL; once capture opens, it follows the same temporary editing and saving flow as any new memory.
 - Cards are read as Markdown and edited (title, text, tags, derived links) in one dialog.
 - Runs on SvelteKit + Svelte Flow canvas, PostgreSQL on Supabase with `LISTEN/NOTIFY` live snapshots and a TanStack DB browser cache backed by SQLite.
 - AI title suggestions run through TanStack AI → OpenCode Console (Zen), enabled by `OPENCODE_API_KEY`; TypeSafe suggests card kind and labels using `TYPESAFE_API_KEY` and the managed database vocabulary.

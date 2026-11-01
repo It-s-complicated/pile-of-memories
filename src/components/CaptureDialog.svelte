@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount, untrack } from "svelte";
   import { SvelteMap } from "svelte/reactivity";
+  import { page } from "$app/state";
   import TagEditor from "./TagEditor.svelte";
   import type { RemoteFormEnhanceInstance } from "$app/server";
   import { createCardFormSchema, cardKindLabels, type Card, type CardInput, type CardKind, type CreateCardFormInput } from "../lib/card";
@@ -14,7 +15,8 @@
   import type { IdeaDraft } from "../lib/exploration";
   import { trackExplorationEvent } from "../lib/exploration-analytics.remote";
   import { createDraftLifecycle } from "../lib/draft-lifecycle";
-  import type { SharedMemoryDraft } from "../lib/shared-memory";
+  import { getSharedMemoryBody } from "../lib/shared-memory";
+  import { clearSharedMemoryUrl } from "../lib/capture-navigation";
 
   let {
     vocabulary,
@@ -24,22 +26,12 @@
     onclose,
     boardReady,
     initialDraft,
-    initialSharedDraft,
-    sharedDraftCount = 0,
-    sharedStorageAvailable = true,
-    onsharedchange,
-    onsharedfinish,
   }: {
     vocabulary: ManagedLabel[];
     labelsReady: boolean;
     onclose: () => void;
     boardReady: boolean;
     initialDraft?: IdeaDraft;
-    initialSharedDraft?: SharedMemoryDraft;
-    sharedDraftCount?: number;
-    sharedStorageAvailable?: boolean;
-    onsharedchange?: (draft: SharedMemoryDraft) => void;
-    onsharedfinish?: (id: string) => void;
     oncreate: (form: RemoteFormEnhanceInstance<CreateCardFormInput, Card>) => Promise<boolean>;
     getPosition: (draft: Pick<CardInput, "tags" | "topics">) => CardInput["position"];
   } = $props();
@@ -55,16 +47,16 @@
 
   const enrichmentCache = new SvelteMap<string, CachedEnrichment>();
   const draft = untrack(() => initialDraft);
-  const sharedDraft = untrack(() => initialSharedDraft);
-  let sharedFinished = false;
-  const cardId = sharedDraft?.id ?? crypto.randomUUID();
+  const cardId = crypto.randomUUID();
   const createForm = createCard.preflight(createCardFormSchema);
-  let newMemoryStep = $state<"capture" | "review">(draft ? "review" : sharedDraft?.step ?? "capture");
-  let memoryTitle = $state(draft?.title ?? sharedDraft?.title ?? "");
-  let memoryKind = $state<CardKind>(draft?.kind ?? sharedDraft?.kind ?? "note");
-  let memoryBody = $state(draft?.body ?? sharedDraft?.body ?? "");
-  let memoryTags = $state<string[]>(sharedDraft?.tags ?? []);
-  let memoryTopics = $state<string[]>(sharedDraft?.topics ?? []);
+  let newMemoryStep = $state<"capture" | "review">(draft ? "review" : "capture");
+  let memoryTitle = $state(draft?.title ?? "");
+  let memoryKind = $state<CardKind>(draft?.kind ?? "note");
+  let memoryBody = $state(
+    draft?.body ?? untrack(() => getSharedMemoryBody((page.shallow?.url ?? page.url).searchParams)) ?? "",
+  );
+  let memoryTags = $state<string[]>([]);
+  let memoryTopics = $state<string[]>([]);
   let tagSuggestions = $derived(vocabulary.filter(({ kind }) => kind === "tag").map(({ name }) => name));
   let topicSuggestions = $derived(vocabulary.filter(({ kind }) => kind === "topic").map(({ name }) => name));
   let enrichmentWarning = $state("");
@@ -81,21 +73,12 @@
   let position = $derived(getPosition({ tags: memoryTags, topics: memoryTopics }));
   let persistenceError = $state("");
 
-  // Synchronize only shared drafts to browser storage; normal/exploration drafts stay temporary.
-  $effect(() => {
-    if (!sharedDraft || sharedFinished) return;
-    const snapshot: SharedMemoryDraft = {
-      id: sharedDraft.id, step: newMemoryStep, title: memoryTitle, body: memoryBody,
-      kind: memoryKind, tags: [...memoryTags], topics: [...memoryTopics],
-    };
-    untrack(() => onsharedchange?.(snapshot));
-  });
-
   onMount(() => {
+    void clearSharedMemoryUrl();
     if (draft) {
       setCardFields();
       void continueMemory();
-    } else if (sharedDraft?.step === "review") setCardFields();
+    }
     return draftLifecycle.dismiss;
   });
 
@@ -113,12 +96,6 @@
     enrichmentGeneration += 1;
     draftLifecycle.dismiss();
     onclose();
-    finishSharedDraft();
-  }
-
-  function finishSharedDraft(): void {
-    sharedFinished = true;
-    if (sharedDraft) onsharedfinish?.(sharedDraft.id);
   }
 
   function setCardFields(): void {
@@ -200,7 +177,6 @@
     persistenceError = "";
     try {
       if (await draftLifecycle.save(() => oncreate(form))) {
-        finishSharedDraft();
         if (generation === enrichmentGeneration) onclose();
       }
     } catch (error) {
@@ -218,14 +194,6 @@
     }}
     {@attach showModal}
   >
-    {#if sharedDraft}
-      <p class="placement-note" role="status">
-        {sharedStorageAvailable
-          ? "Shared with Memories. Review and edit before saving. Browser Back keeps this draft; Cancel discards it."
-          : "Browser storage is blocked. Keep this tab open; draft edits will be lost on reload."}
-        {#if sharedDraftCount > 1} {sharedDraftCount - 1} more shared {sharedDraftCount === 2 ? "draft waits" : "drafts wait"} for your next capture.{/if}
-      </p>
-    {/if}
     {#if newMemoryStep === "capture"}
       <form method="dialog" onsubmit={continueMemory}>
         <header>
@@ -312,7 +280,6 @@
             <button type="button" class="secondary-button" disabled={saving} onclick={cancelCapture}>Cancel</button>
           {:else}
             <button type="button" class="secondary-button" disabled={saving} onclick={() => (newMemoryStep = "capture")}>Back</button>
-            {#if sharedDraft}<button type="button" class="secondary-button" disabled={saving} onclick={cancelCapture}>Cancel</button>{/if}
           {/if}
           <button type="submit" class="card-button" disabled={saving || enriching || !boardReady}>
             {saving ? "Saving…" : enriching ? "Finding tags…" : boardReady ? "Create card" : "Loading board…"}
