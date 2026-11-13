@@ -74,6 +74,31 @@ it("combines a generated title with only vocabulary-selected labels, including n
   });
 });
 
+it("cuts a title that runs long instead of failing the enrichment", async () => {
+  vi.mocked(chat).mockResolvedValue({ text: `${"Long ".repeat(20)}title\n`, chunks: [] });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation(() =>
+      Response.json({
+        model: "jev-1.13.0",
+        answers: {
+          kind: {
+            type: "choice",
+            choice: "idea",
+            probabilities: { memory: 0, idea: 1, note: 0 },
+            confidence: 1,
+          },
+        },
+        usage: { input_tokens: 10, output_tokens: 1 },
+      }),
+    ),
+  );
+
+  const { output } = await enrichMemory({ description: "A long thought" }, []);
+
+  expect(output).toMatchObject({ kind: "idea", title: "Long ".repeat(16).trim() });
+});
+
 it("reuses an idea title and kind without calling the title provider, retaining source context and exact usage", async () => {
   vi.mocked(chat).mockClear();
   const fetchMock = vi.fn().mockResolvedValue(

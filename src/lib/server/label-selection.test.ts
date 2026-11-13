@@ -38,7 +38,7 @@ function mockAnswers(probabilities: number[], kind = "note") {
 
 describe("managed label selection", () => {
   it("batches candidates, keeps the first five matches, and distinguishes tags from topics", async () => {
-    const fetchMock = mockAnswers([0.1, 0.51, 0.95, 0.9, 0.85, 1, 0.99, 0.5]);
+    const fetchMock = mockAnswers([0.1, 0.61, 0.95, 0.9, 0.85, 1, 0.99, 0.6]);
     const labels = vocabulary([
       "Unrelated",
       "Boundary",
@@ -100,15 +100,15 @@ describe("managed label selection", () => {
     );
   });
 
-  it("preserves the default threshold: excludes 0.5 and accepts just above it", async () => {
-    mockAnswers([0.49, 0.5, 0.51]);
+  it("excludes labels at or below 0.6 and accepts just above it", async () => {
+    mockAnswers([0.5, 0.59, 0.6, 0.6001]);
     expect(
       await selectMemoryLabels(
         { description: "Memory" },
-        vocabulary(["A", "B", "C"]),
+        vocabulary(["A", "B", "C", "D"]),
         new AbortController().signal,
       ),
-    ).toMatchObject({ tags: [], topics: ["C"] });
+    ).toMatchObject({ tags: [], topics: ["D"] });
   });
 
   it.each(["memory", "idea", "note"])("classifies %s with an empty vocabulary", async (kind) => {

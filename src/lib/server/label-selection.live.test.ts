@@ -18,6 +18,17 @@ const vocabulary = Array.from(
       description: match[3]!.replaceAll("''", "'"),
     }),
 );
+// Apply the same description upgrades as an existing or freshly migrated board.
+const descriptionMigration = readFileSync(
+  new URL("../../../migrations/0008_refine_tag_descriptions.sql", import.meta.url),
+  "utf8",
+);
+for (const match of descriptionMigration.matchAll(
+  /\('([^']+)', '((?:[^']|'')*)', '((?:[^']|'')*)'\)/g,
+)) {
+  const label = vocabulary.find((label) => label.name === match[1]);
+  if (label) label.description = match[3]!.replaceAll("''", "'");
+}
 const examples = [
   {
     name: "AI reference note",
@@ -56,6 +67,42 @@ const examples = [
     existingTags: vocabulary,
   },
   {
+    name: "personal software project outside web development",
+    description:
+      "Plan for my own side project: implement a command-line file renaming tool in Rust, then package it as a standalone binary.",
+    kind: "idea",
+    required: ["Project"],
+    allowed: ["Project"],
+    existingTags: vocabulary,
+  },
+  {
+    name: "employed engineering work is not a personal project",
+    description:
+      "At my employer, our engineering team requires an on-call handover before each rotation. The handover must cover open incidents and escalation contacts.",
+    kind: "note",
+    required: ["Job"],
+    allowed: ["Job"],
+    existingTags: vocabulary,
+  },
+  {
+    name: "personal improvement outside work",
+    description:
+      "I want to become a better listener with friends: stop interrupting, ask a follow-up question, and let them finish before offering advice.",
+    kind: "idea",
+    required: ["Personal development"],
+    allowed: ["Personal development"],
+    existingTags: vocabulary,
+  },
+  {
+    name: "web development reference without project or employment context",
+    description:
+      "Reference: CSS grid lays out web page elements in rows and columns. The grid-template-columns property defines column sizes.",
+    kind: "note",
+    required: ["Web development", "CSS"],
+    allowed: ["Web development", "CSS"],
+    existingTags: vocabulary,
+  },
+  {
     name: "personal recollection without matching labels",
     description:
       "I baked a chocolate cake for my sister’s birthday yesterday. We laughed when the candles fell over, and I will treasure that evening together.",
@@ -76,6 +123,30 @@ const examples = [
     name: "passing mention does not become a topic",
     description:
       "Yesterday I reunited with my sister after years apart. Someone briefly mentioned CSS, but what I remember is her hug and our long walk by the river.",
+    kind: "memory",
+    required: [],
+    allowed: [],
+    existingTags: vocabulary,
+  },
+  {
+    name: "idea written as a bare question",
+    description: "podcast about local-first software?",
+    kind: "idea",
+    required: ["Local-first"],
+    allowed: ["Local-first", "Project"],
+    existingTags: vocabulary,
+  },
+  {
+    name: "short task",
+    description: "Call mom on Sunday",
+    kind: "note",
+    required: [],
+    allowed: [],
+    existingTags: vocabulary,
+  },
+  {
+    name: "short recollection",
+    description: "Coffee with Anna was really nice today",
     kind: "memory",
     required: [],
     allowed: [],
@@ -129,8 +200,7 @@ it.runIf(process.env.TEST_LIVE_ENRICHMENT === "1")(
       ],
     };
     const result = await selectMemoryLabels(input, vocabulary, AbortSignal.timeout(10_000));
-    // Planning a cake may qualify as Project; it must not inherit the source's AI topic.
-    expect([...result.tags, ...result.topics]).not.toContain("AI");
+    expect([...result.tags, ...result.topics]).toEqual([]);
   },
   15_000,
 );

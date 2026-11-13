@@ -9,6 +9,8 @@ views, row-level security, and grants. `migrations/0004_card_kind.sql` adds the 
 `migrations/0006_managed_labels.sql` adds the private `memory_labels` catalog and assignment triggers.
 `migrations/0007_exploration_analytics.sql` adds private exploration run/event analytics and
 distinguishes generated titles from titles supplied by an exploration draft.
+`migrations/0008_refine_tag_descriptions.sql` narrows the four default broad tags to the owner's
+intended meanings, updating only descriptions that still match the original defaults.
 Run all migrations with `vp run db:migrate` before starting the application. Runtime application
 code never creates or alters schema.
 
@@ -27,6 +29,7 @@ card data or event history. The label catalog publishes on the same channel.
 (`tag` or `topic`), and enrichment description (up to 1,000 characters). The initial migration
 seeds the default vocabulary and backfills custom labels, including archived-card assignments.
 Seeding runs only when the catalog is first created; subsequent migrations preserve edits/deletions.
+Description upgrades do not reclassify existing cards.
 
 Cards continue to use their existing string arrays. A before-write trigger validates labels,
 canonicalizes names, deduplicates assignments, and places each label in the array matching its

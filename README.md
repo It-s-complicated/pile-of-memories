@@ -39,6 +39,10 @@ there is no import/restore flow yet.
 
 ## Development
 
+Database migrations require the PostgreSQL command-line client (`psql`) on your PATH.
+On Debian/Ubuntu, install it with `sudo apt-get install postgresql-client`.
+The production image already includes it.
+
 ```sh
 vp install
 DATABASE_CONNECTION_STRING='postgresql://…' vp run db:migrate
@@ -63,6 +67,35 @@ redeploy; `OPENCODE_GO_API_KEY` is no longer used.
 Svelte Inspector is enabled during `vp dev`. Hold **Alt+X** and hover over an element to see its
 source location; click to open it in your editor, or right-click for the component stack. The
 inspector is excluded from production builds.
+
+### Mock mode
+
+To run the app without accounts, API keys or network access:
+
+```sh
+vp run db:mock   # disposable local PostgreSQL in Docker or Podman; leave it running
+vp run dev:mock  # in a second terminal
+```
+
+`dev:mock` loads [.env.mock](.env.mock) and starts [MSW](https://mswjs.io) inside the dev server.
+MSW answers every external HTTP request the server makes. A request without a mock fails instead of
+leaving the machine.
+
+- **GitHub:** "Continue with GitHub" signs in at once as the approved mock account.
+- **OpenCode:** a title is the memory's first line. A reflection is a fixed text that cites the
+  selected cards.
+- **TypeSafe:** a label is suggested when its name appears in the memory. The card type is the
+  first of memory, idea or note that the text mentions, otherwise note. Cards are related when
+  they share at least two words of six or more letters.
+
+PostgreSQL is not HTTP, so MSW cannot replace it. `db:mock` starts an empty database on port 54329
+with every migration applied, and deletes it when stopped. Mock mode refuses to start against a
+database whose name does not end in `_mock`, so a mock sign-in cannot reach a real board.
+
+The mocks live in `src/mocks`, and `src/hooks.server.ts` holds the only switch. The rest of the app
+is unaware of them and production builds contain none of their code. `src/mocks/mocks.test.ts` runs
+the app's real provider calls against the mocks, so it fails when a request changes in a way they
+cannot answer.
 
 ## Explore existing cards
 
@@ -97,6 +130,12 @@ Choose **Tags & topics** in **Board tools** to create, edit, or delete labels. *
 **topics** are specific subjects. Both have an editable enrichment description explaining what
 belongs and what does not. Descriptions are optional; without one, AI uses the label's name.
 AI reads the current database vocabulary on the server and suggests up to five tags/topics total.
+Only labels with a probability above 0.6 are suggested. Title generation uses low reasoning effort.
+
+The default broad tags distinguish personal **Project** work (mainly software), **Job** matters
+(employment and work as a software engineer), **Web development** (websites and web apps in any
+context), and **Personal development** (deliberate self-improvement in life or at work).
+Migration 0008 applies these descriptions to unchanged defaults; custom definitions are preserved.
 
 Capture and card editing have separate tag and topic selectors. New labels are created in the
 manager, not implicitly by typing into a card. Names are unique across both types, ignoring case.

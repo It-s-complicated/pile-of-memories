@@ -47,7 +47,8 @@ Memory cards are Svelte Flow nodes with `type === "memory"`.
 - When changing visual design or background cluster labels, read [DESIGN.md](DESIGN.md).
 - When changing persistence or schema, read [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) and [README.md — Browser cache](README.md#browser-cache).
 - When running locally, configuring authentication, or deploying, read [README.md — Development](README.md#development), [Authentication](README.md#authentication), and [Deployment](README.md#deployment).
-- For Coolify deployment or moving the Supabase database, read [COOLIFY.md](COOLIFY.md).
+- When adding or changing a request to an external service (GitHub, OpenCode, TypeSafe), update its mock in `src/mocks`; read [README.md — Mock mode](README.md#mock-mode).
+- For local access to the Coolify database, deployment, or moving the Supabase database, read [COOLIFY.md](COOLIFY.md).
 - When deciding product scope, read [PRODUCT.md](PRODUCT.md), which separates current behavior from future direction.
 
 ## Agent Tools
@@ -75,4 +76,19 @@ Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.de
 
 ## Auth for local development
 
-To pass the auth check: with the agent browser open a browser that the user can access and log in to.
+Prefer mock mode when the task needs neither the real board nor real model output: run `vp run db:mock`, then `vp run dev:mock`, and "Continue with GitHub" signs in without an account.
+
+To pass the auth check against the real services: with the agent browser open a browser that the user can access and log in to.
+
+## Local access to the Coolify database
+
+When the task needs the real database, follow [COOLIFY.md — Local development](COOLIFY.md#local-development-against-the-coolify-database).
+
+- Use the existing ignored `.env`: both database URLs should point at `127.0.0.1:15432`, with `sslmode=disable`, `DATABASE_SSL=false`, and `DATABASE_SSH_HOST` identifying the SSH account/server. Keep credentials private.
+- Ensure `psql` is installed before running migrations (`apt-get install postgresql-client` on Debian/Ubuntu).
+- Run `vp run db:tunnel` in a separate terminal or managed background session before `vp run db:migrate` or `vp dev`. Reuse an existing tunnel if one is already listening on that port.
+- The "listening" message confirms only the local listener. Verify that PostgreSQL can be reached before treating the tunnel as working.
+- SSH host-key verification must remain enabled. If authentication fails, check which client key SSH offers and compare its fingerprint with the server's authorized keys. Each agent machine needs its own public key authorized with the database-only forced command documented in `COOLIFY.md`; the Coolify server's private key must stay on that server.
+- Keep the tunnel running while local database commands or the local app need it. Stop a tunnel you started when that work is finished; leave a pre-existing tunnel under its owner's control. Restart with `vp run db:tunnel` when needed again.
+- The deployed app and Coolify MCP connect independently of this tunnel. MCP access does not make local PostgreSQL connections work automatically.
+- Local writes and migrations affect the deployed board. Run destructive database integration tests only against a disposable database.
